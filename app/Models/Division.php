@@ -1,0 +1,43 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+
+class Division extends Model
+{
+    protected $fillable = [
+        'name',
+        'code',
+        'is_active',
+    ];
+
+    protected $casts = [
+        'is_active' => 'boolean',
+    ];
+
+    public function districts()
+    {
+        return $this->hasMany(District::class);
+    }
+
+    public function users()
+    {
+        return $this->hasMany(User::class);
+    }
+
+    public function inspections()
+    {
+        return $this->hasMany(Inspection::class);
+    }
+
+    public function geoTaggings()
+    {
+        return $this->hasMany(GeoTagging::class);
+    }
+
+    public function baselineAssets()
+    {
+        return $this->hasMany(BaselineAsset::class);
+    }
+}
