@@ -47,5 +47,10 @@
   <script src="{{ asset('js/ppmf-dashboard.js') }}"></script>
 
   @stack('scripts')
+
+
+
+</body>
+</html>
 </body>
 </html>

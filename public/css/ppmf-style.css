@@ -934,3 +934,1333 @@ body {
 }
 .dropdown-menu-ppmf a:hover { background: var(--gov-green-light); color: var(--gov-green); }
 .dropdown-menu-ppmf .divider { margin: 4px 0; }
+
+
+
+
+
+
+/* ============================================================
+   PPMF Missing Modules — Add-on Styles
+   Add this at the END of public/css/ppmf-style.css
+   ============================================================ */
+
+/* ── Missing Module Page Header ─────────────────────────── */
+.page-actions-ppmf {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 22px;
+}
+
+.page-actions-ppmf h2 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--text-primary);
+  letter-spacing: -.3px;
+  line-height: 1.2;
+}
+
+.page-actions-ppmf p {
+  margin: 4px 0 0;
+  font-size: 12.5px;
+  color: var(--text-muted);
+}
+
+/* ── Missing Module Filter Card ─────────────────────────── */
+.filter-card-ppmf {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px 20px;
+  box-shadow: var(--shadow-sm);
+}
+
+.filter-title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .8px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* ── Compact Stat Cards for Missing Pages ───────────────── */
+.stat-card-ppmf {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-top: 4px solid var(--gov-green);
+  border-radius: var(--radius);
+  padding: 18px 20px;
+  box-shadow: var(--shadow-sm);
+  transition: var(--transition);
+}
+
+.stat-card-ppmf:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+}
+
+.stat-card-ppmf span {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.stat-card-ppmf strong {
+  display: block;
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--text-primary);
+  line-height: 1;
+  margin: 9px 0 5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.stat-card-ppmf small {
+  font-size: 11.5px;
+  color: var(--text-secondary);
+}
+
+/* Bootstrap border color helpers refined for stat cards */
+.stat-card-ppmf.border-success {
+  border-top-color: var(--gov-green) !important;
+}
+
+.stat-card-ppmf.border-primary {
+  border-top-color: var(--info) !important;
+}
+
+.stat-card-ppmf.border-warning {
+  border-top-color: var(--warning) !important;
+}
+
+.stat-card-ppmf.border-danger {
+  border-top-color: var(--danger) !important;
+}
+
+/* ── Map / Manual Placeholder Cards ─────────────────────── */
+.map-placeholder-ppmf,
+.manual-box-ppmf {
+  min-height: 360px;
+  border: 1.5px dashed #b8d8ca;
+  border-radius: var(--radius);
+  background:
+    radial-gradient(circle at top right, rgba(10, 92, 54, .08), transparent 35%),
+    linear-gradient(135deg, #ffffff 0%, var(--gov-green-light) 100%);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  text-align: center;
+  color: var(--text-muted);
+  padding: 28px;
+}
+
+.map-placeholder-ppmf i,
+.manual-box-ppmf i {
+  font-size: 56px;
+  color: var(--gov-green);
+  opacity: .85;
+}
+
+.map-placeholder-ppmf h5,
+.manual-box-ppmf h5 {
+  margin: 8px 0 0;
+  font-size: 17px;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+
+.map-placeholder-ppmf p,
+.manual-box-ppmf p {
+  max-width: 430px;
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+/* ── Summary Stack for Map Pages ────────────────────────── */
+.summary-stack {
+  display: grid;
+  gap: 12px;
+}
+
+.summary-item {
+  background: var(--bg);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  padding: 14px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: var(--transition);
+}
+
+.summary-item:hover {
+  background: var(--gov-green-light);
+  border-color: rgba(10, 92, 54, .18);
+}
+
+.summary-item span {
+  color: var(--text-muted);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.summary-item strong {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+
+/* ── Sidebar Submenu for Missing Modules ────────────────── */
+.nav-item.has-submenu .nav-link {
+  cursor: pointer;
+}
+
+.nav-item.has-submenu .nav-link .bi-chevron-down {
+  font-size: 12px;
+  width: auto;
+  transition: var(--transition);
+}
+
+.nav-item.has-submenu .nav-link[aria-expanded="true"] .bi-chevron-down {
+  transform: rotate(180deg);
+}
+
+.submenu {
+  margin: 4px 0 6px 31px;
+  padding-left: 10px;
+  border-left: 1px solid rgba(255, 255, 255, .14);
+  display: grid;
+  gap: 3px;
+}
+
+.submenu-link {
+  display: block;
+  color: rgba(255, 255, 255, .62);
+  text-decoration: none;
+  padding: 7px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.35;
+  transition: var(--transition);
+}
+
+.submenu-link:hover {
+  background: rgba(255, 255, 255, .10);
+  color: #fff;
+}
+
+.submenu-link.active {
+  background: rgba(255, 255, 255, .16);
+  color: #fff;
+  font-weight: 600;
+}
+
+/* ── Missing Module Table Fine Tuning ───────────────────── */
+.card-ppmf .table-ppmf {
+  margin-bottom: 0;
+}
+
+.table-ppmf td .btn,
+.table-ppmf td .btn-gov {
+  white-space: nowrap;
+}
+
+/* ── Report Action Toolbar ──────────────────────────────── */
+.report-toolbar-ppmf {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.report-toolbar-ppmf .toolbar-search {
+  max-width: 320px;
+  width: 100%;
+  position: relative;
+}
+
+.report-toolbar-ppmf .toolbar-search input {
+  width: 100%;
+  height: 36px;
+  border: 1.5px solid var(--border);
+  border-radius: 20px;
+  background: var(--bg);
+  padding: 0 14px 0 36px;
+  font-size: 12.5px;
+  outline: none;
+  transition: var(--transition);
+}
+
+.report-toolbar-ppmf .toolbar-search input:focus {
+  border-color: var(--gov-green);
+  background: #fff;
+}
+
+.report-toolbar-ppmf .toolbar-search i {
+  position: absolute;
+  left: 13px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+}
+
+/* ── Responsive Fixes for Missing Pages ─────────────────── */
+@media (max-width: 768px) {
+  .page-actions-ppmf {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .page-actions-ppmf .d-flex {
+    flex-wrap: wrap;
+  }
+
+  .filter-card-ppmf {
+    padding: 14px;
+  }
+
+  .map-placeholder-ppmf,
+  .manual-box-ppmf {
+    min-height: 260px;
+    padding: 22px;
+  }
+
+  .report-toolbar-ppmf {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .report-toolbar-ppmf .toolbar-search {
+    max-width: 100%;
+  }
+}
+
+
+
+/* Reports submenu refined style */
+.nav-item.has-submenu .nav-link {
+  cursor: pointer;
+}
+
+.nav-item.has-submenu .nav-link .bi-chevron-down {
+  font-size: 11px;
+  width: auto;
+  margin-left: auto;
+  transition: var(--transition);
+}
+
+.nav-item.has-submenu .nav-link[aria-expanded="true"] .bi-chevron-down {
+  transform: rotate(180deg);
+}
+
+.submenu {
+  margin: 5px 0 8px 30px;
+  padding: 5px 0 5px 10px;
+  border-left: 1px solid rgba(255, 255, 255, .16);
+  display: grid;
+  gap: 3px;
+}
+
+.submenu-link {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  color: rgba(255, 255, 255, .66);
+  text-decoration: none;
+  padding: 8px 9px;
+  border-radius: var(--radius-sm);
+  font-size: 11.8px;
+  font-weight: 500;
+  line-height: 1.35;
+  transition: var(--transition);
+}
+
+.submenu-link i {
+  width: 16px;
+  min-width: 16px;
+  font-size: 13px;
+  margin-top: 2px;
+  opacity: .9;
+}
+
+.submenu-link:hover {
+  background: rgba(255, 255, 255, .10);
+  color: #fff;
+}
+
+.submenu-link.active {
+  background: rgba(255, 255, 255, .16);
+  color: #fff;
+  font-weight: 600;
+}
+
+
+/* Scorecard tier helpers */
+.ppmf-tabs {
+  gap: 8px;
+}
+
+.ppmf-tabs .nav-link {
+  color: var(--text-muted);
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 8px 14px;
+}
+
+.ppmf-tabs .nav-link.active {
+  color: #fff;
+  background: var(--gov-green);
+}
+
+.progress-sm {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--border-light);
+}
+
+.progress-sm .progress-bar {
+  border-radius: 999px;
+}
+
+.rank-badge {
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  background: var(--bg);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.rank-badge.rank-1 {
+  background: #ffd700;
+  border-color: #ffd700;
+  color: #1f2937;
+}
+
+.rank-badge.rank-2 {
+  background: #c0c0c0;
+  border-color: #c0c0c0;
+  color: #1f2937;
+}
+
+.rank-badge.rank-3 {
+  background: #cd7f32;
+  border-color: #cd7f32;
+  color: #fff;
+}
+
+/* Geo Tagging Detail Page */
+.detail-grid-ppmf {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.detail-item-ppmf {
+  background: var(--bg);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  padding: 14px 16px;
+}
+
+.detail-item-ppmf span {
+  display: block;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  margin-bottom: 6px;
+}
+
+.detail-item-ppmf strong {
+  display: block;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.4;
+}
+
+.detail-item-ppmf.detail-wide {
+  grid-column: 1 / -1;
+}
+
+.remarks-box-ppmf {
+  background: var(--gov-green-light);
+  border: 1px solid rgba(10, 92, 54, .14);
+  border-radius: var(--radius-sm);
+  padding: 16px 18px;
+  color: var(--text-secondary);
+  font-size: 13.5px;
+  line-height: 1.65;
+}
+
+.image-evidence-ppmf {
+  min-height: 280px;
+}
+
+.image-placeholder-ppmf {
+  min-height: 280px;
+  border: 1.5px dashed #b8d8ca;
+  border-radius: var(--radius);
+  background:
+    radial-gradient(circle at top right, rgba(10, 92, 54, .08), transparent 35%),
+    linear-gradient(135deg, #ffffff 0%, var(--gov-green-light) 100%);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  text-align: center;
+  color: var(--text-muted);
+  padding: 24px;
+}
+
+.image-placeholder-ppmf i {
+  font-size: 52px;
+  color: var(--gov-green);
+  opacity: .85;
+}
+
+.image-placeholder-ppmf h5 {
+  margin: 8px 0 0;
+  font-size: 17px;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+
+.image-placeholder-ppmf p {
+  max-width: 340px;
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.location-map-ppmf {
+  min-height: 250px;
+  border: 1.5px dashed #b8d8ca;
+  border-radius: var(--radius);
+  background:
+    radial-gradient(circle at top right, rgba(10, 92, 54, .08), transparent 35%),
+    linear-gradient(135deg, #ffffff 0%, var(--gov-green-light) 100%);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  text-align: center;
+  padding: 24px;
+}
+
+.location-map-ppmf i {
+  font-size: 46px;
+  color: var(--gov-green);
+}
+
+.location-map-ppmf h5 {
+  margin: 8px 0 0;
+  font-size: 17px;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+
+.location-map-ppmf p {
+  margin: 0 0 8px;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+@media (max-width: 768px) {
+  .detail-grid-ppmf {
+    grid-template-columns: 1fr;
+  }
+}
+
+
+/* Weekly KPI Inspection Report */
+.kpi-inspection-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px 22px;
+  min-height: 118px;
+  box-shadow: var(--shadow-sm);
+  transition: var(--transition);
+  position: relative;
+  overflow: hidden;
+}
+
+.kpi-inspection-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  background: var(--gov-green);
+}
+
+.kpi-inspection-card:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+}
+
+.kpi-inspection-value {
+  font-size: 30px;
+  font-weight: 800;
+  line-height: 1;
+  margin-bottom: 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+.kpi-inspection-title {
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.metric-pill {
+  min-width: 34px;
+  height: 28px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.metric-pill.success {
+  background: var(--success-light);
+  color: var(--success);
+}
+
+.metric-pill.warning {
+  background: var(--warning-light);
+  color: var(--warning);
+}
+
+.metric-pill.danger {
+  background: var(--danger-light);
+  color: var(--danger);
+}
+
+/* Ranking highlight cards */
+.ranking-highlight-list {
+  display: grid;
+  gap: 14px;
+}
+
+.ranking-highlight-item {
+  background: var(--bg);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  padding: 16px;
+  display: grid;
+  grid-template-columns: 44px 1fr auto;
+  gap: 14px;
+  align-items: center;
+  transition: var(--transition);
+}
+
+.ranking-highlight-item:hover {
+  background: var(--gov-green-light);
+  border-color: rgba(10, 92, 54, .18);
+}
+
+.ranking-highlight-item h6 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+
+.ranking-highlight-item p {
+  margin: 3px 0 0;
+  font-size: 12.5px;
+  color: var(--text-muted);
+}
+
+.ranking-highlight-item > strong {
+  font-size: 22px;
+  color: var(--gov-green);
+}
+
+.ranking-position {
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 900;
+  color: #1f2937;
+  background: var(--border-light);
+}
+
+.ranking-highlight-item.first .ranking-position {
+  background: #ffd700;
+}
+
+.ranking-highlight-item.second .ranking-position {
+  background: #c0c0c0;
+}
+
+.ranking-highlight-item.third .ranking-position {
+  background: #cd7f32;
+  color: #fff;
+}
+
+/* District Comparison Report */
+.comparison-table-ppmf thead th {
+  vertical-align: middle;
+  text-align: center;
+}
+
+.comparison-table-ppmf tbody td {
+  text-align: center;
+}
+
+.comparison-table-ppmf tbody td:first-child {
+  text-align: left;
+  position: sticky;
+  left: 0;
+  background: var(--surface);
+  z-index: 1;
+  box-shadow: 1px 0 0 var(--border-light);
+}
+
+/* Tier Wise Report */
+.ppmf-tabs {
+  border-bottom: 1px solid var(--border-light);
+  gap: 8px;
+}
+
+.ppmf-tabs .nav-link {
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  color: var(--text-muted);
+  font-weight: 700;
+  font-size: 13px;
+  padding: 10px 16px;
+  background: var(--bg);
+}
+
+.ppmf-tabs .nav-link.active {
+  color: var(--gov-green);
+  background: var(--surface);
+  border-color: var(--gov-green);
+  border-bottom-color: var(--surface);
+}
+
+.tier-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+  padding: 16px 18px;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  background: var(--gov-green-light);
+}
+
+.tier-section-header h5 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+
+.tier-section-header p {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.table-ppmf th,
+.table-ppmf td {
+  white-space: nowrap;
+}
+
+/* SFN Comparison Report */
+.trend-up,
+.trend-down {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 900;
+}
+
+.trend-up {
+  background: var(--success-light);
+  color: var(--success);
+}
+
+.trend-down {
+  background: var(--danger-light);
+  color: var(--danger);
+}
+
+/* District Wise KPI Score Report */
+.kpi-score-card-ppmf {
+  background: var(--surface);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius);
+  padding: 20px;
+  min-height: 135px;
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  box-shadow: var(--shadow-sm);
+  transition: var(--transition);
+}
+
+.kpi-score-card-ppmf:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+  border-color: rgba(10, 92, 54, .22);
+}
+
+.kpi-score-icon {
+  width: 46px;
+  height: 46px;
+  border-radius: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--gov-green-light);
+  color: var(--gov-green);
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.kpi-score-icon.warning {
+  background: var(--warning-light);
+  color: var(--warning);
+}
+
+.kpi-score-icon.info {
+  background: rgba(13, 110, 253, .10);
+  color: #0d6efd;
+}
+
+.kpi-score-icon.danger {
+  background: var(--danger-light);
+  color: var(--danger);
+}
+
+.kpi-score-icon.success {
+  background: var(--success-light);
+  color: var(--success);
+}
+
+.kpi-score-card-ppmf strong {
+  display: block;
+  font-size: 30px;
+  line-height: 1;
+  font-weight: 900;
+  color: var(--gov-green);
+  margin-bottom: 8px;
+}
+
+.kpi-score-card-ppmf p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+
+.kpi-score-table-ppmf th,
+.kpi-score-table-ppmf td {
+  white-space: nowrap;
+}
+
+.kpi-score-table-ppmf td:first-child,
+.kpi-score-table-ppmf th:first-child {
+  position: sticky;
+  left: 0;
+  background: var(--surface);
+  z-index: 2;
+}
+
+/* Provincial KPI Wise Data */
+.provincial-kpi-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.provincial-kpi-section {
+  background: var(--surface);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius);
+  padding: 22px;
+  box-shadow: var(--shadow-sm);
+}
+
+.provincial-kpi-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding-bottom: 14px;
+  margin-bottom: 18px;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.provincial-kpi-heading h5 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 900;
+  text-transform: uppercase;
+  color: var(--gov-green);
+  letter-spacing: .03em;
+}
+
+.provincial-kpi-heading span {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--text-muted);
+  background: var(--gov-green-light);
+  border-radius: 999px;
+  padding: 6px 12px;
+}
+
+.provincial-kpi-card {
+  min-height: 122px;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  padding: 18px;
+  transition: var(--transition);
+}
+
+.provincial-kpi-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+  border-color: rgba(10, 92, 54, .22);
+}
+
+.provincial-kpi-card strong {
+  display: block;
+  font-size: 28px;
+  line-height: 1;
+  font-weight: 900;
+  color: var(--info);
+  margin-bottom: 10px;
+}
+
+.provincial-kpi-card p {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+
+/* KPI Reporting Status */
+.status-chip-ppmf {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 999px;
+  padding: 6px 11px;
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.status-chip-ppmf.status-submitted {
+  background: var(--success-light);
+  color: var(--success);
+}
+
+.status-chip-ppmf.status-pending {
+  background: var(--danger-light);
+  color: var(--danger);
+}
+
+.status-chip-ppmf.status-partial {
+  background: var(--warning-light);
+  color: var(--warning);
+}
+
+/* Baseline Data Report */
+.baseline-table-ppmf th,
+.baseline-table-ppmf td {
+  white-space: nowrap;
+}
+
+.baseline-table-ppmf th:first-child,
+.baseline-table-ppmf td:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+}
+
+.baseline-table-ppmf td:first-child {
+  background: var(--surface);
+}
+
+.baseline-table-ppmf th:first-child {
+  background: var(--gov-green);
+}
+
+/* Petrol Pump Monitoring Dashboard */
+.petrol-hero-card {
+  min-height: 430px;
+  border-radius: var(--radius);
+  background:
+    radial-gradient(circle at 80% 55%, rgba(245, 158, 11, .18), transparent 34%),
+    linear-gradient(135deg, #ffffff 0%, #f8fafc 55%, #fff7ed 100%);
+  border: 1px solid var(--border-light);
+  box-shadow: var(--shadow-sm);
+  padding: 38px 42px;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.petrol-hero-card::after {
+  content: "";
+  position: absolute;
+  width: 280px;
+  height: 280px;
+  right: -80px;
+  bottom: -90px;
+  background: rgba(245, 158, 11, .12);
+  border-radius: 50%;
+}
+
+.petrol-module-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--gov-green-light);
+  color: var(--gov-green);
+  border: 1px solid rgba(10, 92, 54, .16);
+  padding: 8px 13px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 800;
+  margin-bottom: 22px;
+}
+
+.petrol-hero-content {
+  max-width: 470px;
+  position: relative;
+  z-index: 2;
+}
+
+.petrol-hero-content h3 {
+  font-size: 34px;
+  line-height: 1.15;
+  font-weight: 900;
+  color: var(--text-primary);
+  margin-bottom: 14px;
+}
+
+.petrol-hero-content p {
+  font-size: 17px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+  margin-bottom: 24px;
+}
+
+.petrol-hero-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.petrol-hero-visual {
+  width: 210px;
+  height: 210px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, rgba(245, 158, 11, .18), rgba(10, 92, 54, .12));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  color: #d97706;
+  font-size: 72px;
+  z-index: 2;
+}
+
+.fuel-drop {
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(217, 119, 6, .22);
+}
+
+.drop-1 {
+  width: 42px;
+  height: 42px;
+  right: 18px;
+  top: 18px;
+}
+
+.drop-2 {
+  width: 28px;
+  height: 28px;
+  left: 18px;
+  bottom: 34px;
+}
+
+.drop-3 {
+  width: 18px;
+  height: 18px;
+  right: 42px;
+  bottom: 24px;
+}
+
+.petrol-stat-card {
+  min-height: 132px;
+  background: var(--surface);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius);
+  padding: 22px;
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  transition: var(--transition);
+}
+
+.petrol-stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.petrol-stat-icon {
+  width: 50px;
+  height: 50px;
+  border-radius: 16px;
+  background: var(--gov-green-light);
+  color: var(--gov-green);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  flex-shrink: 0;
+}
+
+.petrol-stat-icon.info {
+  background: rgba(13, 110, 253, .10);
+  color: #0d6efd;
+}
+
+.petrol-stat-icon.success {
+  background: var(--success-light);
+  color: var(--success);
+}
+
+.petrol-stat-icon.danger {
+  background: var(--danger-light);
+  color: var(--danger);
+}
+
+.petrol-stat-icon.warning {
+  background: var(--warning-light);
+  color: var(--warning);
+}
+
+.petrol-stat-icon.muted {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.petrol-stat-card span {
+  display: block;
+  font-size: 14px;
+  color: var(--text-secondary);
+  font-weight: 800;
+  margin-bottom: 12px;
+}
+
+.petrol-stat-card strong {
+  display: block;
+  font-size: 31px;
+  line-height: 1;
+  color: var(--text-primary);
+  font-weight: 900;
+  margin-bottom: 10px;
+}
+
+.petrol-stat-card small {
+  display: block;
+  color: var(--text-muted);
+  font-size: 12.5px;
+}
+
+.petrol-alert-card {
+  min-height: 150px;
+  border-radius: var(--radius);
+  padding: 22px;
+  border: 1px solid var(--border-light);
+  box-shadow: var(--shadow-sm);
+  background: var(--surface);
+  transition: var(--transition);
+}
+
+.petrol-alert-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.petrol-alert-icon {
+  width: 50px;
+  height: 50px;
+  border-radius: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 21px;
+  margin-bottom: 18px;
+}
+
+.petrol-alert-card span {
+  display: block;
+  color: var(--text-secondary);
+  font-size: 14px;
+  font-weight: 800;
+  margin-bottom: 8px;
+}
+
+.petrol-alert-card strong {
+  display: block;
+  font-size: 32px;
+  line-height: 1;
+  color: var(--text-primary);
+  font-weight: 900;
+  margin-bottom: 8px;
+}
+
+.petrol-alert-card small {
+  color: var(--text-muted);
+  font-size: 12.5px;
+}
+
+.petrol-alert-card.fuel {
+  background: linear-gradient(180deg, #fff7ed 0%, #ffffff 100%);
+  border-color: rgba(217, 119, 6, .22);
+}
+
+.petrol-alert-card.fuel .petrol-alert-icon {
+  background: #d97706;
+}
+
+.petrol-alert-card.stock {
+  background: linear-gradient(180deg, #fff7ed 0%, #ffffff 100%);
+  border-color: rgba(249, 115, 22, .22);
+}
+
+.petrol-alert-card.stock .petrol-alert-icon {
+  background: #f97316;
+}
+
+.petrol-alert-card.queue {
+  background: linear-gradient(180deg, #fef2f2 0%, #ffffff 100%);
+  border-color: rgba(220, 38, 38, .20);
+}
+
+.petrol-alert-card.queue .petrol-alert-icon {
+  background: #dc2626;
+}
+
+.petrol-alert-card.pricing {
+  background: linear-gradient(180deg, #fff1f2 0%, #ffffff 100%);
+  border-color: rgba(244, 63, 94, .22);
+}
+
+.petrol-alert-card.pricing .petrol-alert-icon {
+  background: #f43f5e;
+}
+
+.petrol-alert-card.hoarding {
+  background: linear-gradient(180deg, #faf5ff 0%, #ffffff 100%);
+  border-color: rgba(126, 34, 206, .22);
+}
+
+.petrol-alert-card.hoarding .petrol-alert-icon {
+  background: #7e22ce;
+}
+
+.petrol-report-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.petrol-report-list a {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  text-decoration: none;
+  color: var(--text-primary);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  padding: 15px;
+  background: #fff;
+  transition: var(--transition);
+}
+
+.petrol-report-list a:hover {
+  background: var(--gov-green-light);
+  border-color: rgba(10, 92, 54, .18);
+  transform: translateX(3px);
+}
+
+.petrol-report-list a > i:first-child {
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  background: var(--gov-green-light);
+  color: var(--gov-green);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.petrol-report-list strong {
+  display: block;
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.petrol-report-list span {
+  display: block;
+  color: var(--text-muted);
+  font-size: 12px;
+  margin-top: 2px;
+}
+
+.petrol-report-list a > i:last-child {
+  margin-left: auto;
+  color: var(--text-muted);
+}
