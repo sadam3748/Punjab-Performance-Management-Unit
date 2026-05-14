@@ -1,21 +1,33 @@
 <?php
 
-use Illuminate\Http\Request;
+use App\Http\Controllers\AuthController;
+use App\Http\Controllers\BaselineDataController;
+use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\GeoTaggingController;
+use App\Http\Controllers\InspectionController;
+use App\Http\Controllers\KpiReportController;
+use App\Http\Controllers\PetrolPumpController;
+use App\Http\Controllers\ReportController;
+use App\Http\Controllers\ScorecardController;
+use App\Http\Controllers\SettingController;
+use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
+
+/*
+|--------------------------------------------------------------------------
+| Public Routes
+|--------------------------------------------------------------------------
+*/
 
 Route::get('/', function () {
     return redirect()->route('login');
 });
 
-Route::view('/login', 'auth.login')->name('login');
+Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
 
-Route::post('/login', function (Request $request) {
-    return redirect()->route('dashboard');
-})->name('login.post');
+Route::post('/login', [AuthController::class, 'login'])->name('login.post');
 
-Route::get('/logout', function () {
-    return redirect()->route('login');
-})->name('logout');
+Route::get('/logout', [AuthController::class, 'logout'])->name('logout');
 
 /*
 |--------------------------------------------------------------------------
@@ -23,7 +35,7 @@ Route::get('/logout', function () {
 |--------------------------------------------------------------------------
 */
 
-Route::prefix('portal')->group(function () {
+Route::prefix('portal')->middleware('auth')->group(function () {
 
     /*
     |--------------------------------------------------------------------------
@@ -31,21 +43,33 @@ Route::prefix('portal')->group(function () {
     |--------------------------------------------------------------------------
     */
 
-    Route::view('/dashboard', 'dashboard.index')->name('dashboard');
+    Route::get('/dashboard', [DashboardController::class, 'index'])
+        ->name('dashboard');
 
-    Route::view('/scorecard', 'scorecard.index')->name('scorecard.index');
+    /*
+    |--------------------------------------------------------------------------
+    | Scorecard
+    |--------------------------------------------------------------------------
+    */
 
-    Route::view('/scorecard/tier-wise', 'scorecard.index')->name('scorecard.tier');
+    Route::get('/scorecard', [ScorecardController::class, 'index'])
+        ->name('scorecard.index');
+
+    Route::get('/scorecard/tier-wise', [ScorecardController::class, 'tierWise'])
+        ->name('scorecard.tier');
 
     /*
     |--------------------------------------------------------------------------
     | KPI Management
     |--------------------------------------------------------------------------
+    | Keep these static for now because controller/service is not created yet.
     */
 
-    Route::view('/kpi-management', 'kpi.index')->name('kpi.index');
+    Route::view('/kpi-management', 'kpi.index')
+        ->name('kpi.index');
 
-    Route::view('/kpi-data-entry', 'kpi.create')->name('kpi.create');
+    Route::view('/kpi-data-entry', 'kpi.create')
+        ->name('kpi.create');
 
     Route::post('/kpi/store', function () {
         return redirect()
@@ -53,37 +77,108 @@ Route::prefix('portal')->group(function () {
             ->with('success', 'KPI saved successfully in demo mode.');
     })->name('kpi.store');
 
-    Route::view('/kpi-reporting-status', 'kpi.reporting-status')->name('kpi.reporting-status');
+    /*
+    |--------------------------------------------------------------------------
+    | KPI / Data Reports
+    |--------------------------------------------------------------------------
+    */
 
-    Route::view('/provincial-kpi-wise-data', 'kpi.provincial-data')->name('kpi.provincial-data');
+    Route::get('/kpi-reporting-status', [KpiReportController::class, 'reportingStatus'])
+        ->name('kpi.reporting-status');
+
+    Route::get('/provincial-kpi-wise-data', [KpiReportController::class, 'provincialData'])
+        ->name('kpi.provincial-data');
+
+    Route::get('/district-baseline-data-report', [KpiReportController::class, 'districtBaseline'])
+        ->name('reports.district-baseline');
+
+    Route::get('/kpi-graphical-report', [KpiReportController::class, 'graphicalReport'])
+        ->name('kpi.graphical-report');
 
     /*
     |--------------------------------------------------------------------------
     | Performance
     |--------------------------------------------------------------------------
+    | Keep static until performance controller is added.
     */
 
-    Route::view('/division-performance', 'divisions.performance')->name('divisions.performance');
+    Route::view('/division-performance', 'divisions.performance')
+        ->name('divisions.performance');
 
-    Route::view('/district-performance', 'districts.performance')->name('districts.performance');
+    Route::view('/district-performance', 'districts.performance')
+        ->name('districts.performance');
 
     /*
     |--------------------------------------------------------------------------
-    | Field Monitoring
+    | Petrol Pump Monitoring
     |--------------------------------------------------------------------------
     */
 
-    Route::view('/petrol-pump-monitoring', 'petrol_pump.dashboard')->name('petrol.dashboard');
+    Route::get('/petrol-pump-monitoring', [PetrolPumpController::class, 'dashboard'])
+        ->name('petrol.dashboard');
 
-    Route::view('/inspections/map', 'inspections.map')->name('inspections.map');
+    /*
+    |--------------------------------------------------------------------------
+    | Inspections
+    |--------------------------------------------------------------------------
+    */
 
-    Route::view('/inspections/list', 'inspections.list')->name('inspections.list');
+    Route::get('/inspections/map', [InspectionController::class, 'map'])
+        ->name('inspections.map');
 
-    Route::view('/geo-taggings/map', 'geo_taggings.map')->name('geo-taggings.map');
+    Route::get('/inspections/list', [InspectionController::class, 'list'])
+        ->name('inspections.list');
 
-    Route::view('/geo-taggings/list', 'geo_taggings.list')->name('geo-taggings.list');
+    Route::get('/inspections/{id}', [InspectionController::class, 'show'])
+        ->name('inspections.show');
 
-    Route::view('/geo-taggings/detail', 'geo_taggings.detail')->name('geo-taggings.detail');
+    /*
+    |--------------------------------------------------------------------------
+    | Geo Taggings
+    |--------------------------------------------------------------------------
+    */
+
+    Route::get('/geo-taggings/map', [GeoTaggingController::class, 'map'])
+        ->name('geo-taggings.map');
+
+    Route::get('/geo-taggings/list', [GeoTaggingController::class, 'list'])
+        ->name('geo-taggings.list');
+
+    Route::get('/geo-taggings/detail', [GeoTaggingController::class, 'detail'])
+        ->name('geo-taggings.detail');
+
+    Route::get('/geo-taggings/{id}', [GeoTaggingController::class, 'show'])
+        ->name('geo-taggings.show');
+
+    /*
+    |--------------------------------------------------------------------------
+    | Baseline Data Management
+    |--------------------------------------------------------------------------
+    */
+
+    Route::get('/baseline-data', [BaselineDataController::class, 'index'])
+        ->name('baseline.index');
+
+    Route::get('/baseline-data/create', [BaselineDataController::class, 'create'])
+        ->name('baseline.create');
+
+    Route::post('/baseline-data/store', [BaselineDataController::class, 'store'])
+        ->name('baseline.store');
+
+    Route::get('/baseline-data/{id}', [BaselineDataController::class, 'show'])
+        ->name('baseline.show');
+
+    Route::get('/baseline-data/{id}/edit', [BaselineDataController::class, 'edit'])
+        ->name('baseline.edit');
+
+    Route::put('/baseline-data/{id}', [BaselineDataController::class, 'update'])
+        ->name('baseline.update');
+
+    Route::get('/baseline-assets', [BaselineDataController::class, 'assets'])
+        ->name('baseline.assets');
+
+    Route::get('/baseline-assets/{id}', [BaselineDataController::class, 'showAsset'])
+        ->name('baseline.assets.show');
 
     /*
     |--------------------------------------------------------------------------
@@ -91,46 +186,84 @@ Route::prefix('portal')->group(function () {
     |--------------------------------------------------------------------------
     */
 
-    Route::view('/departments', 'departments.index')->name('departments.index');
+    Route::view('/departments', 'departments.index')
+        ->name('departments.index');
 
-    Route::view('/punjab-map', 'map.index')->name('map.index');
+    Route::view('/punjab-map', 'map.index')
+        ->name('map.index');
 
-    Route::view('/reports', 'reports.index')->name('reports.index');
+    Route::get('/reports', [ReportController::class, 'index'])
+        ->name('reports.index');
 
-    Route::view('/category-wise-district-score', 'reports.category-wise-district-score')->name('reports.category-wise-district-score');
+    Route::get('/category-wise-district-score', [ReportController::class, 'categoryWiseDistrictScore'])
+        ->name('reports.category-wise-district-score');
 
-    Route::view('/district-sfn-victim-tier-report', 'reports.district-sfn-victim-tier')->name('reports.district-sfn-victim-tier');
+    Route::get('/district-sfn-victim-tier-report', [ReportController::class, 'districtSfnVictimTier'])
+        ->name('reports.district-sfn-victim-tier');
 
-    Route::view('/district-sfn-comparison-report', 'reports.district-sfn-comparison')->name('reports.district-sfn-comparison');
+    Route::get('/district-sfn-comparison-report', [ReportController::class, 'districtSfnComparison'])
+        ->name('reports.district-sfn-comparison');
 
-    Route::view('/division-score-report', 'reports.division-score')->name('reports.division-score');
+    Route::get('/division-score-report', [ReportController::class, 'divisionScore'])
+        ->name('reports.division-score');
 
-    Route::view('/district-comparison-report', 'reports.district-comparison')->name('reports.district-comparison');
+    Route::get('/district-comparison-report', [ReportController::class, 'districtComparison'])
+        ->name('reports.district-comparison');
 
-    Route::view('/district-accumulative-report', 'reports.district-accumulative')->name('reports.district-accumulative');
+    Route::get('/district-accumulative-report', [ReportController::class, 'districtAccumulative'])
+        ->name('reports.district-accumulative');
 
-    Route::view('/division-kpi-ranking-report', 'reports.division-kpi-ranking')->name('reports.division-kpi-ranking');
+    Route::get('/division-kpi-ranking-report', [ReportController::class, 'divisionKpiRanking'])
+        ->name('reports.division-kpi-ranking');
 
-    Route::view('/district-weekly-kpi-inspection-report', 'reports.district-weekly-kpi-inspection')->name('reports.district-weekly-kpi-inspection');
+    Route::get('/district-weekly-kpi-inspection-report', [ReportController::class, 'districtWeeklyKpiInspection'])
+        ->name('reports.district-weekly-kpi-inspection');
 
-    Route::view('/district-week-rank-changelog-report', 'reports.district-week-rank-changelog')->name('reports.district-week-rank-changelog');
+    Route::get('/district-week-rank-changelog-report', [ReportController::class, 'districtWeekRankChangelog'])
+        ->name('reports.district-week-rank-changelog');
 
-    Route::view('/district-wise-kpi-score-report', 'reports.district-wise-kpi-score')->name('reports.district-wise-kpi-score');
-
-    Route::view('/district-baseline-data-report', 'reports.district-baseline')->name('reports.district-baseline');
+    Route::get('/district-wise-kpi-score-report', [ReportController::class, 'districtWiseKpiScore'])
+        ->name('reports.district-wise-kpi-score');
 
     /*
     |--------------------------------------------------------------------------
-    | Administration
+    | User Management
     |--------------------------------------------------------------------------
     */
 
-    Route::view('/users', 'users.index')->name('users.index');
+    Route::get('/users', [UserController::class, 'index'])
+        ->name('users.index');
 
-    Route::view('/settings', 'settings.index')->name('settings.index');
+    Route::get('/users/create', [UserController::class, 'create'])
+        ->name('users.create');
 
-    Route::view('/change-password', 'settings.change-password')->name('settings.change-password');
+    Route::post('/users/store', [UserController::class, 'store'])
+        ->name('users.store');
 
-    Route::view('/system-manual', 'settings.system-manual')->name('settings.system-manual');
+    Route::get('/users/{id}/edit', [UserController::class, 'edit'])
+        ->name('users.edit');
 
+    Route::put('/users/{id}', [UserController::class, 'update'])
+        ->name('users.update');
+
+    Route::patch('/users/{id}/toggle-status', [UserController::class, 'toggleStatus'])
+        ->name('users.toggle-status');
+
+    /*
+    |--------------------------------------------------------------------------
+    | Settings
+    |--------------------------------------------------------------------------
+    */
+
+    Route::get('/settings', [SettingController::class, 'index'])
+        ->name('settings.index');
+
+    Route::get('/change-password', [SettingController::class, 'changePassword'])
+        ->name('settings.change-password');
+
+    Route::post('/change-password', [SettingController::class, 'updatePassword'])
+        ->name('settings.change-password.update');
+
+    Route::get('/system-manual', [SettingController::class, 'systemManual'])
+        ->name('settings.system-manual');
 });

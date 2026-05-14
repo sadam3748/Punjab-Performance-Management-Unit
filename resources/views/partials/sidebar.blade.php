@@ -149,6 +149,14 @@
       </a>
     </div>
 
+<div class="nav-item">
+  <a href="{{ route('kpi.graphical-report') }}"
+     class="nav-link {{ request()->routeIs('kpi.graphical-report') ? 'active' : '' }}">
+    <i class="bi bi-pie-chart"></i>
+    KPI Graphical Report
+  </a>
+</div>
+
     {{-- Geo Taggings --}}
     <div class="nav-item has-submenu">
       <a href="#geoTaggingSubmenu"

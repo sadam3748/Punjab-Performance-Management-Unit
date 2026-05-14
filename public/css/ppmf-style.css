@@ -2264,3 +2264,66 @@ body {
   margin-left: auto;
   color: var(--text-muted);
 }
+
+
+.page-card {
+    background: #fff;
+    border-radius: 12px;
+    padding: 24px;
+    box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
+}
+
+.report-card {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    min-height: 110px;
+    padding: 22px;
+    box-shadow: 0 4px 14px rgba(15, 23, 42, 0.05);
+}
+
+.report-card h2 {
+    color: #28b8c3;
+    font-size: 34px;
+    margin-bottom: 4px;
+    font-weight: 500;
+}
+
+.report-card p {
+    margin-bottom: 0;
+    color: #1f2937;
+    font-weight: 700;
+}
+
+.split-card {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    padding: 0;
+}
+
+.split-card > div {
+    padding: 22px;
+    border-right: 1px solid #e5e7eb;
+}
+
+.split-card > div:last-child {
+    border-right: 0;
+}
+
+.chart-box {
+    min-height: 220px;
+    border: 1px dashed #cbd5e1;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #64748b;
+    background: #f8fafc;
+    font-weight: 600;
+}
+
+.table-report-head th {
+    background: #226f73 !important;
+    color: #fff !important;
+    text-align: center;
+    vertical-align: middle;
+}
