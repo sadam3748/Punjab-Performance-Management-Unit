@@ -6,6 +6,7 @@ use App\Models\Division;
 use App\Models\Inspection;
 use App\Models\KpiCategory;
 use App\Models\Tehsil;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
@@ -13,12 +14,8 @@ class ScorecardService
 {
     /*
     |--------------------------------------------------------------------------
-    | Apply User Scope
+    | Apply Logged-in User Scope
     |--------------------------------------------------------------------------
-    | Super Admin / CS / PMRU = all Punjab
-    | Commissioner = own division
-    | DC = own district
-    | AC / Field User = own tehsil
     */
     private function applyUserScope($query)
     {
@@ -28,7 +25,7 @@ class ScorecardService
             return $query;
         }
 
-        $roleSlug = $user->role->slug;
+        $roleSlug = $user->role->slug ?? null;
 
         if (in_array($roleSlug, ['super_admin', 'chief_secretary', 'pmru_user'])) {
             return $query;
@@ -42,7 +39,7 @@ class ScorecardService
             return $query->where('district_id', $user->district_id);
         }
 
-        if (in_array($roleSlug, ['ac', 'field_user']) && $user->tehsil_id) {
+        if (in_array($roleSlug, ['ac', 'data_entry_user']) && $user->tehsil_id) {
             return $query->where('tehsil_id', $user->tehsil_id);
         }
 
@@ -51,12 +48,129 @@ class ScorecardService
 
     /*
     |--------------------------------------------------------------------------
-    | Apply Filters
+    | Normalize Scorecard Filters
     |--------------------------------------------------------------------------
-    | Common filters for scorecard pages.
+    | Converts old PPMF style filters into actual date_from/date_to filters.
+    */
+    public function normalizeFilters(array $filters): array
+    {
+        $filters = array_filter($filters, function ($value) {
+            return $value !== null && $value !== '';
+        });
+
+        $filters['per_page'] = (int) ($filters['per_page'] ?? 10);
+        if (! in_array($filters['per_page'], [10, 25, 50, 100])) {
+            $filters['per_page'] = 10;
+        }
+
+        $filters['scope']     = $filters['scope'] ?? 'all';
+        $filters['period']    = $filters['period'] ?? 'weekly';
+        $filters['area_type'] = $filters['area_type'] ?? 'district';
+
+        $year  = (int) ($filters['year'] ?? now()->year);
+        $month = (int) ($filters['month'] ?? now()->month);
+
+        /*
+        |--------------------------------------------------------------------------
+        | If direct date range is selected, keep it.
+        |--------------------------------------------------------------------------
+        */
+        if (! empty($filters['date_from']) || ! empty($filters['date_to'])) {
+            return $filters;
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Weekly
+        | Example week_range: 07 May - 13 May
+        |--------------------------------------------------------------------------
+        */
+        if (($filters['period'] ?? null) === 'weekly') {
+            if (! empty($filters['week_range'])) {
+                try {
+                    [$startText, $endText] = array_map('trim', explode('-', $filters['week_range']));
+
+                    $startDate = Carbon::parse($startText . ' ' . $year);
+                    $endDate   = Carbon::parse($endText . ' ' . $year);
+
+                    if ($endDate->lt($startDate)) {
+                        $endDate->addMonth();
+                    }
+
+                    $filters['date_from'] = $startDate->format('Y-m-d');
+                    $filters['date_to']   = $endDate->format('Y-m-d');
+                } catch (\Throwable $e) {
+                    $filters['date_from'] = now()->startOfWeek()->format('Y-m-d');
+                    $filters['date_to']   = now()->endOfWeek()->format('Y-m-d');
+                }
+            }
+
+            return $filters;
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Monthly
+        |--------------------------------------------------------------------------
+        */
+        if (($filters['period'] ?? null) === 'monthly') {
+            $date = Carbon::createFromDate($year, $month, 1);
+
+            $filters['date_from'] = $date->copy()->startOfMonth()->format('Y-m-d');
+            $filters['date_to']   = $date->copy()->endOfMonth()->format('Y-m-d');
+
+            return $filters;
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Quarterly
+        |--------------------------------------------------------------------------
+        */
+        if (($filters['period'] ?? null) === 'quarterly') {
+            $date = Carbon::createFromDate($year, $month, 1);
+
+            $filters['date_from'] = $date->copy()->firstOfQuarter()->format('Y-m-d');
+            $filters['date_to']   = $date->copy()->lastOfQuarter()->format('Y-m-d');
+
+            return $filters;
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Yearly
+        |--------------------------------------------------------------------------
+        */
+        if (($filters['period'] ?? null) === 'yearly') {
+            $date = Carbon::createFromDate($year, 1, 1);
+
+            $filters['date_from'] = $date->copy()->startOfYear()->format('Y-m-d');
+            $filters['date_to']   = $date->copy()->endOfYear()->format('Y-m-d');
+
+            return $filters;
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | All Time
+        |--------------------------------------------------------------------------
+        */
+        if (($filters['period'] ?? null) === 'all') {
+            unset($filters['date_from'], $filters['date_to']);
+        }
+
+        return $filters;
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Apply Common Filters
+    |--------------------------------------------------------------------------
     */
     private function applyFilters($query, array $filters)
     {
+        $filters = $this->normalizeFilters($filters);
+
         return $query
             ->when(! empty($filters['division_id']), function ($q) use ($filters) {
                 $q->where('division_id', $filters['division_id']);
@@ -85,9 +199,40 @@ class ScorecardService
 
     /*
     |--------------------------------------------------------------------------
+    | Apply Performance Score Filter
+    |--------------------------------------------------------------------------
+    | Works on grouped ranking queries. Do not use alias in HAVING because
+    | PostgreSQL does not allow SELECT aliases inside HAVING.
+    */
+    private function applyPerformanceFilter($query, array $filters)
+    {
+        $performance = $filters['performance'] ?? 'all';
+
+        if ($performance === 'all' || $performance === '') {
+            return $query;
+        }
+
+        $scoreExpression = "
+            CASE
+                WHEN COUNT(*) > 0
+                THEN ROUND((SUM(CASE WHEN status = 'approved' THEN 1 ELSE 0 END)::decimal / COUNT(*)) * 100, 2)
+                ELSE 0
+            END
+        ";
+
+        return match ($performance) {
+            'excellent' => $query->havingRaw("{$scoreExpression} >= 90"),
+            'good' => $query->havingRaw("{$scoreExpression} >= 70 AND {$scoreExpression} < 90"),
+            'average' => $query->havingRaw("{$scoreExpression} >= 50 AND {$scoreExpression} < 70"),
+            'critical', 'bad' => $query->havingRaw("{$scoreExpression} < 50"),
+            default => $query,
+        };
+    }
+
+    /*
+    |--------------------------------------------------------------------------
     | Scorecard Summary
     |--------------------------------------------------------------------------
-    | Main summary cards for scorecard page.
     */
     public function getScorecardSummary(array $filters): array
     {
@@ -118,8 +263,6 @@ class ScorecardService
     |--------------------------------------------------------------------------
     | District Ranking
     |--------------------------------------------------------------------------
-    | Calculates district score based on approved inspections.
-    | Formula: approved_count / total_inspections * 100
     */
     public function getDistrictRanking(array $filters)
     {
@@ -140,23 +283,24 @@ class ScorecardService
                 "),
             ])
             ->with('district:id,name,tier,division_id')
+            ->whereNotNull('district_id')
             ->groupBy('district_id');
 
         $query = $this->applyUserScope($query);
         $query = $this->applyFilters($query, $filters);
+        $query = $this->applyPerformanceFilter($query, $filters);
 
         return $query
             ->orderByDesc('score_percentage')
             ->orderByDesc('approved_count')
-            ->paginate(20)
+            ->paginate($filters['per_page'] ?? 10)
             ->withQueryString();
     }
 
     /*
     |--------------------------------------------------------------------------
-    | Category Ranking
+    | KPI Category Ranking
     |--------------------------------------------------------------------------
-    | KPI category-wise score.
     */
     public function getCategoryRanking(array $filters)
     {
@@ -175,6 +319,7 @@ class ScorecardService
                 "),
             ])
             ->with('kpiCategory:id,name')
+            ->whereNotNull('kpi_category_id')
             ->groupBy('kpi_category_id');
 
         $query = $this->applyUserScope($query);
@@ -191,11 +336,10 @@ class ScorecardService
     |--------------------------------------------------------------------------
     | Tier Summary
     |--------------------------------------------------------------------------
-    | Summary for Tier 1/2/3 page.
     */
     public function getTierSummary(array $filters): array
     {
-        $selectedTier = $filters['tier'] ?? null;
+        $filters = $this->normalizeFilters($filters);
 
         $query = Inspection::query();
 
@@ -207,15 +351,19 @@ class ScorecardService
 
         $districtCountQuery = District::query()
             ->where('is_active', true)
-            ->when($selectedTier, function ($q) use ($selectedTier) {
-                $q->where('tier', $selectedTier);
+            ->when(! empty($filters['tier']), function ($q) use ($filters) {
+                $q->where('tier', $filters['tier']);
+            })
+            ->when(! empty($filters['division_id']), function ($q) use ($filters) {
+                $q->where('division_id', $filters['division_id']);
+            })
+            ->when(! empty($filters['district_id']), function ($q) use ($filters) {
+                $q->where('id', $filters['district_id']);
             });
 
-        $districtCount = $districtCountQuery->count();
-
         return [
-            'selected_tier'     => $selectedTier ?: 'All Tiers',
-            'district_count'    => $districtCount,
+            'selected_tier'     => $filters['tier'] ?? 'All Tiers',
+            'district_count'    => $districtCountQuery->count(),
             'total_inspections' => $total,
             'approved'          => $approved,
             'score_percentage'  => $total > 0
@@ -228,7 +376,6 @@ class ScorecardService
     |--------------------------------------------------------------------------
     | Tier District Ranking
     |--------------------------------------------------------------------------
-    | District ranking filtered by selected tier.
     */
     public function getTierDistrictRanking(array $filters)
     {
@@ -249,15 +396,17 @@ class ScorecardService
                 "),
             ])
             ->with('district:id,name,tier,division_id')
+            ->whereNotNull('district_id')
             ->groupBy('district_id');
 
         $query = $this->applyUserScope($query);
         $query = $this->applyFilters($query, $filters);
+        $query = $this->applyPerformanceFilter($query, $filters);
 
         return $query
             ->orderByDesc('score_percentage')
             ->orderByDesc('approved_count')
-            ->paginate(20)
+            ->paginate($filters['per_page'] ?? 10)
             ->withQueryString();
     }
 
@@ -285,5 +434,38 @@ class ScorecardService
                 ->orderBy('name')
                 ->get(['id', 'name']),
         ];
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Week Range Options
+    |--------------------------------------------------------------------------
+    */
+    public function getWeekRanges(?int $year = null, ?int $month = null): array
+    {
+        $year  = $year ?: now()->year;
+        $month = $month ?: now()->month;
+
+        $start = Carbon::createFromDate($year, $month, 1)->startOfMonth();
+        $end   = Carbon::createFromDate($year, $month, 1)->endOfMonth();
+
+        $weeks  = [];
+        $cursor = $start->copy();
+
+        while ($cursor->lte($end)) {
+            $weekStart = $cursor->copy();
+            $weekEnd   = $cursor->copy()->addDays(6);
+
+            if ($weekEnd->gt($end)) {
+                $weekEnd = $end->copy();
+            }
+
+            $label         = $weekStart->format('d M') . ' - ' . $weekEnd->format('d M');
+            $weeks[$label] = $label;
+
+            $cursor = $weekEnd->copy()->addDay();
+        }
+
+        return $weeks;
     }
 }

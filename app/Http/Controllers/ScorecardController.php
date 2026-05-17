@@ -8,12 +8,6 @@ class ScorecardController extends Controller
 {
     protected ScorecardService $scorecardService;
 
-    /*
-    |--------------------------------------------------------------------------
-    | Constructor
-    |--------------------------------------------------------------------------
-    | ScorecardService handles ranking/score calculation logic.
-    */
     public function __construct(ScorecardService $scorecardService)
     {
         $this->scorecardService = $scorecardService;
@@ -21,68 +15,98 @@ class ScorecardController extends Controller
 
     /*
     |--------------------------------------------------------------------------
-    | CM Governance Scorecard
+    | Chief Minister Governance Scorecard
     |--------------------------------------------------------------------------
-    | Main scorecard page. Shows district/category score based on inspections.
     */
     public function index(Request $request)
     {
-        $filters = $request->only([
-            'division_id',
-            'district_id',
-            'tehsil_id',
-            'kpi_category_id',
-            'tier',
-            'date_from',
-            'date_to',
-            'period',
-        ]);
+        $filters = $this->scorecardService->normalizeFilters(
+            $request->only([
+                'scope',
+                'period',
+                'week_range',
+                'month',
+                'year',
+                'area_type',
+                'division_id',
+                'district_id',
+                'tehsil_id',
+                'kpi_category_id',
+                'tier',
+                'date_from',
+                'date_to',
+                'performance',
+                'per_page',
+            ])
+        );
 
-        $summary         = $this->scorecardService->getScorecardSummary($filters);
-        $districtRanking = $this->scorecardService->getDistrictRanking($filters);
-        $categoryRanking = $this->scorecardService->getCategoryRanking($filters);
-        $filterData      = $this->scorecardService->getFilterData();
+        $filterData = $this->scorecardService->getFilterData();
 
         return view('scorecard.index', [
-            'summary'         => $summary,
-            'districtRanking' => $districtRanking,
-            'categoryRanking' => $categoryRanking,
+            'summary'         => $this->scorecardService->getScorecardSummary($filters),
+            'districtRanking' => $this->scorecardService->getDistrictRanking($filters),
+            'categoryRanking' => $this->scorecardService->getCategoryRanking($filters),
+
             'divisions'       => $filterData['divisions'],
             'districts'       => $filterData['districts'],
             'tehsils'         => $filterData['tehsils'],
             'kpiCategories'   => $filterData['kpiCategories'],
+
+            'weekOptions'     => $this->scorecardService->getWeekRanges(
+                $request->integer('year') ?: now()->year,
+                $request->integer('month') ?: now()->month
+            ),
+
             'filters'         => $filters,
         ]);
     }
 
     /*
     |--------------------------------------------------------------------------
-    | Tier Wise Scorecard
+    | Chief Minister Governance Scorecard Tier Wise
     |--------------------------------------------------------------------------
-    | Shows district ranking by Tier 1, Tier 2, Tier 3.
     */
     public function tierWise(Request $request)
     {
-        $filters = $request->only([
-            'tier',
-            'division_id',
-            'district_id',
-            'kpi_category_id',
-            'date_from',
-            'date_to',
-            'period',
-        ]);
+        $filters = $this->scorecardService->normalizeFilters(
+            $request->only([
+                'scope',
+                'period',
+                'week_range',
+                'month',
+                'year',
+                'area_type',
+                'division_id',
+                'district_id',
+                'tehsil_id',
+                'kpi_category_id',
+                'tier',
+                'date_from',
+                'date_to',
+                'performance',
+                'per_page',
+            ])
+        );
 
-        $tierSummary = $this->scorecardService->getTierSummary($filters);
-        $tierRanking = $this->scorecardService->getTierDistrictRanking($filters);
-        $filterData  = $this->scorecardService->getFilterData();
+        // Tier-wise page should open Tier 1 by default and keep selected tier in all filters.
+        $filters['tier'] = $filters['tier'] ?? '1';
+
+        $filterData = $this->scorecardService->getFilterData();
 
         return view('scorecard.tier-wise', [
-            'tierSummary'   => $tierSummary,
-            'tierRanking'   => $tierRanking,
+            'tierSummary'   => $this->scorecardService->getTierSummary($filters),
+            'tierRanking'   => $this->scorecardService->getTierDistrictRanking($filters),
+
             'divisions'     => $filterData['divisions'],
             'districts'     => $filterData['districts'],
+            'tehsils'       => $filterData['tehsils'],
             'kpiCategories' => $filterData['kpiCategories'],
+
+            'weekOptions'   => $this->scorecardService->getWeekRanges(
+                $request->integer('year') ?: now()->year,
+                $request->integer('month') ?: now()->month
+            ),
+
             'filters'       => $filters,
         ]);
     }

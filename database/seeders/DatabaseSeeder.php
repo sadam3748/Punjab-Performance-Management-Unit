@@ -1,6 +1,7 @@
 <?php
 namespace Database\Seeders;
 
+use Database\Seeders\PpmfDummyDataSeeder;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
@@ -25,9 +26,10 @@ class DatabaseSeeder extends Seeder
             AdminUserSeeder::class,
 
             PpmfDummyUserSeeder::class,
-            PpmfDummyInspectionSeeder::class,
+            PpmfDummyDataSeeder::class,
             PpmfDummyGeoTaggingSeeder::class,
             PpmfDummyBaselineSeeder::class,
+            ProvincialKpiMetricSeeder::class,
         ]);
     }
 }

@@ -35,6 +35,7 @@ class InspectionController extends Controller
             'date_from',
             'date_to',
             'search',
+            'per_page',
         ]);
 
         $inspections = $this->inspectionService->getInspectionList($filters);

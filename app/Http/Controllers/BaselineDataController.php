@@ -8,23 +8,34 @@ class BaselineDataController extends Controller
 {
     protected BaselineDataService $baselineDataService;
 
-    /*
-    |--------------------------------------------------------------------------
-    | Constructor
-    |--------------------------------------------------------------------------
-    | BaselineDataService handles all baseline query and save logic.
-    */
     public function __construct(BaselineDataService $baselineDataService)
     {
         $this->baselineDataService = $baselineDataService;
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | District Baseline Data List
-    |--------------------------------------------------------------------------
-    | Shows district-wise baseline summary records.
-    */
+    public function districtBaseline(Request $request)
+    {
+        $filters = $request->only([
+            'district_id',
+            'kpi_category_id',
+            'year',
+            'search',
+            'per_page',
+        ]);
+
+        $baselineData = $this->baselineDataService->getDistrictBaselineList($filters);
+        $summary      = $this->baselineDataService->getBaselineSummary($filters);
+        $filterData   = $this->baselineDataService->getFilterData();
+
+        return view('baseline.district-baseline', [
+            'baselineData'  => $baselineData,
+            'summary'       => $summary,
+            'districts'     => $filterData['districts'],
+            'kpiCategories' => $filterData['kpiCategories'],
+            'filters'       => $filters,
+        ]);
+    }
+
     public function index(Request $request)
     {
         $filters = $request->only([
@@ -32,6 +43,7 @@ class BaselineDataController extends Controller
             'kpi_category_id',
             'year',
             'search',
+            'per_page',
         ]);
 
         $baselineData = $this->baselineDataService->getDistrictBaselineList($filters);
@@ -47,11 +59,6 @@ class BaselineDataController extends Controller
         ]);
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | Create District Baseline Data
-    |--------------------------------------------------------------------------
-    */
     public function create()
     {
         $filterData = $this->baselineDataService->getFilterData();
@@ -62,12 +69,6 @@ class BaselineDataController extends Controller
         ]);
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | Store District Baseline Data
-    |--------------------------------------------------------------------------
-    | Stores baseline summary data in JSON format.
-    */
     public function store(Request $request)
     {
         $validated = $request->validate([
@@ -84,11 +85,6 @@ class BaselineDataController extends Controller
             ->with('success', 'District baseline data saved successfully.');
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | Show District Baseline Data
-    |--------------------------------------------------------------------------
-    */
     public function show($id)
     {
         $baseline = $this->baselineDataService->getDistrictBaselineDetail($id);
@@ -98,11 +94,6 @@ class BaselineDataController extends Controller
         ]);
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | Edit District Baseline Data
-    |--------------------------------------------------------------------------
-    */
     public function edit($id)
     {
         $baseline   = $this->baselineDataService->getDistrictBaselineDetail($id);
@@ -115,11 +106,6 @@ class BaselineDataController extends Controller
         ]);
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | Update District Baseline Data
-    |--------------------------------------------------------------------------
-    */
     public function update(Request $request, $id)
     {
         $validated = $request->validate([
@@ -136,12 +122,6 @@ class BaselineDataController extends Controller
             ->with('success', 'District baseline data updated successfully.');
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | Baseline Asset List
-    |--------------------------------------------------------------------------
-    | Shows asset-level baseline records, e.g. Water Filtration Plants.
-    */
     public function assets(Request $request)
     {
         $filters = $request->only([
@@ -166,11 +146,6 @@ class BaselineDataController extends Controller
         ]);
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | Show Baseline Asset Detail
-    |--------------------------------------------------------------------------
-    */
     public function showAsset($id)
     {
         $asset = $this->baselineDataService->getBaselineAssetDetail($id);

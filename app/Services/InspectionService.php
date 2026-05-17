@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Services;
 
 use App\Models\District;
@@ -120,9 +119,14 @@ class InspectionService
         $query = $this->applyUserScope($query);
         $query = $this->applyFilters($query, $filters);
 
+        $perPage = (int) ($filters['per_page'] ?? 10);
+        if (! in_array($perPage, [10, 20, 25, 50])) {
+            $perPage = 10;
+        }
+
         return $query
             ->latest('inspection_datetime')
-            ->paginate(20)
+            ->paginate($perPage)
             ->withQueryString();
     }
 
@@ -179,11 +183,11 @@ class InspectionService
     public function getFilterData(): array
     {
         return [
-            'districts' => District::where('is_active', true)
+            'districts'     => District::where('is_active', true)
                 ->orderBy('name')
                 ->get(['id', 'name']),
 
-            'tehsils' => Tehsil::where('is_active', true)
+            'tehsils'       => Tehsil::where('is_active', true)
                 ->orderBy('name')
                 ->get(['id', 'district_id', 'name']),
 

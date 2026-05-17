@@ -53,11 +53,9 @@ class AuthController extends Controller
         );
 
         if (! $result['status']) {
-            return back()
-                ->withErrors([
-                    'login' => $result['message'],
-                ])
-                ->withInput($request->only('login'));
+            return back()->withErrors([
+                'login' => $result['message'],
+            ]);
         }
 
         $request->session()->regenerate();

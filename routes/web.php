@@ -5,6 +5,7 @@ use App\Http\Controllers\BaselineDataController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\GeoTaggingController;
 use App\Http\Controllers\InspectionController;
+use App\Http\Controllers\KpiCategoryController;
 use App\Http\Controllers\KpiReportController;
 use App\Http\Controllers\PetrolPumpController;
 use App\Http\Controllers\ReportController;
@@ -55,27 +56,35 @@ Route::prefix('portal')->middleware('auth')->group(function () {
     Route::get('/scorecard', [ScorecardController::class, 'index'])
         ->name('scorecard.index');
 
+    Route::get('/scorecard/district-wise', [ScorecardController::class, 'index'])
+        ->name('scorecard.district-wise');
+
     Route::get('/scorecard/tier-wise', [ScorecardController::class, 'tierWise'])
         ->name('scorecard.tier');
 
-    /*
-    |--------------------------------------------------------------------------
-    | KPI Management
-    |--------------------------------------------------------------------------
-    | Keep these static for now because controller/service is not created yet.
-    */
+/*
+|--------------------------------------------------------------------------
+| KPI Category Management
+|--------------------------------------------------------------------------
+*/
 
-    Route::view('/kpi-management', 'kpi.index')
+    Route::get('/kpi-management', [KpiCategoryController::class, 'index'])
         ->name('kpi.index');
 
-    Route::view('/kpi-data-entry', 'kpi.create')
+    Route::get('/kpi-data-entry', [KpiCategoryController::class, 'create'])
         ->name('kpi.create');
 
-    Route::post('/kpi/store', function () {
-        return redirect()
-            ->route('kpi.index')
-            ->with('success', 'KPI saved successfully in demo mode.');
-    })->name('kpi.store');
+    Route::post('/kpi/store', [KpiCategoryController::class, 'store'])
+        ->name('kpi.store');
+
+    Route::get('/kpi/{kpiCategory}/edit', [KpiCategoryController::class, 'edit'])
+        ->name('kpi.edit');
+
+    Route::put('/kpi/{kpiCategory}', [KpiCategoryController::class, 'update'])
+        ->name('kpi.update');
+
+    Route::delete('/kpi/{kpiCategory}', [KpiCategoryController::class, 'destroy'])
+        ->name('kpi.destroy');
 
     /*
     |--------------------------------------------------------------------------
@@ -83,14 +92,18 @@ Route::prefix('portal')->middleware('auth')->group(function () {
     |--------------------------------------------------------------------------
     */
 
+    Route::get('/kpi', [KpiCategoryController::class, 'index'])->name('kpi.index');
+    Route::get('/kpi/create', [KpiCategoryController::class, 'create'])->name('kpi.create');
+    Route::post('/kpi', [KpiCategoryController::class, 'store'])->name('kpi.store');
+    Route::get('/kpi/{kpiCategory}/edit', [KpiCategoryController::class, 'edit'])->name('kpi.edit');
+    Route::put('/kpi/{kpiCategory}', [KpiCategoryController::class, 'update'])->name('kpi.update');
+    Route::delete('/kpi/{kpiCategory}', [KpiCategoryController::class, 'destroy'])->name('kpi.destroy');
+
     Route::get('/kpi-reporting-status', [KpiReportController::class, 'reportingStatus'])
         ->name('kpi.reporting-status');
 
     Route::get('/provincial-kpi-wise-data', [KpiReportController::class, 'provincialData'])
         ->name('kpi.provincial-data');
-
-    Route::get('/district-baseline-data-report', [KpiReportController::class, 'districtBaseline'])
-        ->name('reports.district-baseline');
 
     Route::get('/kpi-graphical-report', [KpiReportController::class, 'graphicalReport'])
         ->name('kpi.graphical-report');
@@ -149,12 +162,13 @@ Route::prefix('portal')->middleware('auth')->group(function () {
 
     Route::get('/geo-taggings/{id}', [GeoTaggingController::class, 'show'])
         ->name('geo-taggings.show');
-
-    /*
-    |--------------------------------------------------------------------------
-    | Baseline Data Management
-    |--------------------------------------------------------------------------
-    */
+/*
+|--------------------------------------------------------------------------
+| Baseline Data Management
+|--------------------------------------------------------------------------
+*/
+    Route::get('/district-baseline-data-report', [BaselineDataController::class, 'districtBaseline'])
+        ->name('baseline.district-baseline');
 
     Route::get('/baseline-data', [BaselineDataController::class, 'index'])
         ->name('baseline.index');
@@ -165,14 +179,20 @@ Route::prefix('portal')->middleware('auth')->group(function () {
     Route::post('/baseline-data/store', [BaselineDataController::class, 'store'])
         ->name('baseline.store');
 
-    Route::get('/baseline-data/{id}', [BaselineDataController::class, 'show'])
-        ->name('baseline.show');
-
     Route::get('/baseline-data/{id}/edit', [BaselineDataController::class, 'edit'])
         ->name('baseline.edit');
 
     Route::put('/baseline-data/{id}', [BaselineDataController::class, 'update'])
         ->name('baseline.update');
+
+    Route::get('/baseline-data/{id}', [BaselineDataController::class, 'show'])
+        ->name('baseline.show');
+
+/*
+|--------------------------------------------------------------------------
+| Baseline Asset Records
+|--------------------------------------------------------------------------
+*/
 
     Route::get('/baseline-assets', [BaselineDataController::class, 'assets'])
         ->name('baseline.assets');

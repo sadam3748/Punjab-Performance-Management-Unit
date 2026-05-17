@@ -1,0 +1,122 @@
+/* ============================================================
+   PPMF Auth / Login Page
+   File: public/css/auth.css
+   ============================================================ */
+
+.login-logo-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.login-logo-icon {
+  width: 42px;
+  height: 42px;
+  background: var(--gov-green);
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.ppmf-login-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  border-radius: var(--radius-sm);
+  padding: 11px 14px;
+  font-size: 13px;
+  margin-bottom: 16px;
+}
+
+.login-option-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 4px 0 22px;
+}
+
+.remember-check {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.remember-check input {
+  width: 15px;
+  height: 15px;
+  accent-color: var(--gov-green);
+}
+
+.login-help-text {
+  font-size: 12px;
+  color: var(--text-muted);
+  text-align: right;
+}
+
+.login-demo-box {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.login-demo-box > div {
+  background: var(--bg);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+}
+
+.login-demo-box span {
+  display: block;
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  margin-bottom: 3px;
+}
+
+.login-demo-box strong {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  color: var(--gov-green);
+}
+
+.form-input-ppmf.is-invalid {
+  border-color: var(--danger);
+  background-color: #fff;
+}
+
+.form-input-ppmf.is-invalid:focus {
+  border-color: var(--danger);
+  box-shadow: 0 0 0 3px rgba(217, 54, 62, .12);
+}
+
+@media (max-width: 480px) {
+  .login-right {
+    padding: 24px;
+  }
+
+  .login-option-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .login-help-text {
+    text-align: left;
+  }
+
+  .login-demo-box {
+    grid-template-columns: 1fr;
+  }
+}

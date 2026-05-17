@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Http\Controllers;
 
 use App\Services\KpiReportService;
@@ -8,12 +9,6 @@ class KpiReportController extends Controller
 {
     protected KpiReportService $kpiReportService;
 
-    /*
-    |--------------------------------------------------------------------------
-    | Constructor
-    |--------------------------------------------------------------------------
-    | Inject service so report calculation/query logic stays outside controller.
-    */
     public function __construct(KpiReportService $kpiReportService)
     {
         $this->kpiReportService = $kpiReportService;
@@ -23,39 +18,35 @@ class KpiReportController extends Controller
     |--------------------------------------------------------------------------
     | Provincial KPI Wise Data
     |--------------------------------------------------------------------------
-    | Shows KPI/category-wise Punjab-level inspection summary.
+    | Old PPMF-style category-wise metric cards.
+    | This does NOT use submitted/reviewed/approved/rejected inspection statuses.
     */
     public function provincialData(Request $request)
     {
         $filters = $request->only([
-            'district_id',
-            'tehsil_id',
+            'period_type',
             'kpi_category_id',
             'date_from',
             'date_to',
-            'status',
             'search',
+            'per_page',
         ]);
 
-        $reportData = $this->kpiReportService->getProvincialKpiWiseData($filters);
+        $reportData = $this->kpiReportService->getProvincialKpiMetrics($filters);
+        $summary = $this->kpiReportService->getProvincialKpiMetricSummary($filters);
         $filterData = $this->kpiReportService->getFilterData();
 
         return view('kpi.provincial-data', [
-            'reportData'    => $reportData,
-            'districts'     => $filterData['districts'],
-            'tehsils'       => $filterData['tehsils'],
+            'provincialData' => $reportData,
+            'reportData' => $reportData,
+            'summary' => $summary,
+            'districts' => $filterData['districts'],
+            'tehsils' => $filterData['tehsils'],
             'kpiCategories' => $filterData['kpiCategories'],
-            'filters'       => $filters,
+            'filters' => $filters,
         ]);
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | KPI Reporting Status
-    |--------------------------------------------------------------------------
-    | Shows reporting status based on inspection availability by district/category.
-    | Currently calculated from inspections table.
-    */
     public function reportingStatus(Request $request)
     {
         $filters = $request->only([
@@ -67,48 +58,16 @@ class KpiReportController extends Controller
         ]);
 
         $reportingStatus = $this->kpiReportService->getKpiReportingStatus($filters);
-        $filterData      = $this->kpiReportService->getFilterData();
+        $filterData = $this->kpiReportService->getFilterData();
 
         return view('kpi.reporting-status', [
             'reportingStatus' => $reportingStatus,
-            'districts'       => $filterData['districts'],
-            'kpiCategories'   => $filterData['kpiCategories'],
-            'filters'         => $filters,
-        ]);
-    }
-
-    /*
-    |--------------------------------------------------------------------------
-    | District Baseline Data Report
-    |--------------------------------------------------------------------------
-    | Shows district/category baseline summary data.
-    */
-    public function districtBaseline(Request $request)
-    {
-        $filters = $request->only([
-            'district_id',
-            'kpi_category_id',
-            'year',
-            'search',
-        ]);
-
-        $baselineData = $this->kpiReportService->getDistrictBaselineData($filters);
-        $filterData   = $this->kpiReportService->getFilterData();
-
-        return view('kpi.district-baseline', [
-            'baselineData'  => $baselineData,
-            'districts'     => $filterData['districts'],
+            'districts' => $filterData['districts'],
             'kpiCategories' => $filterData['kpiCategories'],
-            'filters'       => $filters,
+            'filters' => $filters,
         ]);
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | KPI Graphical Report
-    |--------------------------------------------------------------------------
-    | One common page. Scope/title changes based on logged-in user role.
-    */
     public function graphicalReport(Request $request)
     {
         $filters = $request->only([
@@ -120,21 +79,22 @@ class KpiReportController extends Controller
             'period',
         ]);
 
-        $scope      = $this->kpiReportService->getUserScope();
-        $summary    = $this->kpiReportService->getGraphicalSummary($filters);
-        $chartData  = $this->kpiReportService->getGraphicalChartData($filters);
-        $tableData  = $this->kpiReportService->getGraphicalTableData($filters);
+        $scope = $this->kpiReportService->getUserScope();
+        $summary = $this->kpiReportService->getGraphicalSummary($filters);
+        $chartData = $this->kpiReportService->getGraphicalChartData($filters);
+        $tableData = $this->kpiReportService->getGraphicalTableData($filters);
         $filterData = $this->kpiReportService->getFilterData();
 
         return view('kpi.graphical-report', [
-            'scope'         => $scope,
-            'summary'       => $summary,
-            'chartData'     => $chartData,
-            'tableData'     => $tableData,
-            'districts'     => $filterData['districts'],
-            'tehsils'       => $filterData['tehsils'],
+            'scope' => $scope,
+            'summary' => $summary,
+            'chartData' => $chartData,
+            'tableData' => $tableData,
+            'categoryChart' => $tableData,
+            'districts' => $filterData['districts'],
+            'tehsils' => $filterData['tehsils'],
             'kpiCategories' => $filterData['kpiCategories'],
-            'filters'       => $filters,
+            'filters' => $filters,
         ]);
     }
 }

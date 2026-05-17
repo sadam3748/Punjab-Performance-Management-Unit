@@ -1,409 +1,415 @@
 @extends('layouts.app')
 
-@section('title', 'Division KPI Ranking Report | PPMF Portal')
-@section('page_title', 'Division KPI Ranking Report')
+@section('title', 'Division KPI Ranking')
 
 @section('content')
 
-<div class="page-actions-ppmf">
-  <div>
-    <h2>Division KPI Ranking Report</h2>
-    <p>Division-wise KPI ranking based on selected indicator, period, month, and year.</p>
-  </div>
-
-  <div class="d-flex gap-2">
-    <button class="btn btn-outline-success">
-      <i class="bi bi-file-earmark-excel"></i> Export Excel
-    </button>
-    <button class="btn btn-outline-danger">
-      <i class="bi bi-file-earmark-pdf"></i> Export PDF
-    </button>
-    <button class="btn btn-success">
-      <i class="bi bi-printer"></i> Print
-    </button>
-  </div>
-</div>
-
-{{-- Filters --}}
-<div class="filter-card-ppmf mb-4">
-  <div class="filter-title">
-    <i class="bi bi-funnel"></i> Ranking Filters
-  </div>
-
-  <div class="row g-3 align-items-end">
-    <div class="col-md-3">
-      <label class="form-label">KPI / Indicator</label>
-      <select class="form-select">
-        <option selected>Price of Roti</option>
-        <option>Cleanliness</option>
-        <option>Encroachment</option>
-        <option>Manhole Covers</option>
-        <option>Stray Dogs</option>
-      </select>
+<div class="page-title-bar">
+    <div>
+        <h1 class="page-title">Division KPI Ranking</h1>
+        <p class="page-subtitle">
+            Ranking of divisions based on KPI category performance, inspections and approval score.
+        </p>
     </div>
 
-    <div class="col-md-2">
-      <label class="form-label">Frequency</label>
-      <select class="form-select">
-        <option selected>Weekly</option>
-        <option>Monthly</option>
-        <option>Quarterly</option>
-        <option>Yearly</option>
-      </select>
-    </div>
+    <div class="page-title-actions">
+        <a href="{{ route('reports.index') }}" class="btn-gov btn-gov-outline">
+            <i class="bi bi-arrow-left"></i>
+            Back to Reports
+        </a>
 
-    <div class="col-md-2">
-      <label class="form-label">Period</label>
-      <select class="form-select">
-        <option selected>30 Apr - 06 May</option>
-        <option>23 Apr - 29 Apr</option>
-        <option>16 Apr - 22 Apr</option>
-      </select>
+        <a href="{{ route('reports.division-score') }}" class="btn-gov btn-gov-primary">
+            <i class="bi bi-diagram-3"></i>
+            Division Score
+        </a>
     </div>
-
-    <div class="col-md-2">
-      <label class="form-label">Month</label>
-      <select class="form-select">
-        <option selected>May</option>
-        <option>April</option>
-        <option>March</option>
-      </select>
-    </div>
-
-    <div class="col-md-1">
-      <label class="form-label">Year</label>
-      <select class="form-select">
-        <option selected>2026</option>
-        <option>2025</option>
-        <option>2024</option>
-      </select>
-    </div>
-
-    <div class="col-md-2 d-flex gap-2">
-      <button class="btn btn-success flex-fill">
-        <i class="bi bi-search"></i> Apply
-      </button>
-      <button class="btn btn-outline-secondary">
-        <i class="bi bi-x-circle"></i>
-      </button>
-    </div>
-  </div>
 </div>
 
 {{-- Summary Cards --}}
 <div class="row g-3 mb-4">
-  <div class="col-md-3">
-    <div class="stat-card-ppmf border-success">
-      <span>Total Divisions</span>
-      <strong>09</strong>
-      <small>Included in current report</small>
-    </div>
-  </div>
 
-  <div class="col-md-3">
-    <div class="stat-card-ppmf border-primary">
-      <span>Top Division</span>
-      <strong style="font-size: 22px;">Lahore</strong>
-      <small>Highest KPI performance</small>
+    <div class="col-xl-3 col-lg-4 col-md-6">
+        <div class="stat-card-ppmf">
+            <div class="stat-icon-ppmf primary">
+                <i class="bi bi-trophy"></i>
+            </div>
+            <div>
+                <span>Total Rankings</span>
+                <strong>{{ number_format($summary['total_rankings'] ?? $summary['total'] ?? 0) }}</strong>
+            </div>
+        </div>
     </div>
-  </div>
 
-  <div class="col-md-3">
-    <div class="stat-card-ppmf border-warning">
-      <span>Average Score</span>
-      <strong>71%</strong>
-      <small>Across all divisions</small>
+    <div class="col-xl-3 col-lg-4 col-md-6">
+        <div class="stat-card-ppmf">
+            <div class="stat-icon-ppmf info">
+                <i class="bi bi-diagram-3"></i>
+            </div>
+            <div>
+                <span>Total Divisions</span>
+                <strong>{{ number_format($summary['divisions_count'] ?? $summary['total_divisions'] ?? 0) }}</strong>
+            </div>
+        </div>
     </div>
-  </div>
 
-  <div class="col-md-3">
-    <div class="stat-card-ppmf border-danger">
-      <span>Needs Attention</span>
-      <strong>02</strong>
-      <small>Low performing divisions</small>
+    <div class="col-xl-3 col-lg-4 col-md-6">
+        <div class="stat-card-ppmf">
+            <div class="stat-icon-ppmf success">
+                <i class="bi bi-check-circle"></i>
+            </div>
+            <div>
+                <span>Approved</span>
+                <strong>{{ number_format($summary['approved'] ?? 0) }}</strong>
+            </div>
+        </div>
     </div>
-  </div>
+
+    <div class="col-xl-3 col-lg-4 col-md-6">
+        <div class="stat-card-ppmf">
+            <div class="stat-icon-ppmf warning">
+                <i class="bi bi-percent"></i>
+            </div>
+            <div>
+                <span>Average Score</span>
+                <strong>{{ $summary['average_score'] ?? $summary['approval_rate'] ?? 0 }}%</strong>
+            </div>
+        </div>
+    </div>
+
 </div>
 
-<div class="row g-4 mb-4">
-  {{-- Chart --}}
-  <div class="col-xl-5">
-    <div class="card-ppmf h-100">
-      <div class="card-ppmf-header">
-        <div>
-          <div class="card-ppmf-title">
-            <i class="bi bi-bar-chart"></i> Division Score Overview
-          </div>
-          <div class="card-ppmf-subtitle">
-            KPI score comparison by division.
-          </div>
+{{-- Filters --}}
+<div class="card-ppmf mb-4">
+    <div class="card-ppmf-header">
+        <div class="card-ppmf-title">
+            <i class="bi bi-funnel"></i>
+            Filters
         </div>
-      </div>
-
-      <div class="card-ppmf-body">
-        <canvas id="divisionKpiRankingChart" height="230"></canvas>
-      </div>
     </div>
-  </div>
 
-  {{-- Top 3 --}}
-  <div class="col-xl-7">
-    <div class="card-ppmf h-100">
-      <div class="card-ppmf-header">
-        <div>
-          <div class="card-ppmf-title">
-            <i class="bi bi-trophy"></i> Top Performing Divisions
-          </div>
-          <div class="card-ppmf-subtitle">
-            Current period ranking leaders.
-          </div>
-        </div>
-      </div>
+    <div class="card-ppmf-body">
+        <form method="GET" action="{{ route('reports.division-kpi-ranking') }}">
+            <div class="row g-3 align-items-end">
 
-      <div class="card-ppmf-body">
-        <div class="ranking-highlight-list">
-          <div class="ranking-highlight-item first">
-            <div class="ranking-position">1</div>
-            <div>
-              <h6>Lahore</h6>
-              <p>Strong compliance and reporting performance.</p>
+                <div class="col-xl-3 col-lg-4 col-md-6">
+                    <label class="form-label">KPI Category</label>
+                    <select name="kpi_category_id" class="form-select">
+                        <option value="">All KPI Categories</option>
+                        @foreach($kpiCategories as $category)
+                            <option value="{{ $category->id }}"
+                                {{ ($filters['kpi_category_id'] ?? '') == $category->id ? 'selected' : '' }}>
+                                {{ $category->name }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+
+                <div class="col-xl-3 col-lg-4 col-md-6">
+                    <label class="form-label">District</label>
+                    <select name="district_id" class="form-select">
+                        <option value="">All Districts</option>
+                        @foreach($districts as $district)
+                            <option value="{{ $district->id }}"
+                                {{ ($filters['district_id'] ?? '') == $district->id ? 'selected' : '' }}>
+                                {{ $district->name }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+
+                <div class="col-xl-3 col-lg-4 col-md-6">
+                    <label class="form-label">Tehsil</label>
+                    <select name="tehsil_id" class="form-select">
+                        <option value="">All Tehsils</option>
+                        @foreach($tehsils as $tehsil)
+                            <option value="{{ $tehsil->id }}"
+                                {{ ($filters['tehsil_id'] ?? '') == $tehsil->id ? 'selected' : '' }}>
+                                {{ $tehsil->name }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+
+                <div class="col-xl-3 col-lg-4 col-md-6">
+                    <label class="form-label">Status</label>
+                    <select name="status" class="form-select">
+                        <option value="">All Status</option>
+                        <option value="submitted" {{ ($filters['status'] ?? '') === 'submitted' ? 'selected' : '' }}>Submitted</option>
+                        <option value="reviewed" {{ ($filters['status'] ?? '') === 'reviewed' ? 'selected' : '' }}>Reviewed</option>
+                        <option value="approved" {{ ($filters['status'] ?? '') === 'approved' ? 'selected' : '' }}>Approved</option>
+                        <option value="rejected" {{ ($filters['status'] ?? '') === 'rejected' ? 'selected' : '' }}>Rejected</option>
+                    </select>
+                </div>
+
+                <div class="col-xl-3 col-lg-4 col-md-6">
+                    <label class="form-label">From Date</label>
+                    <input
+                        type="date"
+                        name="date_from"
+                        value="{{ $filters['date_from'] ?? '' }}"
+                        class="form-control"
+                    >
+                </div>
+
+                <div class="col-xl-3 col-lg-4 col-md-6">
+                    <label class="form-label">To Date</label>
+                    <input
+                        type="date"
+                        name="date_to"
+                        value="{{ $filters['date_to'] ?? '' }}"
+                        class="form-control"
+                    >
+                </div>
+
+                <div class="col-xl-3 col-lg-4 col-md-6">
+                    <label class="form-label">Search</label>
+                    <input
+                        type="text"
+                        name="search"
+                        value="{{ $filters['search'] ?? '' }}"
+                        class="form-control"
+                        placeholder="Search division/category"
+                    >
+                </div>
+
+                <div class="col-xl-3 col-lg-4 col-md-6">
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn-gov btn-gov-primary flex-fill">
+                            <i class="bi bi-search"></i>
+                            Apply
+                        </button>
+
+                        <a href="{{ route('reports.division-kpi-ranking') }}" class="btn-gov btn-gov-outline flex-fill">
+                            <i class="bi bi-arrow-clockwise"></i>
+                            Reset
+                        </a>
+                    </div>
+                </div>
+
             </div>
-            <strong>88%</strong>
-          </div>
-
-          <div class="ranking-highlight-item second">
-            <div class="ranking-position">2</div>
-            <div>
-              <h6>Faisalabad</h6>
-              <p>Consistent KPI submission and field progress.</p>
-            </div>
-            <strong>84%</strong>
-          </div>
-
-          <div class="ranking-highlight-item third">
-            <div class="ranking-position">3</div>
-            <div>
-              <h6>Rawalpindi</h6>
-              <p>Improved weekly performance trend.</p>
-            </div>
-            <strong>79%</strong>
-          </div>
-        </div>
-      </div>
+        </form>
     </div>
-  </div>
 </div>
 
-{{-- Table --}}
+{{-- Ranking Table --}}
 <div class="card-ppmf">
-  <div class="card-ppmf-header">
-    <div>
-      <div class="card-ppmf-title">
-        <i class="bi bi-table"></i> Division KPI Ranking
-      </div>
-      <div class="card-ppmf-subtitle">
-        Ranking table based on selected KPI and reporting period.
-      </div>
+    <div class="card-ppmf-header">
+        <div>
+            <div class="card-ppmf-title">
+                <i class="bi bi-trophy"></i>
+                Division KPI Ranking Data
+            </div>
+            <p class="card-subtitle mb-0">
+                Total records:
+                {{ method_exists($reportData, 'total') ? number_format($reportData->total()) : number_format($reportData->count()) }}
+            </p>
+        </div>
     </div>
 
-    <div class="d-flex align-items-center gap-2">
-      <select class="form-select form-select-sm" style="width: 90px;">
-        <option selected>10</option>
-        <option>25</option>
-        <option>50</option>
-      </select>
+    <div class="card-ppmf-body p-0">
+        <div class="table-responsive">
+            <table class="table-ppmf">
+                <thead>
+                    <tr>
+                        <th style="width:70px;">Rank</th>
+                        <th>Division</th>
+                        <th>KPI Category</th>
+                        <th>Total Inspections</th>
+                        <th>Submitted</th>
+                        <th>Approved</th>
+                        <th>Rejected</th>
+                        <th>Score %</th>
+                        <th>Ranking Status</th>
+                    </tr>
+                </thead>
 
-      <div class="position-relative">
-        <i class="bi bi-search position-absolute" style="left: 11px; top: 8px; color: var(--text-muted);"></i>
-        <input type="text" class="form-control form-control-sm" style="padding-left: 32px; width: 240px;" placeholder="Search division...">
-      </div>
+                <tbody>
+                    @forelse($reportData as $index => $row)
+                        @php
+                            $rank = $row->rank
+                                ?? (method_exists($reportData, 'firstItem') ? $reportData->firstItem() + $index : $index + 1);
+
+                            $total = $row->total_inspections ?? $row->total ?? 0;
+                            $submitted = $row->submitted_count ?? $row->submitted ?? 0;
+                            $approved = $row->approved_count ?? $row->approved ?? 0;
+                            $rejected = $row->rejected_count ?? $row->rejected ?? 0;
+
+                            $score = $row->score_percentage
+                                ?? $row->kpi_score
+                                ?? $row->approval_rate
+                                ?? ($total > 0 ? round(($approved / $total) * 100, 2) : 0);
+
+                            if ($rank == 1) {
+                                $rankClass = 'gold';
+                                $rankText = 'Top Performer';
+                            } elseif ($rank == 2) {
+                                $rankClass = 'silver';
+                                $rankText = 'Second Position';
+                            } elseif ($rank == 3) {
+                                $rankClass = 'bronze';
+                                $rankText = 'Third Position';
+                            } else {
+                                $rankClass = 'normal';
+                                $rankText = 'Ranked';
+                            }
+
+                            if ($score >= 80) {
+                                $scoreClass = 'achieved';
+                            } elseif ($score >= 60) {
+                                $scoreClass = 'info';
+                            } elseif ($score >= 40) {
+                                $scoreClass = 'pending';
+                            } else {
+                                $scoreClass = 'critical';
+                            }
+                        @endphp
+
+                        <tr>
+                            <td>
+                                <span class="rank-chip {{ $rankClass }}">
+                                    #{{ $rank }}
+                                </span>
+                            </td>
+
+                            <td>
+                                <strong>{{ $row->division->name ?? $row->division_name ?? 'N/A' }}</strong>
+                            </td>
+
+                            <td>
+                                <span class="category-chip">
+                                    {{ $row->kpiCategory->name ?? $row->kpi_category_name ?? 'N/A' }}
+                                </span>
+                            </td>
+
+                            <td>
+                                <strong>{{ number_format($total) }}</strong>
+                            </td>
+
+                            <td>
+                                <span class="text-primary fw-bold">{{ number_format($submitted) }}</span>
+                            </td>
+
+                            <td>
+                                <span class="text-success fw-bold">{{ number_format($approved) }}</span>
+                            </td>
+
+                            <td>
+                                <span class="text-danger fw-bold">{{ number_format($rejected) }}</span>
+                            </td>
+
+                            <td>
+                                <div class="score-progress">
+                                    <div class="score-text">
+                                        <strong>{{ $score }}%</strong>
+                                    </div>
+
+                                    <div class="progress progress-ppmf">
+                                        <div
+                                            class="progress-bar"
+                                            style="width: {{ min($score, 100) }}%;"
+                                            role="progressbar"
+                                            aria-valuenow="{{ $score }}"
+                                            aria-valuemin="0"
+                                            aria-valuemax="100">
+                                        </div>
+                                    </div>
+                                </div>
+                            </td>
+
+                            <td>
+                                <span class="badge-ppmf {{ $scoreClass }}">
+                                    {{ $rankText }}
+                                </span>
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="9" class="text-center py-5">
+                                <div class="manual-box-ppmf">
+                                    <i class="bi bi-trophy"></i>
+                                    <h5>No Division KPI Ranking Data Found</h5>
+                                    <p>No division KPI ranking data is available for selected filters.</p>
+                                </div>
+                            </td>
+                        </tr>
+                    @endforelse
+                </tbody>
+
+            </table>
+        </div>
     </div>
-  </div>
 
-  <div class="card-ppmf-body p-0">
-    <div class="table-responsive">
-      <table class="table table-ppmf align-middle mb-0">
-        <thead>
-          <tr>
-            <th style="width: 80px;">Rank</th>
-            <th>Division</th>
-            <th>Score</th>
-            <th>Performance</th>
-            <th>Trend</th>
-            <th>Status</th>
-          </tr>
-        </thead>
-
-        <tbody>
-          <tr>
-            <td><span class="rank-badge rank-1">1</span></td>
-            <td><strong>Lahore</strong></td>
-            <td><strong class="text-success">88%</strong></td>
-            <td>
-              <div class="progress progress-sm">
-                <div class="progress-bar bg-success" style="width: 88%"></div>
-              </div>
-            </td>
-            <td><span class="text-success"><i class="bi bi-arrow-up"></i> +4</span></td>
-            <td><span class="badge bg-success-subtle text-success">On Track</span></td>
-          </tr>
-
-          <tr>
-            <td><span class="rank-badge rank-2">2</span></td>
-            <td><strong>Faisalabad</strong></td>
-            <td><strong class="text-success">84%</strong></td>
-            <td>
-              <div class="progress progress-sm">
-                <div class="progress-bar bg-success" style="width: 84%"></div>
-              </div>
-            </td>
-            <td><span class="text-success"><i class="bi bi-arrow-up"></i> +2</span></td>
-            <td><span class="badge bg-success-subtle text-success">Good</span></td>
-          </tr>
-
-          <tr>
-            <td><span class="rank-badge rank-3">3</span></td>
-            <td><strong>Rawalpindi</strong></td>
-            <td><strong class="text-success">79%</strong></td>
-            <td>
-              <div class="progress progress-sm">
-                <div class="progress-bar bg-success" style="width: 79%"></div>
-              </div>
-            </td>
-            <td><span class="text-success"><i class="bi bi-arrow-up"></i> +1</span></td>
-            <td><span class="badge bg-success-subtle text-success">Good</span></td>
-          </tr>
-
-          <tr>
-            <td><span class="rank-badge">4</span></td>
-            <td><strong>Multan</strong></td>
-            <td><strong class="text-warning">72%</strong></td>
-            <td>
-              <div class="progress progress-sm">
-                <div class="progress-bar bg-warning" style="width: 72%"></div>
-              </div>
-            </td>
-            <td><span class="text-muted"><i class="bi bi-dash"></i> 0</span></td>
-            <td><span class="badge bg-warning-subtle text-warning">Average</span></td>
-          </tr>
-
-          <tr>
-            <td><span class="rank-badge">5</span></td>
-            <td><strong>Gujranwala</strong></td>
-            <td><strong class="text-warning">69%</strong></td>
-            <td>
-              <div class="progress progress-sm">
-                <div class="progress-bar bg-warning" style="width: 69%"></div>
-              </div>
-            </td>
-            <td><span class="text-danger"><i class="bi bi-arrow-down"></i> -2</span></td>
-            <td><span class="badge bg-warning-subtle text-warning">Watch</span></td>
-          </tr>
-
-          <tr>
-            <td><span class="rank-badge">6</span></td>
-            <td><strong>Sahiwal</strong></td>
-            <td><strong class="text-warning">65%</strong></td>
-            <td>
-              <div class="progress progress-sm">
-                <div class="progress-bar bg-warning" style="width: 65%"></div>
-              </div>
-            </td>
-            <td><span class="text-danger"><i class="bi bi-arrow-down"></i> -1</span></td>
-            <td><span class="badge bg-warning-subtle text-warning">Average</span></td>
-          </tr>
-
-          <tr>
-            <td><span class="rank-badge">7</span></td>
-            <td><strong>Bahawalpur</strong></td>
-            <td><strong class="text-danger">54%</strong></td>
-            <td>
-              <div class="progress progress-sm">
-                <div class="progress-bar bg-danger" style="width: 54%"></div>
-              </div>
-            </td>
-            <td><span class="text-danger"><i class="bi bi-arrow-down"></i> -3</span></td>
-            <td><span class="badge bg-danger-subtle text-danger">Needs Action</span></td>
-          </tr>
-
-          <tr>
-            <td><span class="rank-badge">8</span></td>
-            <td><strong>D. G. Khan</strong></td>
-            <td><strong class="text-danger">48%</strong></td>
-            <td>
-              <div class="progress progress-sm">
-                <div class="progress-bar bg-danger" style="width: 48%"></div>
-              </div>
-            </td>
-            <td><span class="text-danger"><i class="bi bi-arrow-down"></i> -4</span></td>
-            <td><span class="badge bg-danger-subtle text-danger">Critical</span></td>
-          </tr>
-
-          <tr>
-            <td><span class="rank-badge">9</span></td>
-            <td><strong>Sargodha</strong></td>
-            <td><strong class="text-danger">44%</strong></td>
-            <td>
-              <div class="progress progress-sm">
-                <div class="progress-bar bg-danger" style="width: 44%"></div>
-              </div>
-            </td>
-            <td><span class="text-muted"><i class="bi bi-dash"></i> 0</span></td>
-            <td><span class="badge bg-danger-subtle text-danger">Low</span></td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-  </div>
-
-  <div class="card-ppmf-footer d-flex justify-content-between align-items-center p-3 border-top">
-    <small class="text-muted">Showing 1 to 9 of 9 divisions</small>
-
-    <nav>
-      <ul class="pagination pagination-sm mb-0">
-        <li class="page-item disabled"><a class="page-link">Previous</a></li>
-        <li class="page-item active"><a class="page-link" href="#">1</a></li>
-        <li class="page-item disabled"><a class="page-link">Next</a></li>
-      </ul>
-    </nav>
-  </div>
+    @if(method_exists($reportData, 'links'))
+        <div class="card-ppmf-body border-top">
+            {{ $reportData->links() }}
+        </div>
+    @endif
 </div>
 
 @endsection
 
-@push('scripts')
-<script>
-document.addEventListener('DOMContentLoaded', function () {
-  const chartEl = document.getElementById('divisionKpiRankingChart');
+@push('styles')
+<style>
+    .rank-chip {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 46px;
+        padding: 5px 10px;
+        border-radius: 999px;
+        background: rgba(27, 107, 70, 0.10);
+        color: var(--gov-green);
+        font-size: 12px;
+        font-weight: 900;
+    }
 
-  if (chartEl && window.Chart) {
-    new Chart(chartEl, {
-      type: 'bar',
-      data: {
-        labels: ['Lahore', 'Faisalabad', 'Rawalpindi', 'Multan', 'Gujranwala', 'Sahiwal', 'Bahawalpur', 'D.G Khan', 'Sargodha'],
-        datasets: [{
-          label: 'Score',
-          data: [88, 84, 79, 72, 69, 65, 54, 48, 44],
-          borderWidth: 1
-        }]
-      },
-      options: {
-        indexAxis: 'y',
-        responsive: true,
-        plugins: {
-          legend: {
-            display: false
-          }
-        },
-        scales: {
-          x: {
-            beginAtZero: true,
-            max: 100
-          }
-        }
-      }
-    });
-  }
-});
-</script>
+    .rank-chip.gold {
+        background: rgba(245, 158, 11, 0.15);
+        color: #b45309;
+    }
+
+    .rank-chip.silver {
+        background: rgba(100, 116, 139, 0.15);
+        color: #475569;
+    }
+
+    .rank-chip.bronze {
+        background: rgba(180, 83, 9, 0.15);
+        color: #92400e;
+    }
+
+    .category-chip {
+        display: inline-flex;
+        align-items: center;
+        padding: 5px 10px;
+        border-radius: 999px;
+        background: rgba(27, 107, 70, 0.10);
+        color: var(--gov-green);
+        font-size: 12px;
+        font-weight: 800;
+        white-space: nowrap;
+    }
+
+    .score-progress {
+        min-width: 130px;
+    }
+
+    .score-text {
+        font-size: 12px;
+        color: var(--text-secondary);
+        margin-bottom: 5px;
+    }
+
+    .progress-ppmf {
+        height: 7px;
+        border-radius: 999px;
+        background: #e5e7eb;
+        overflow: hidden;
+    }
+
+    .progress-ppmf .progress-bar {
+        background: var(--gov-green);
+        border-radius: 999px;
+    }
+</style>
 @endpush

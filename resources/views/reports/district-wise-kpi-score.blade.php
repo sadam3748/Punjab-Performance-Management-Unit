@@ -1,349 +1,371 @@
 @extends('layouts.app')
 
-@section('title', 'District Wise KPI Score Report | PPMF Portal')
-@section('page_title', 'District Wise KPI Score Report')
+@section('title', 'District Wise KPI Score')
 
 @section('content')
 
-<div class="page-actions-ppmf">
-  <div>
-    <h2>District Wise KPI Score Report</h2>
-    <p>District-wise KPI score summary with category cards, submitted values, and evidence status.</p>
-  </div>
+<div class="page-title-bar">
+    <div>
+        <h1 class="page-title">District Wise KPI Score</h1>
+        <p class="page-subtitle">
+            District performance score against each KPI category based on inspection reporting and approval status.
+        </p>
+    </div>
 
-  <div class="d-flex gap-2">
-    <button class="btn btn-outline-success">
-      <i class="bi bi-file-earmark-excel"></i> Export Excel
-    </button>
-    <button class="btn btn-outline-danger">
-      <i class="bi bi-file-earmark-pdf"></i> Export PDF
-    </button>
-    <button class="btn btn-success">
-      <i class="bi bi-printer"></i> Print
-    </button>
-  </div>
+    <div class="page-title-actions">
+        <a href="{{ route('reports.index') }}" class="btn-gov btn-gov-outline">
+            <i class="bi bi-arrow-left"></i>
+            Back to Reports
+        </a>
+
+        <a href="{{ route('reports.category-wise-district-score') }}" class="btn-gov btn-gov-primary">
+            <i class="bi bi-grid-3x3-gap"></i>
+            Category Wise Score
+        </a>
+    </div>
+</div>
+
+{{-- Summary Cards --}}
+<div class="row g-3 mb-4">
+
+    <div class="col-xl-3 col-lg-4 col-md-6">
+        <div class="stat-card-ppmf">
+            <div class="stat-icon-ppmf primary">
+                <i class="bi bi-building"></i>
+            </div>
+            <div>
+                <span>Districts</span>
+                <strong>{{ number_format($summary['districts_count'] ?? $summary['districts_compared'] ?? 0) }}</strong>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-lg-4 col-md-6">
+        <div class="stat-card-ppmf">
+            <div class="stat-icon-ppmf info">
+                <i class="bi bi-grid"></i>
+            </div>
+            <div>
+                <span>KPI Categories</span>
+                <strong>{{ number_format($summary['categories_count'] ?? $summary['kpi_categories_count'] ?? 0) }}</strong>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-lg-4 col-md-6">
+        <div class="stat-card-ppmf">
+            <div class="stat-icon-ppmf success">
+                <i class="bi bi-check-circle"></i>
+            </div>
+            <div>
+                <span>Approved</span>
+                <strong>{{ number_format($summary['approved'] ?? 0) }}</strong>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-lg-4 col-md-6">
+        <div class="stat-card-ppmf">
+            <div class="stat-icon-ppmf warning">
+                <i class="bi bi-percent"></i>
+            </div>
+            <div>
+                <span>Average Score</span>
+                <strong>{{ $summary['average_score'] ?? $summary['approval_rate'] ?? 0 }}%</strong>
+            </div>
+        </div>
+    </div>
+
 </div>
 
 {{-- Filters --}}
-<div class="filter-card-ppmf mb-4">
-  <div class="filter-title">
-    <i class="bi bi-funnel"></i> KPI Score Filters
-  </div>
-
-  <div class="row g-3 align-items-end">
-    <div class="col-md-3">
-      <label class="form-label">KPI / Indicator</label>
-      <select class="form-select">
-        <option selected>Price of Roti</option>
-        <option>Price of Plain Bakery Bread</option>
-        <option>Price Control of Essential Commodities</option>
-        <option>Repair of Small Roads</option>
-        <option>Inspection of Educational Institutions</option>
-        <option>Inspection of Health Facilities</option>
-      </select>
+<div class="card-ppmf mb-4">
+    <div class="card-ppmf-header">
+        <div class="card-ppmf-title">
+            <i class="bi bi-funnel"></i>
+            Filters
+        </div>
     </div>
 
-    <div class="col-md-2">
-      <label class="form-label">Frequency</label>
-      <select class="form-select">
-        <option selected>Weekly</option>
-        <option>Monthly</option>
-        <option>Quarterly</option>
-        <option>Yearly</option>
-      </select>
-    </div>
+    <div class="card-ppmf-body">
+        <form method="GET" action="{{ route('reports.district-wise-kpi-score') }}">
+            <div class="row g-3 align-items-end">
 
-    <div class="col-md-2">
-      <label class="form-label">Period</label>
-      <select class="form-select">
-        <option selected>30 Apr - 06 May</option>
-        <option>23 Apr - 29 Apr</option>
-        <option>16 Apr - 22 Apr</option>
-      </select>
-    </div>
+                <div class="col-xl-3 col-lg-4 col-md-6">
+                    <label class="form-label">District</label>
+                    <select name="district_id" class="form-select">
+                        <option value="">All Districts</option>
+                        @foreach($districts as $district)
+                            <option value="{{ $district->id }}"
+                                {{ ($filters['district_id'] ?? '') == $district->id ? 'selected' : '' }}>
+                                {{ $district->name }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
 
-    <div class="col-md-2">
-      <label class="form-label">Month</label>
-      <select class="form-select">
-        <option selected>May</option>
-        <option>April</option>
-        <option>March</option>
-      </select>
-    </div>
+                <div class="col-xl-3 col-lg-4 col-md-6">
+                    <label class="form-label">Tehsil</label>
+                    <select name="tehsil_id" class="form-select">
+                        <option value="">All Tehsils</option>
+                        @foreach($tehsils as $tehsil)
+                            <option value="{{ $tehsil->id }}"
+                                {{ ($filters['tehsil_id'] ?? '') == $tehsil->id ? 'selected' : '' }}>
+                                {{ $tehsil->name }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
 
-    <div class="col-md-1">
-      <label class="form-label">Year</label>
-      <select class="form-select">
-        <option selected>2026</option>
-        <option>2025</option>
-        <option>2024</option>
-      </select>
-    </div>
+                <div class="col-xl-3 col-lg-4 col-md-6">
+                    <label class="form-label">KPI Category</label>
+                    <select name="kpi_category_id" class="form-select">
+                        <option value="">All KPI Categories</option>
+                        @foreach($kpiCategories as $category)
+                            <option value="{{ $category->id }}"
+                                {{ ($filters['kpi_category_id'] ?? '') == $category->id ? 'selected' : '' }}>
+                                {{ $category->name }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
 
-    <div class="col-md-2 d-flex gap-2">
-      <button class="btn btn-success flex-fill">
-        <i class="bi bi-search"></i> Apply
-      </button>
-      <button class="btn btn-outline-secondary">
-        <i class="bi bi-x-circle"></i>
-      </button>
+                <div class="col-xl-3 col-lg-4 col-md-6">
+                    <label class="form-label">Status</label>
+                    <select name="status" class="form-select">
+                        <option value="">All Status</option>
+                        <option value="submitted" {{ ($filters['status'] ?? '') === 'submitted' ? 'selected' : '' }}>Submitted</option>
+                        <option value="reviewed" {{ ($filters['status'] ?? '') === 'reviewed' ? 'selected' : '' }}>Reviewed</option>
+                        <option value="approved" {{ ($filters['status'] ?? '') === 'approved' ? 'selected' : '' }}>Approved</option>
+                        <option value="rejected" {{ ($filters['status'] ?? '') === 'rejected' ? 'selected' : '' }}>Rejected</option>
+                    </select>
+                </div>
+
+                <div class="col-xl-3 col-lg-4 col-md-6">
+                    <label class="form-label">From Date</label>
+                    <input
+                        type="date"
+                        name="date_from"
+                        value="{{ $filters['date_from'] ?? '' }}"
+                        class="form-control"
+                    >
+                </div>
+
+                <div class="col-xl-3 col-lg-4 col-md-6">
+                    <label class="form-label">To Date</label>
+                    <input
+                        type="date"
+                        name="date_to"
+                        value="{{ $filters['date_to'] ?? '' }}"
+                        class="form-control"
+                    >
+                </div>
+
+                <div class="col-xl-3 col-lg-4 col-md-6">
+                    <label class="form-label">Search</label>
+                    <input
+                        type="text"
+                        name="search"
+                        value="{{ $filters['search'] ?? '' }}"
+                        class="form-control"
+                        placeholder="Search district/category"
+                    >
+                </div>
+
+                <div class="col-xl-3 col-lg-4 col-md-6">
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn-gov btn-gov-primary flex-fill">
+                            <i class="bi bi-search"></i>
+                            Apply
+                        </button>
+
+                        <a href="{{ route('reports.district-wise-kpi-score') }}" class="btn-gov btn-gov-outline flex-fill">
+                            <i class="bi bi-arrow-clockwise"></i>
+                            Reset
+                        </a>
+                    </div>
+                </div>
+
+            </div>
+        </form>
     </div>
-  </div>
 </div>
 
-{{-- KPI Cards --}}
-<div class="row g-3 mb-4">
-  <div class="col-xl-4 col-md-6">
-    <div class="kpi-score-card-ppmf">
-      <div class="kpi-score-icon">
-        <i class="bi bi-clipboard-check"></i>
-      </div>
-      <div>
-        <strong>77</strong>
-        <p>DCs twice weekly review with all PCMs, Food Department and Special Branch about enforcement of Rate of Roti.</p>
-      </div>
-    </div>
-  </div>
-
-  <div class="col-xl-4 col-md-6">
-    <div class="kpi-score-card-ppmf">
-      <div class="kpi-score-icon warning">
-        <i class="bi bi-search"></i>
-      </div>
-      <div>
-        <strong>0</strong>
-        <p>Inspections of Tandoors to be conducted by ACs/PCMs daily as per tier-wise targets.</p>
-      </div>
-    </div>
-  </div>
-
-  <div class="col-xl-4 col-md-6">
-    <div class="kpi-score-card-ppmf">
-      <div class="kpi-score-icon info">
-        <i class="bi bi-car-front"></i>
-      </div>
-      <div>
-        <strong>0</strong>
-        <p>Special Coverage and Mobility Index for ACs/PCMs.</p>
-      </div>
-    </div>
-  </div>
-
-  <div class="col-xl-4 col-md-6">
-    <div class="kpi-score-card-ppmf">
-      <div class="kpi-score-icon danger">
-        <i class="bi bi-exclamation-triangle"></i>
-      </div>
-      <div>
-        <strong>0</strong>
-        <p>Imposition of fine on violations over price, weight, or non-availability of Roti.</p>
-      </div>
-    </div>
-  </div>
-
-  <div class="col-xl-4 col-md-6">
-    <div class="kpi-score-card-ppmf">
-      <div class="kpi-score-icon success">
-        <i class="bi bi-chat-dots"></i>
-      </div>
-      <div>
-        <strong>0</strong>
-        <p>Action taken on complaints submitted by citizens.</p>
-      </div>
-    </div>
-  </div>
-</div>
-
-{{-- Table --}}
+{{-- Report Table --}}
 <div class="card-ppmf">
-  <div class="card-ppmf-header">
-    <div>
-      <div class="card-ppmf-title">
-        <i class="bi bi-table"></i> District Wise KPI Score
-      </div>
-      <div class="card-ppmf-subtitle">
-        Submitted values against selected KPI indicators.
-      </div>
+    <div class="card-ppmf-header">
+        <div>
+            <div class="card-ppmf-title">
+                <i class="bi bi-speedometer2"></i>
+                District Wise KPI Score Data
+            </div>
+            <p class="card-subtitle mb-0">
+                Total records:
+                {{ method_exists($reportData, 'total') ? number_format($reportData->total()) : number_format($reportData->count()) }}
+            </p>
+        </div>
     </div>
 
-    <div class="d-flex align-items-center gap-2">
-      <select class="form-select form-select-sm" style="width: 90px;">
-        <option selected>10</option>
-        <option>25</option>
-        <option>50</option>
-      </select>
+    <div class="card-ppmf-body p-0">
+        <div class="table-responsive">
+            <table class="table-ppmf">
+                <thead>
+                    <tr>
+                        <th style="width:70px;">Sr.</th>
+                        <th>District</th>
+                        <th>Division</th>
+                        <th>KPI Category</th>
+                        <th>Total Inspections</th>
+                        <th>Approved</th>
+                        <th>Rejected</th>
+                        <th>KPI Score</th>
+                        <th>Performance</th>
+                    </tr>
+                </thead>
 
-      <div class="position-relative">
-        <i class="bi bi-search position-absolute" style="left: 11px; top: 8px; color: var(--text-muted);"></i>
-        <input type="text" class="form-control form-control-sm" style="padding-left: 32px; width: 240px;" placeholder="Search district...">
-      </div>
+                <tbody>
+                    @forelse($reportData as $index => $row)
+                        @php
+                            $total = $row->total_inspections ?? $row->total ?? 0;
+                            $approved = $row->approved_count ?? $row->approved ?? 0;
+                            $rejected = $row->rejected_count ?? $row->rejected ?? 0;
+
+                            $score = $row->score_percentage
+                                ?? $row->kpi_score
+                                ?? $row->approval_rate
+                                ?? ($total > 0 ? round(($approved / $total) * 100, 2) : 0);
+
+                            if ($score >= 80) {
+                                $badgeClass = 'achieved';
+                                $performanceText = 'Excellent';
+                            } elseif ($score >= 60) {
+                                $badgeClass = 'info';
+                                $performanceText = 'Good';
+                            } elseif ($score >= 40) {
+                                $badgeClass = 'pending';
+                                $performanceText = 'Average';
+                            } else {
+                                $badgeClass = 'critical';
+                                $performanceText = 'Low';
+                            }
+                        @endphp
+
+                        <tr>
+                            <td>
+                                {{ method_exists($reportData, 'firstItem') ? $reportData->firstItem() + $index : $index + 1 }}
+                            </td>
+
+                            <td>
+                                <strong>{{ $row->district->name ?? $row->district_name ?? 'N/A' }}</strong>
+                            </td>
+
+                            <td>
+                                {{ $row->division->name ?? $row->division_name ?? 'N/A' }}
+                            </td>
+
+                            <td>
+                                <span class="category-chip">
+                                    {{ $row->kpiCategory->name ?? $row->kpi_category_name ?? 'N/A' }}
+                                </span>
+                            </td>
+
+                            <td>
+                                <strong>{{ number_format($total) }}</strong>
+                            </td>
+
+                            <td>
+                                <span class="text-success fw-bold">{{ number_format($approved) }}</span>
+                            </td>
+
+                            <td>
+                                <span class="text-danger fw-bold">{{ number_format($rejected) }}</span>
+                            </td>
+
+                            <td>
+                                <div class="score-progress">
+                                    <div class="score-text">
+                                        <strong>{{ $score }}%</strong>
+                                    </div>
+
+                                    <div class="progress progress-ppmf">
+                                        <div
+                                            class="progress-bar"
+                                            style="width: {{ min($score, 100) }}%;"
+                                            role="progressbar"
+                                            aria-valuenow="{{ $score }}"
+                                            aria-valuemin="0"
+                                            aria-valuemax="100">
+                                        </div>
+                                    </div>
+                                </div>
+                            </td>
+
+                            <td>
+                                <span class="badge-ppmf {{ $badgeClass }}">
+                                    {{ $performanceText }}
+                                </span>
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="9" class="text-center py-5">
+                                <div class="manual-box-ppmf">
+                                    <i class="bi bi-speedometer2"></i>
+                                    <h5>No District Wise KPI Score Data Found</h5>
+                                    <p>No district KPI score data is available for selected filters.</p>
+                                </div>
+                            </td>
+                        </tr>
+                    @endforelse
+                </tbody>
+
+            </table>
+        </div>
     </div>
-  </div>
 
-  <div class="card-ppmf-body p-0">
-    <div class="table-responsive">
-      <table class="table table-ppmf align-middle mb-0 kpi-score-table-ppmf">
-        <thead>
-          <tr>
-            <th style="width: 140px;">District</th>
-            <th>DCs Twice Weekly Review</th>
-            <th>Inspections of Tandoors</th>
-            <th>Special Coverage & Mobility Index</th>
-            <th>Fine on Violations</th>
-            <th>Citizen Complaint Action</th>
-            <th>Evidence</th>
-            <th>Status</th>
-          </tr>
-        </thead>
-
-        <tbody>
-          <tr>
-            <td><strong>Total</strong></td>
-            <td><strong class="text-success">77</strong></td>
-            <td>0</td>
-            <td>0</td>
-            <td>0</td>
-            <td>0</td>
-            <td><span class="badge bg-secondary-subtle text-secondary">N/A</span></td>
-            <td><span class="badge bg-warning-subtle text-warning">Partial</span></td>
-          </tr>
-
-          <tr>
-            <td><strong>Lahore</strong></td>
-            <td>18</td>
-            <td>0</td>
-            <td>0</td>
-            <td>0</td>
-            <td>0</td>
-            <td>
-              <button class="btn btn-sm btn-outline-success">
-                <i class="bi bi-eye"></i> View
-              </button>
-            </td>
-            <td><span class="badge bg-success-subtle text-success">Submitted</span></td>
-          </tr>
-
-          <tr>
-            <td><strong>Faisalabad</strong></td>
-            <td>14</td>
-            <td>0</td>
-            <td>0</td>
-            <td>0</td>
-            <td>0</td>
-            <td>
-              <button class="btn btn-sm btn-outline-success">
-                <i class="bi bi-eye"></i> View
-              </button>
-            </td>
-            <td><span class="badge bg-success-subtle text-success">Submitted</span></td>
-          </tr>
-
-          <tr>
-            <td><strong>Rawalpindi</strong></td>
-            <td>12</td>
-            <td>0</td>
-            <td>0</td>
-            <td>0</td>
-            <td>0</td>
-            <td>
-              <button class="btn btn-sm btn-outline-success">
-                <i class="bi bi-eye"></i> View
-              </button>
-            </td>
-            <td><span class="badge bg-success-subtle text-success">Submitted</span></td>
-          </tr>
-
-          <tr>
-            <td><strong>Multan</strong></td>
-            <td>10</td>
-            <td>0</td>
-            <td>0</td>
-            <td>0</td>
-            <td>0</td>
-            <td>
-              <button class="btn btn-sm btn-outline-secondary">
-                <i class="bi bi-dash-circle"></i> Missing
-              </button>
-            </td>
-            <td><span class="badge bg-warning-subtle text-warning">Pending Evidence</span></td>
-          </tr>
-
-          <tr>
-            <td><strong>Gujranwala</strong></td>
-            <td>9</td>
-            <td>0</td>
-            <td>0</td>
-            <td>0</td>
-            <td>0</td>
-            <td>
-              <button class="btn btn-sm btn-outline-success">
-                <i class="bi bi-eye"></i> View
-              </button>
-            </td>
-            <td><span class="badge bg-success-subtle text-success">Submitted</span></td>
-          </tr>
-
-          <tr>
-            <td><strong>Bahawalpur</strong></td>
-            <td>7</td>
-            <td>0</td>
-            <td>0</td>
-            <td>0</td>
-            <td>0</td>
-            <td>
-              <button class="btn btn-sm btn-outline-secondary">
-                <i class="bi bi-dash-circle"></i> Missing
-              </button>
-            </td>
-            <td><span class="badge bg-warning-subtle text-warning">Pending Evidence</span></td>
-          </tr>
-
-          <tr>
-            <td><strong>D. G. Khan</strong></td>
-            <td>4</td>
-            <td>0</td>
-            <td>0</td>
-            <td>0</td>
-            <td>0</td>
-            <td>
-              <button class="btn btn-sm btn-outline-danger">
-                <i class="bi bi-exclamation-circle"></i> Required
-              </button>
-            </td>
-            <td><span class="badge bg-danger-subtle text-danger">Incomplete</span></td>
-          </tr>
-
-          <tr>
-            <td><strong>Sargodha</strong></td>
-            <td>3</td>
-            <td>0</td>
-            <td>0</td>
-            <td>0</td>
-            <td>0</td>
-            <td>
-              <button class="btn btn-sm btn-outline-danger">
-                <i class="bi bi-exclamation-circle"></i> Required
-              </button>
-            </td>
-            <td><span class="badge bg-danger-subtle text-danger">Incomplete</span></td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-  </div>
-
-  <div class="card-ppmf-footer d-flex justify-content-between align-items-center p-3 border-top">
-    <small class="text-muted">Showing district-wise KPI submitted values for selected period.</small>
-
-    <nav>
-      <ul class="pagination pagination-sm mb-0">
-        <li class="page-item disabled"><a class="page-link">Previous</a></li>
-        <li class="page-item active"><a class="page-link" href="#">1</a></li>
-        <li class="page-item"><a class="page-link" href="#">2</a></li>
-        <li class="page-item"><a class="page-link" href="#">Next</a></li>
-      </ul>
-    </nav>
-  </div>
+    @if(method_exists($reportData, 'links'))
+        <div class="card-ppmf-body border-top">
+            {{ $reportData->links() }}
+        </div>
+    @endif
 </div>
 
 @endsection
+
+@push('styles')
+<style>
+    .category-chip {
+        display: inline-flex;
+        align-items: center;
+        padding: 5px 10px;
+        border-radius: 999px;
+        background: rgba(27, 107, 70, 0.10);
+        color: var(--gov-green);
+        font-size: 12px;
+        font-weight: 800;
+        white-space: nowrap;
+    }
+
+    .score-progress {
+        min-width: 130px;
+    }
+
+    .score-text {
+        font-size: 12px;
+        color: var(--text-secondary);
+        margin-bottom: 5px;
+    }
+
+    .progress-ppmf {
+        height: 7px;
+        border-radius: 999px;
+        background: #e5e7eb;
+        overflow: hidden;
+    }
+
+    .progress-ppmf .progress-bar {
+        background: var(--gov-green);
+        border-radius: 999px;
+    }
+</style>
+@endpush

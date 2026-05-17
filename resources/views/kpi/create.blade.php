@@ -1,170 +1,279 @@
 @extends('layouts.app')
-@section('title','KPI Data Entry')
-@section('page_title','KPI Data Entry')
-@section('breadcrumb_parent','KPI Management')
+
+@section('title', 'Add KPI Category')
 
 @section('content')
 
-<div class="page-title-bar animate-in">
-  <div>
-    <div class="page-title">KPI Data Entry</div>
-    <div class="page-subtitle">Add or update KPI records for performance monitoring</div>
-  </div>
-  <a href="{{ route('kpi.index') }}" class="btn-gov btn-gov-ghost btn-gov-sm">
-    <i class="bi bi-arrow-left"></i> Back to KPI List
-  </a>
+<div class="page-title-bar">
+    <div>
+        <h1 class="page-title">Add KPI Category</h1>
+        <p class="page-subtitle">
+            Create a new KPI category for inspection, baseline and reporting modules.
+        </p>
+    </div>
+
+    <div class="page-title-actions">
+        <a href="{{ route('kpi.index') }}" class="btn-gov btn-gov-outline">
+            <i class="bi bi-arrow-left"></i>
+            Back to KPI Categories
+        </a>
+    </div>
 </div>
 
-<div class="row g-3 animate-in delay-1">
-
-  {{-- Main Form --}}
-  <div class="col-lg-8">
-    <div class="card-ppmf">
-      <div class="card-ppmf-header">
-        <div class="card-ppmf-title"><i class="bi bi-pencil-square"></i> KPI Information</div>
-      </div>
-      <div class="card-ppmf-body">
-        <form action="{{ route('kpi.store') }}" method="POST">
-          @csrf
-
-          <div class="row g-3 mb-3">
-            <div class="col-md-4">
-              <div class="form-group-ppmf">
-                <label>KPI Code <span style="color:var(--danger);">*</span></label>
-                <input type="text" class="form-input-ppmf" placeholder="e.g. H-001" required>
-              </div>
-            </div>
-            <div class="col-md-8">
-              <div class="form-group-ppmf">
-                <label>KPI Name <span style="color:var(--danger);">*</span></label>
-                <input type="text" class="form-input-ppmf" placeholder="Enter full KPI name" required>
-              </div>
-            </div>
-          </div>
-
-          <div class="row g-3 mb-3">
-            <div class="col-md-6">
-              <div class="form-group-ppmf">
-                <label>Department <span style="color:var(--danger);">*</span></label>
-                <select class="form-input-ppmf" style="background-image:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238896a5' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E\");background-repeat:no-repeat;background-position:right 12px center;appearance:none;padding-right:32px;">
-                  <option value="">-- Select Department --</option>
-                  <option>Health</option><option>Education</option><option>Agriculture</option>
-                  <option>Finance</option><option>Works & Services</option><option>Police</option>
-                  <option>Revenue</option><option>Forest</option><option>Sports</option>
-                </select>
-              </div>
-            </div>
-            <div class="col-md-6">
-              <div class="form-group-ppmf">
-                <label>Category</label>
-                <select class="form-input-ppmf" style="background-image:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238896a5' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E\");background-repeat:no-repeat;background-position:right 12px center;appearance:none;padding-right:32px;">
-                  <option>Service Delivery</option><option>Governance</option>
-                  <option>Development</option><option>Revenue</option><option>Law & Order</option>
-                </select>
-              </div>
-            </div>
-          </div>
-
-          <div class="row g-3 mb-3">
-            <div class="col-md-4">
-              <div class="form-group-ppmf">
-                <label>Annual Target <span style="color:var(--danger);">*</span></label>
-                <input type="number" class="form-input-ppmf" placeholder="0" required>
-              </div>
-            </div>
-            <div class="col-md-4">
-              <div class="form-group-ppmf">
-                <label>Current Achievement</label>
-                <input type="number" class="form-input-ppmf" placeholder="0">
-              </div>
-            </div>
-            <div class="col-md-4">
-              <div class="form-group-ppmf">
-                <label>Unit of Measurement</label>
-                <select class="form-input-ppmf" style="background-image:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238896a5' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E\");background-repeat:no-repeat;background-position:right 12px center;appearance:none;padding-right:32px;">
-                  <option>Percentage (%)</option><option>Number (#)</option><option>PKR (Crore)</option>
-                  <option>Metric Ton (MT)</option><option>Days</option><option>Minutes</option>
-                </select>
-              </div>
-            </div>
-          </div>
-
-          <div class="row g-3 mb-3">
-            <div class="col-md-4">
-              <div class="form-group-ppmf">
-                <label>Reporting Frequency</label>
-                <select class="form-input-ppmf" style="background-image:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238896a5' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E\");background-repeat:no-repeat;background-position:right 12px center;appearance:none;padding-right:32px;">
-                  <option>Weekly</option><option>Monthly</option><option>Quarterly</option><option>Annual</option>
-                </select>
-              </div>
-            </div>
-            <div class="col-md-4">
-              <div class="form-group-ppmf">
-                <label>Applicable Tier</label>
-                <select class="form-input-ppmf" style="background-image:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238896a5' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E\");background-repeat:no-repeat;background-position:right 12px center;appearance:none;padding-right:32px;">
-                  <option>All Tiers</option><option>Tier 1 Only</option><option>Tier 2 Only</option><option>Tier 3 Only</option>
-                </select>
-              </div>
-            </div>
-            <div class="col-md-4">
-              <div class="form-group-ppmf">
-                <label>Weight (%)</label>
-                <input type="number" class="form-input-ppmf" placeholder="e.g. 5" min="1" max="100">
-              </div>
-            </div>
-          </div>
-
-          <div class="form-group-ppmf mb-3">
-            <label>Description / Methodology</label>
-            <textarea class="form-input-ppmf" rows="3" style="height:auto;padding:10px 14px;resize:vertical;" placeholder="Describe how this KPI is measured and reported…"></textarea>
-          </div>
-
-          <div class="divider"></div>
-
-          <div style="display:flex;gap:10px;justify-content:flex-end;">
-            <a href="{{ route('kpi.index') }}" class="btn-gov btn-gov-ghost">Cancel</a>
-            <button type="submit" class="btn-gov btn-gov-primary">
-              <i class="bi bi-check-lg"></i> Save KPI
-            </button>
-          </div>
-
-        </form>
-      </div>
-    </div>
-  </div>
-
-  {{-- Side info --}}
-  <div class="col-lg-4">
-
-    <div class="card-ppmf mb-3">
-      <div class="card-ppmf-header">
-        <div class="card-ppmf-title"><i class="bi bi-info-circle"></i> Instructions</div>
-      </div>
-      <div class="card-ppmf-body" style="font-size:13px;color:var(--text-secondary);line-height:1.8;">
-        <p style="margin-bottom:10px;"><i class="bi bi-dot" style="color:var(--gov-green);font-size:18px;"></i> Fill all required fields marked with <span style="color:var(--danger);">*</span></p>
-        <p style="margin-bottom:10px;"><i class="bi bi-dot" style="color:var(--gov-green);font-size:18px;"></i> KPI Code must be unique</p>
-        <p style="margin-bottom:10px;"><i class="bi bi-dot" style="color:var(--gov-green);font-size:18px;"></i> Achievement value will calculate score automatically</p>
-        <p style="margin-bottom:10px;"><i class="bi bi-dot" style="color:var(--gov-green);font-size:18px;"></i> Select correct frequency for proper reporting</p>
-        <p><i class="bi bi-dot" style="color:var(--gov-green);font-size:18px;"></i> Weight total across all KPIs should equal 100%</p>
-      </div>
-    </div>
-
-    <div class="card-ppmf">
-      <div class="card-ppmf-header">
-        <div class="card-ppmf-title"><i class="bi bi-clock-history"></i> Recent Entries</div>
-      </div>
-      <div class="card-ppmf-body" style="padding:0;">
-        @foreach([['H-001','Health','2 min ago'],['E-002','Education','1 hr ago'],['A-001','Agriculture','3 hrs ago']] as [$code,$dept,$time])
-        <div style="display:flex;align-items:center;gap:12px;padding:10px 16px;border-bottom:1px solid var(--border-light);">
-          <code style="background:var(--gov-green-light);color:var(--gov-green);padding:3px 8px;border-radius:5px;font-size:11px;font-weight:700;">{{ $code }}</code>
-          <span style="flex:1;font-size:12.5px;">{{ $dept }}</span>
-          <span style="font-size:11px;color:var(--text-muted);">{{ $time }}</span>
+@if ($errors->any())
+    <div class="alert alert-danger" role="alert">
+        <div class="fw-bold mb-1">
+            <i class="bi bi-exclamation-circle-fill me-1"></i>
+            Please fix the following errors:
         </div>
-        @endforeach
-      </div>
+
+        <ul class="mb-0 ps-3">
+            @foreach ($errors->all() as $error)
+                <li>{{ $error }}</li>
+            @endforeach
+        </ul>
+    </div>
+@endif
+
+<div class="row g-4">
+
+    <div class="col-xl-8 col-lg-12">
+        <div class="card-ppmf">
+            <div class="card-ppmf-header">
+                <div class="card-ppmf-title">
+                    <i class="bi bi-plus-circle"></i>
+                    KPI Category Information
+                </div>
+            </div>
+
+            <div class="card-ppmf-body">
+                <form action="{{ route('kpi.store') }}" method="POST">
+                    @csrf
+
+                    <div class="row g-3">
+
+                        <div class="col-md-8">
+                            <label for="name" class="form-label">
+                                KPI Category Name <span class="text-danger">*</span>
+                            </label>
+
+                            <input
+                                type="text"
+                                name="name"
+                                id="name"
+                                value="{{ old('name') }}"
+                                class="form-control @error('name') is-invalid @enderror"
+                                placeholder="Example: Inspection of Water Filtration Plants"
+                                required
+                            >
+
+                            @error('name')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+
+                        <div class="col-md-4">
+                            <label for="code" class="form-label">
+                                Category Code
+                            </label>
+
+                            <input
+                                type="text"
+                                name="code"
+                                id="code"
+                                value="{{ old('code') }}"
+                                class="form-control @error('code') is-invalid @enderror"
+                                placeholder="Example: WFP"
+                            >
+
+                            @error('code')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+
+                        <div class="col-md-12">
+                            <label for="description" class="form-label">
+                                Description
+                            </label>
+
+                            <textarea
+                                name="description"
+                                id="description"
+                                rows="4"
+                                class="form-control @error('description') is-invalid @enderror"
+                                placeholder="Write short description about this KPI category"
+                            >{{ old('description') }}</textarea>
+
+                            @error('description')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+
+                        <div class="col-md-4">
+                            <label for="sort_order" class="form-label">
+                                Sort Order
+                            </label>
+
+                            <input
+                                type="number"
+                                name="sort_order"
+                                id="sort_order"
+                                value="{{ old('sort_order', 0) }}"
+                                class="form-control @error('sort_order') is-invalid @enderror"
+                                min="0"
+                            >
+
+                            @error('sort_order')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+
+                        <div class="col-md-4">
+                            <label for="is_active" class="form-label">
+                                Status
+                            </label>
+
+                            <select
+                                name="is_active"
+                                id="is_active"
+                                class="form-select @error('is_active') is-invalid @enderror"
+                            >
+                                <option value="1" {{ old('is_active', '1') == '1' ? 'selected' : '' }}>
+                                    Active
+                                </option>
+                                <option value="0" {{ old('is_active') == '0' ? 'selected' : '' }}>
+                                    Inactive
+                                </option>
+                            </select>
+
+                            @error('is_active')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+
+                        <div class="col-md-4">
+                            <label for="icon" class="form-label">
+                                Icon Class
+                            </label>
+
+                            <input
+                                type="text"
+                                name="icon"
+                                id="icon"
+                                value="{{ old('icon') }}"
+                                class="form-control @error('icon') is-invalid @enderror"
+                                placeholder="Example: bi bi-droplet"
+                            >
+
+                            @error('icon')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+
+                    </div>
+
+                    <div class="form-action-row mt-4">
+                        <button type="submit" class="btn-gov btn-gov-primary">
+                            <i class="bi bi-save"></i>
+                            Save KPI Category
+                        </button>
+
+                        <a href="{{ route('kpi.index') }}" class="btn-gov btn-gov-outline">
+                            <i class="bi bi-x-circle"></i>
+                            Cancel
+                        </a>
+                    </div>
+
+                </form>
+            </div>
+        </div>
     </div>
 
-  </div>
+    <div class="col-xl-4 col-lg-12">
+        <div class="card-ppmf mb-4">
+            <div class="card-ppmf-header">
+                <div class="card-ppmf-title">
+                    <i class="bi bi-info-circle"></i>
+                    Usage Information
+                </div>
+            </div>
+
+            <div class="card-ppmf-body">
+                <div class="summary-stack">
+
+                    <div class="summary-item">
+                        <span>Used In</span>
+                        <strong>Inspections</strong>
+                    </div>
+
+                    <div class="summary-item">
+                        <span>Used In</span>
+                        <strong>Baseline Data</strong>
+                    </div>
+
+                    <div class="summary-item">
+                        <span>Used In</span>
+                        <strong>KPI Reports</strong>
+                    </div>
+
+                    <div class="summary-item">
+                        <span>Used In</span>
+                        <strong>Dashboard Charts</strong>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+        <div class="card-ppmf">
+            <div class="card-ppmf-header">
+                <div class="card-ppmf-title">
+                    <i class="bi bi-lightbulb"></i>
+                    Example Categories
+                </div>
+            </div>
+
+            <div class="card-ppmf-body">
+                <div class="example-list-ppmf">
+                    <span>Inspection of Marriage Halls</span>
+                    <span>Inspection of Water Filtration Plants</span>
+                    <span>Inspection of Manhole Covers</span>
+                    <span>Inspection of Stray Dogs</span>
+                    <span>Inspection of Petrol Pumps</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
 </div>
 
 @endsection
+
+@push('styles')
+<style>
+    .form-action-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+        border-top: 1px solid var(--border-light);
+        padding-top: 18px;
+    }
+
+    .example-list-ppmf {
+        display: grid;
+        gap: 8px;
+    }
+
+    .example-list-ppmf span {
+        display: block;
+        padding: 9px 11px;
+        border-radius: var(--radius-sm);
+        background: var(--bg);
+        border: 1px solid var(--border-light);
+        color: var(--text-secondary);
+        font-size: 12.5px;
+        font-weight: 700;
+    }
+</style>
+@endpush

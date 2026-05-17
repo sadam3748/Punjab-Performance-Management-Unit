@@ -275,11 +275,13 @@ function initSidebar() {
   const toggle   = document.querySelectorAll('.header-toggle, .sidebar-toggle');
   const sidebar  = document.querySelector('.ppmf-sidebar');
   const overlay  = document.querySelector('.sidebar-overlay');
+  const isMobile = () => window.matchMedia && window.matchMedia('(max-width: 1024px)').matches;
 
   if (!sidebar) return;
 
   toggle.forEach(btn => {
     btn.addEventListener('click', () => {
+      if (!isMobile()) return;
       sidebar.classList.toggle('open');
       if (overlay) overlay.classList.toggle('show');
     });
@@ -291,6 +293,13 @@ function initSidebar() {
       overlay.classList.remove('show');
     });
   }
+
+  window.addEventListener('resize', () => {
+    if (!isMobile()) {
+      sidebar.classList.remove('open');
+      if (overlay) overlay.classList.remove('show');
+    }
+  });
 }
 
 // ── Tab switching ─────────────────────────────────────────

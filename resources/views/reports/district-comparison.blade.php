@@ -1,407 +1,374 @@
 @extends('layouts.app')
 
-@section('title', 'District Comparison Report | PPMF Portal')
-@section('page_title', 'District Comparison Report')
+@section('title', 'District Comparison Report')
 
 @section('content')
 
-<div class="page-actions-ppmf">
-  <div>
-    <h2>District Comparison Report</h2>
-    <p>Compare district score and rank across multiple reporting weeks for selected KPI indicator.</p>
-  </div>
-
-  <div class="d-flex gap-2">
-    <button class="btn btn-outline-success">
-      <i class="bi bi-file-earmark-excel"></i> Export Excel
-    </button>
-    <button class="btn btn-outline-danger">
-      <i class="bi bi-file-earmark-pdf"></i> Export PDF
-    </button>
-    <button class="btn btn-success">
-      <i class="bi bi-printer"></i> Print
-    </button>
-  </div>
-</div>
-
-{{-- Filters --}}
-<div class="filter-card-ppmf mb-4">
-  <div class="filter-title">
-    <i class="bi bi-funnel"></i> Comparison Filters
-  </div>
-
-  <div class="row g-3 align-items-end">
-    <div class="col-md-3">
-      <label class="form-label">KPI / Indicator</label>
-      <select class="form-select">
-        <option selected>All</option>
-        <option>Price of Roti</option>
-        <option>Cleanliness</option>
-        <option>Encroachment</option>
-        <option>Manhole Covers</option>
-      </select>
+<div class="page-title-bar">
+    <div>
+        <h1 class="page-title">District Comparison Report</h1>
+        <p class="page-subtitle">
+            Compare district-wise inspection performance, approval rate and KPI reporting status.
+        </p>
     </div>
 
-    <div class="col-md-2">
-      <label class="form-label">Frequency</label>
-      <select class="form-select">
-        <option selected>Weekly</option>
-        <option>Monthly</option>
-        <option>Quarterly</option>
-        <option>Yearly</option>
-      </select>
-    </div>
+    <div class="page-title-actions">
+        <a href="{{ route('reports.index') }}" class="btn-gov btn-gov-outline">
+            <i class="bi bi-arrow-left"></i>
+            Back to Reports
+        </a>
 
-    <div class="col-md-2">
-      <label class="form-label">Current Period</label>
-      <select class="form-select">
-        <option selected>30 Apr - 06 May</option>
-        <option>23 Apr - 29 Apr</option>
-        <option>16 Apr - 22 Apr</option>
-      </select>
+        <a href="{{ route('reports.category-wise-district-score') }}" class="btn-gov btn-gov-primary">
+            <i class="bi bi-grid-3x3-gap"></i>
+            Category Score
+        </a>
     </div>
-
-    <div class="col-md-2">
-      <label class="form-label">Month</label>
-      <select class="form-select">
-        <option selected>May</option>
-        <option>April</option>
-        <option>March</option>
-      </select>
-    </div>
-
-    <div class="col-md-1">
-      <label class="form-label">Year</label>
-      <select class="form-select">
-        <option selected>2026</option>
-        <option>2025</option>
-        <option>2024</option>
-      </select>
-    </div>
-
-    <div class="col-md-2 d-flex gap-2">
-      <button class="btn btn-success flex-fill">
-        <i class="bi bi-search"></i> Apply
-      </button>
-      <button class="btn btn-outline-secondary">
-        <i class="bi bi-x-circle"></i>
-      </button>
-    </div>
-  </div>
 </div>
 
 {{-- Summary Cards --}}
 <div class="row g-3 mb-4">
-  <div class="col-md-3">
-    <div class="stat-card-ppmf border-success">
-      <span>Total Districts</span>
-      <strong>36</strong>
-      <small>Compared in report</small>
-    </div>
-  </div>
 
-  <div class="col-md-3">
-    <div class="stat-card-ppmf border-primary">
-      <span>Top Current Score</span>
-      <strong>91.14</strong>
-      <small>Highest score in current period</small>
+    <div class="col-xl-3 col-lg-4 col-md-6">
+        <div class="stat-card-ppmf">
+            <div class="stat-icon-ppmf primary">
+                <i class="bi bi-building"></i>
+            </div>
+            <div>
+                <span>Districts Compared</span>
+                <strong>{{ number_format($summary['districts_count'] ?? $summary['districts_compared'] ?? 0) }}</strong>
+            </div>
+        </div>
     </div>
-  </div>
 
-  <div class="col-md-3">
-    <div class="stat-card-ppmf border-warning">
-      <span>Improved Districts</span>
-      <strong>14</strong>
-      <small>Score/rank improved</small>
+    <div class="col-xl-3 col-lg-4 col-md-6">
+        <div class="stat-card-ppmf">
+            <div class="stat-icon-ppmf info">
+                <i class="bi bi-clipboard-data"></i>
+            </div>
+            <div>
+                <span>Total Inspections</span>
+                <strong>{{ number_format($summary['total'] ?? $summary['total_inspections'] ?? 0) }}</strong>
+            </div>
+        </div>
     </div>
-  </div>
 
-  <div class="col-md-3">
-    <div class="stat-card-ppmf border-danger">
-      <span>Dropped Districts</span>
-      <strong>22</strong>
-      <small>Score/rank declined</small>
+    <div class="col-xl-3 col-lg-4 col-md-6">
+        <div class="stat-card-ppmf">
+            <div class="stat-icon-ppmf success">
+                <i class="bi bi-check-circle"></i>
+            </div>
+            <div>
+                <span>Approved</span>
+                <strong>{{ number_format($summary['approved'] ?? 0) }}</strong>
+            </div>
+        </div>
     </div>
-  </div>
+
+    <div class="col-xl-3 col-lg-4 col-md-6">
+        <div class="stat-card-ppmf">
+            <div class="stat-icon-ppmf warning">
+                <i class="bi bi-percent"></i>
+            </div>
+            <div>
+                <span>Average Score</span>
+                <strong>{{ $summary['average_score'] ?? $summary['approval_rate'] ?? 0 }}%</strong>
+            </div>
+        </div>
+    </div>
+
 </div>
 
-{{-- Chart --}}
+{{-- Filters --}}
 <div class="card-ppmf mb-4">
-  <div class="card-ppmf-header">
-    <div>
-      <div class="card-ppmf-title">
-        <i class="bi bi-graph-up-arrow"></i> District Score Comparison Trend
-      </div>
-      <div class="card-ppmf-subtitle">
-        Selected districts score comparison across recent reporting weeks.
-      </div>
+    <div class="card-ppmf-header">
+        <div class="card-ppmf-title">
+            <i class="bi bi-funnel"></i>
+            Filters
+        </div>
     </div>
 
-    <div class="d-flex gap-2">
-      <span class="badge bg-success-subtle text-success">Improved</span>
-      <span class="badge bg-danger-subtle text-danger">Declined</span>
-    </div>
-  </div>
+    <div class="card-ppmf-body">
+        <form method="GET" action="{{ route('reports.district-comparison') }}">
+            <div class="row g-3 align-items-end">
 
-  <div class="card-ppmf-body">
-    <canvas id="districtComparisonChart" height="95"></canvas>
-  </div>
+                <div class="col-xl-3 col-lg-4 col-md-6">
+                    <label class="form-label">District</label>
+                    <select name="district_id" class="form-select">
+                        <option value="">All Districts</option>
+                        @foreach($districts as $district)
+                            <option value="{{ $district->id }}"
+                                {{ ($filters['district_id'] ?? '') == $district->id ? 'selected' : '' }}>
+                                {{ $district->name }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+
+                <div class="col-xl-3 col-lg-4 col-md-6">
+                    <label class="form-label">Tehsil</label>
+                    <select name="tehsil_id" class="form-select">
+                        <option value="">All Tehsils</option>
+                        @foreach($tehsils as $tehsil)
+                            <option value="{{ $tehsil->id }}"
+                                {{ ($filters['tehsil_id'] ?? '') == $tehsil->id ? 'selected' : '' }}>
+                                {{ $tehsil->name }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+
+                <div class="col-xl-3 col-lg-4 col-md-6">
+                    <label class="form-label">KPI Category</label>
+                    <select name="kpi_category_id" class="form-select">
+                        <option value="">All KPI Categories</option>
+                        @foreach($kpiCategories as $category)
+                            <option value="{{ $category->id }}"
+                                {{ ($filters['kpi_category_id'] ?? '') == $category->id ? 'selected' : '' }}>
+                                {{ $category->name }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+
+                <div class="col-xl-3 col-lg-4 col-md-6">
+                    <label class="form-label">Status</label>
+                    <select name="status" class="form-select">
+                        <option value="">All Status</option>
+                        <option value="submitted" {{ ($filters['status'] ?? '') === 'submitted' ? 'selected' : '' }}>Submitted</option>
+                        <option value="reviewed" {{ ($filters['status'] ?? '') === 'reviewed' ? 'selected' : '' }}>Reviewed</option>
+                        <option value="approved" {{ ($filters['status'] ?? '') === 'approved' ? 'selected' : '' }}>Approved</option>
+                        <option value="rejected" {{ ($filters['status'] ?? '') === 'rejected' ? 'selected' : '' }}>Rejected</option>
+                    </select>
+                </div>
+
+                <div class="col-xl-3 col-lg-4 col-md-6">
+                    <label class="form-label">From Date</label>
+                    <input
+                        type="date"
+                        name="date_from"
+                        value="{{ $filters['date_from'] ?? '' }}"
+                        class="form-control"
+                    >
+                </div>
+
+                <div class="col-xl-3 col-lg-4 col-md-6">
+                    <label class="form-label">To Date</label>
+                    <input
+                        type="date"
+                        name="date_to"
+                        value="{{ $filters['date_to'] ?? '' }}"
+                        class="form-control"
+                    >
+                </div>
+
+                <div class="col-xl-3 col-lg-4 col-md-6">
+                    <label class="form-label">Search</label>
+                    <input
+                        type="text"
+                        name="search"
+                        value="{{ $filters['search'] ?? '' }}"
+                        class="form-control"
+                        placeholder="Search district"
+                    >
+                </div>
+
+                <div class="col-xl-3 col-lg-4 col-md-6">
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn-gov btn-gov-primary flex-fill">
+                            <i class="bi bi-search"></i>
+                            Apply
+                        </button>
+
+                        <a href="{{ route('reports.district-comparison') }}" class="btn-gov btn-gov-outline flex-fill">
+                            <i class="bi bi-arrow-clockwise"></i>
+                            Reset
+                        </a>
+                    </div>
+                </div>
+
+            </div>
+        </form>
+    </div>
 </div>
 
 {{-- Comparison Table --}}
 <div class="card-ppmf">
-  <div class="card-ppmf-header">
-    <div>
-      <div class="card-ppmf-title">
-        <i class="bi bi-table"></i> District Weekly Score Comparison
-      </div>
-      <div class="card-ppmf-subtitle">
-        Score and rank comparison for current and previous reporting weeks.
-      </div>
+    <div class="card-ppmf-header">
+        <div>
+            <div class="card-ppmf-title">
+                <i class="bi bi-building-check"></i>
+                District Comparison Data
+            </div>
+            <p class="card-subtitle mb-0">
+                Total records:
+                {{ method_exists($reportData, 'total') ? number_format($reportData->total()) : number_format($reportData->count()) }}
+            </p>
+        </div>
     </div>
 
-    <div class="d-flex align-items-center gap-2">
-      <select class="form-select form-select-sm" style="width: 90px;">
-        <option>10</option>
-        <option selected>25</option>
-        <option>50</option>
-      </select>
+    <div class="card-ppmf-body p-0">
+        <div class="table-responsive">
+            <table class="table-ppmf">
+                <thead>
+                    <tr>
+                        <th style="width:70px;">Rank</th>
+                        <th>District</th>
+                        <th>Division</th>
+                        <th>Total Inspections</th>
+                        <th>Submitted</th>
+                        <th>Approved</th>
+                        <th>Rejected</th>
+                        <th>Approval Rate</th>
+                        <th>Performance</th>
+                    </tr>
+                </thead>
 
-      <div class="position-relative">
-        <i class="bi bi-search position-absolute" style="left: 11px; top: 8px; color: var(--text-muted);"></i>
-        <input type="text" class="form-control form-control-sm" style="padding-left: 32px; width: 240px;" placeholder="Search district...">
-      </div>
+                <tbody>
+                    @forelse($reportData as $index => $row)
+                        @php
+                            $total = $row->total_inspections ?? $row->total ?? 0;
+                            $submitted = $row->submitted_count ?? $row->submitted ?? 0;
+                            $approved = $row->approved_count ?? $row->approved ?? 0;
+                            $rejected = $row->rejected_count ?? $row->rejected ?? 0;
+
+                            $approvalRate = $row->approval_rate
+                                ?? $row->score_percentage
+                                ?? ($total > 0 ? round(($approved / $total) * 100, 2) : 0);
+
+                            if ($approvalRate >= 80) {
+                                $badgeClass = 'achieved';
+                                $performanceText = 'Excellent';
+                            } elseif ($approvalRate >= 60) {
+                                $badgeClass = 'info';
+                                $performanceText = 'Good';
+                            } elseif ($approvalRate >= 40) {
+                                $badgeClass = 'pending';
+                                $performanceText = 'Average';
+                            } else {
+                                $badgeClass = 'critical';
+                                $performanceText = 'Low';
+                            }
+                        @endphp
+
+                        <tr>
+                            <td>
+                                <span class="rank-chip">
+                                    #{{ method_exists($reportData, 'firstItem') ? $reportData->firstItem() + $index : $index + 1 }}
+                                </span>
+                            </td>
+
+                            <td>
+                                <strong>
+                                    {{ $row->district->name ?? $row->district_name ?? 'N/A' }}
+                                </strong>
+                            </td>
+
+                            <td>
+                                {{ $row->division->name ?? $row->division_name ?? 'N/A' }}
+                            </td>
+
+                            <td>
+                                <strong>{{ number_format($total) }}</strong>
+                            </td>
+
+                            <td>
+                                <span class="text-primary fw-bold">{{ number_format($submitted) }}</span>
+                            </td>
+
+                            <td>
+                                <span class="text-success fw-bold">{{ number_format($approved) }}</span>
+                            </td>
+
+                            <td>
+                                <span class="text-danger fw-bold">{{ number_format($rejected) }}</span>
+                            </td>
+
+                            <td>
+                                <div class="score-progress">
+                                    <div class="score-text">
+                                        <strong>{{ $approvalRate }}%</strong>
+                                    </div>
+
+                                    <div class="progress progress-ppmf">
+                                        <div
+                                            class="progress-bar"
+                                            style="width: {{ min($approvalRate, 100) }}%;"
+                                            role="progressbar"
+                                            aria-valuenow="{{ $approvalRate }}"
+                                            aria-valuemin="0"
+                                            aria-valuemax="100">
+                                        </div>
+                                    </div>
+                                </div>
+                            </td>
+
+                            <td>
+                                <span class="badge-ppmf {{ $badgeClass }}">
+                                    {{ $performanceText }}
+                                </span>
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="9" class="text-center py-5">
+                                <div class="manual-box-ppmf">
+                                    <i class="bi bi-building"></i>
+                                    <h5>No District Comparison Data Found</h5>
+                                    <p>No district comparison data is available for selected filters.</p>
+                                </div>
+                            </td>
+                        </tr>
+                    @endforelse
+                </tbody>
+
+            </table>
+        </div>
     </div>
-  </div>
 
-  <div class="card-ppmf-body p-0">
-    <div class="table-responsive">
-      <table class="table table-ppmf align-middle mb-0 comparison-table-ppmf">
-        <thead>
-          <tr>
-            <th rowspan="2" style="min-width: 170px;">District</th>
-            <th colspan="3" class="text-center">30 Apr, 2026 - 06 May, 2026</th>
-            <th colspan="3" class="text-center">23 Apr, 2026 - 29 Apr, 2026</th>
-            <th colspan="3" class="text-center">16 Apr, 2026 - 22 Apr, 2026</th>
-            <th rowspan="2" class="text-center">Overall Trend</th>
-          </tr>
-          <tr>
-            <th>Score</th>
-            <th>Rank</th>
-            <th>Change</th>
-            <th>Score</th>
-            <th>Rank</th>
-            <th>Change</th>
-            <th>Score</th>
-            <th>Rank</th>
-            <th>Change</th>
-          </tr>
-        </thead>
-
-        <tbody>
-          <tr>
-            <td><strong>Attock</strong></td>
-            <td><strong class="text-danger">0</strong></td>
-            <td>0</td>
-            <td><span class="text-danger"><i class="bi bi-arrow-down"></i></span></td>
-            <td><strong>86.07</strong></td>
-            <td>32</td>
-            <td><span class="text-danger"><i class="bi bi-arrow-down"></i></span></td>
-            <td><strong class="text-success">93.08</strong></td>
-            <td>30</td>
-            <td><span class="text-success"><i class="bi bi-arrow-up"></i></span></td>
-            <td><span class="badge bg-danger-subtle text-danger">Declined</span></td>
-          </tr>
-
-          <tr>
-            <td><strong>Bahawalnagar</strong></td>
-            <td><strong class="text-danger">0</strong></td>
-            <td>0</td>
-            <td><span class="text-danger"><i class="bi bi-arrow-down"></i></span></td>
-            <td><strong>88.93</strong></td>
-            <td>23</td>
-            <td><span class="text-danger"><i class="bi bi-arrow-down"></i></span></td>
-            <td><strong class="text-success">93.94</strong></td>
-            <td>25</td>
-            <td><span class="text-danger"><i class="bi bi-arrow-down"></i></span></td>
-            <td><span class="badge bg-danger-subtle text-danger">Declined</span></td>
-          </tr>
-
-          <tr>
-            <td><strong>Bahawalpur</strong></td>
-            <td><strong class="text-danger">0</strong></td>
-            <td>0</td>
-            <td><span class="text-danger"><i class="bi bi-arrow-down"></i></span></td>
-            <td><strong>90.72</strong></td>
-            <td>12</td>
-            <td><span class="text-danger"><i class="bi bi-arrow-down"></i></span></td>
-            <td><strong class="text-success">97.62</strong></td>
-            <td>4</td>
-            <td><span class="text-success"><i class="bi bi-arrow-up"></i></span></td>
-            <td><span class="badge bg-warning-subtle text-warning">Watch</span></td>
-          </tr>
-
-          <tr>
-            <td><strong>Bhakkar</strong></td>
-            <td><strong class="text-danger">0</strong></td>
-            <td>0</td>
-            <td><span class="text-danger"><i class="bi bi-arrow-down"></i></span></td>
-            <td><strong>85.32</strong></td>
-            <td>34</td>
-            <td><span class="text-danger"><i class="bi bi-arrow-down"></i></span></td>
-            <td><strong class="text-success">90.67</strong></td>
-            <td>36</td>
-            <td><span class="text-danger"><i class="bi bi-arrow-down"></i></span></td>
-            <td><span class="badge bg-danger-subtle text-danger">Declined</span></td>
-          </tr>
-
-          <tr>
-            <td><strong>Chakwal</strong></td>
-            <td><strong class="text-danger">0</strong></td>
-            <td>0</td>
-            <td><span class="text-danger"><i class="bi bi-arrow-down"></i></span></td>
-            <td><strong>80.23</strong></td>
-            <td>38</td>
-            <td><span class="text-danger"><i class="bi bi-arrow-down"></i></span></td>
-            <td><strong class="text-success">92.28</strong></td>
-            <td>34</td>
-            <td><span class="text-success"><i class="bi bi-arrow-up"></i></span></td>
-            <td><span class="badge bg-warning-subtle text-warning">Mixed</span></td>
-          </tr>
-
-          <tr>
-            <td><strong>Chiniot</strong></td>
-            <td><strong class="text-danger">0</strong></td>
-            <td>0</td>
-            <td><span class="text-danger"><i class="bi bi-arrow-down"></i></span></td>
-            <td><strong>88.73</strong></td>
-            <td>24</td>
-            <td><span class="text-danger"><i class="bi bi-arrow-down"></i></span></td>
-            <td><strong class="text-success">96.91</strong></td>
-            <td>10</td>
-            <td><span class="text-success"><i class="bi bi-arrow-up"></i></span></td>
-            <td><span class="badge bg-success-subtle text-success">Improved Earlier</span></td>
-          </tr>
-
-          <tr>
-            <td><strong>D. G. Khan</strong></td>
-            <td><strong class="text-danger">0</strong></td>
-            <td>0</td>
-            <td><span class="text-danger"><i class="bi bi-arrow-down"></i></span></td>
-            <td><strong>88.69</strong></td>
-            <td>25</td>
-            <td><span class="text-danger"><i class="bi bi-arrow-down"></i></span></td>
-            <td><strong class="text-success">93.80</strong></td>
-            <td>28</td>
-            <td><span class="text-danger"><i class="bi bi-arrow-down"></i></span></td>
-            <td><span class="badge bg-danger-subtle text-danger">Declined</span></td>
-          </tr>
-
-          <tr>
-            <td><strong>Faisalabad</strong></td>
-            <td><strong class="text-danger">0</strong></td>
-            <td>0</td>
-            <td><span class="text-danger"><i class="bi bi-arrow-down"></i></span></td>
-            <td><strong>85.91</strong></td>
-            <td>33</td>
-            <td><span class="text-danger"><i class="bi bi-arrow-down"></i></span></td>
-            <td><strong class="text-success">93.81</strong></td>
-            <td>27</td>
-            <td><span class="text-danger"><i class="bi bi-arrow-down"></i></span></td>
-            <td><span class="badge bg-warning-subtle text-warning">Needs Review</span></td>
-          </tr>
-
-          <tr>
-            <td><strong>Gujranwala</strong></td>
-            <td><strong class="text-danger">0</strong></td>
-            <td>0</td>
-            <td><span class="text-danger"><i class="bi bi-arrow-down"></i></span></td>
-            <td><strong>91.14</strong></td>
-            <td>5</td>
-            <td><span class="text-danger"><i class="bi bi-arrow-down"></i></span></td>
-            <td><strong class="text-success">96.20</strong></td>
-            <td>14</td>
-            <td><span class="text-danger"><i class="bi bi-arrow-down"></i></span></td>
-            <td><span class="badge bg-success-subtle text-success">Strong Previous</span></td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-  </div>
-
-  <div class="card-ppmf-footer d-flex justify-content-between align-items-center p-3 border-top">
-    <small class="text-muted">Showing weekly district comparison for selected periods.</small>
-
-    <nav>
-      <ul class="pagination pagination-sm mb-0">
-        <li class="page-item disabled"><a class="page-link">Previous</a></li>
-        <li class="page-item active"><a class="page-link" href="#">1</a></li>
-        <li class="page-item"><a class="page-link" href="#">2</a></li>
-        <li class="page-item"><a class="page-link" href="#">Next</a></li>
-      </ul>
-    </nav>
-  </div>
+    @if(method_exists($reportData, 'links'))
+        <div class="card-ppmf-body border-top">
+            {{ $reportData->links() }}
+        </div>
+    @endif
 </div>
 
 @endsection
 
-@push('scripts')
-<script>
-document.addEventListener('DOMContentLoaded', function () {
-  const chartEl = document.getElementById('districtComparisonChart');
+@push('styles')
+<style>
+    .rank-chip {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 44px;
+        padding: 5px 9px;
+        border-radius: 999px;
+        background: rgba(27, 107, 70, 0.10);
+        color: var(--gov-green);
+        font-size: 12px;
+        font-weight: 800;
+    }
 
-  if (chartEl && window.Chart) {
-    new Chart(chartEl, {
-      type: 'line',
-      data: {
-        labels: ['16 Apr - 22 Apr', '23 Apr - 29 Apr', '30 Apr - 06 May'],
-        datasets: [
-          {
-            label: 'Gujranwala',
-            data: [96.20, 91.14, 0],
-            borderWidth: 3,
-            tension: 0.35
-          },
-          {
-            label: 'Bahawalpur',
-            data: [97.62, 90.72, 0],
-            borderWidth: 3,
-            tension: 0.35
-          },
-          {
-            label: 'Chiniot',
-            data: [96.91, 88.73, 0],
-            borderWidth: 3,
-            tension: 0.35
-          },
-          {
-            label: 'Attock',
-            data: [93.08, 86.07, 0],
-            borderWidth: 3,
-            tension: 0.35
-          }
-        ]
-      },
-      options: {
-        responsive: true,
-        interaction: {
-          mode: 'index',
-          intersect: false
-        },
-        plugins: {
-          legend: {
-            position: 'bottom'
-          }
-        },
-        scales: {
-          y: {
-            beginAtZero: true,
-            max: 100
-          }
-        }
-      }
-    });
-  }
-});
-</script>
+    .score-progress {
+        min-width: 130px;
+    }
+
+    .score-text {
+        font-size: 12px;
+        color: var(--text-secondary);
+        margin-bottom: 5px;
+    }
+
+    .progress-ppmf {
+        height: 7px;
+        border-radius: 999px;
+        background: #e5e7eb;
+        overflow: hidden;
+    }
+
+    .progress-ppmf .progress-bar {
+        background: var(--gov-green);
+        border-radius: 999px;
+    }
+</style>
 @endpush

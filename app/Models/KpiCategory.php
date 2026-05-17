@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class KpiCategory extends Model
 {
@@ -31,4 +32,8 @@ class KpiCategory extends Model
     {
         return $this->hasMany(BaselineAsset::class);
     }
+    public function provincialMetrics(): HasMany
+{
+    return $this->hasMany(ProvincialKpiMetric::class, 'kpi_category_id');
+}
 }

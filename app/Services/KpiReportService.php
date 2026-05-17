@@ -5,6 +5,7 @@ use App\Models\District;
 use App\Models\DistrictBaselineData;
 use App\Models\Inspection;
 use App\Models\KpiCategory;
+use App\Models\ProvincialKpiMetric;
 use App\Models\Tehsil;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -167,29 +168,128 @@ class KpiReportService
     |--------------------------------------------------------------------------
     | Provincial KPI Wise Data
     |--------------------------------------------------------------------------
-    | Groups inspection records by KPI category.
+    | Old PPMF-style category-wise metric cards.
+    | Data source: provincial_kpi_metrics table.
+    */
+    public function getProvincialKpiMetrics(array $filters = [])
+    {
+        $perPage = (int) ($filters['per_page'] ?? 10);
+
+        if (! in_array($perPage, [10, 20, 25, 50], true)) {
+            $perPage = 10;
+        }
+
+        $metricFilter = function ($query) use ($filters) {
+            $query->where('is_active', true);
+
+            if (! empty($filters['period_type']) && ($filters['period_type'] !== 'custom')) {
+                $query->where('period_type', $filters['period_type']);
+            }
+
+            if (! empty($filters['date_from'])) {
+                $query->whereDate('date_from', '>=', $filters['date_from']);
+            }
+
+            if (! empty($filters['date_to'])) {
+                $query->whereDate('date_to', '<=', $filters['date_to']);
+            }
+
+            if (! empty($filters['search'])) {
+                $search = trim($filters['search']);
+
+                $query->where(function ($subQuery) use ($search) {
+                    $subQuery->where('metric_title', 'ILIKE', "%{$search}%")
+                        ->orWhere('metric_description', 'ILIKE', "%{$search}%")
+                        ->orWhere('source', 'ILIKE', "%{$search}%");
+                });
+            }
+        };
+
+        $query = KpiCategory::query()
+            ->where('is_active', true)
+            ->with(['provincialMetrics' => function ($query) use ($metricFilter) {
+                $metricFilter($query);
+                $query->orderBy('sort_order')->orderBy('metric_title');
+            }])
+            ->whereHas('provincialMetrics', $metricFilter);
+
+        if (! empty($filters['kpi_category_id'])) {
+            $query->where('id', $filters['kpi_category_id']);
+        }
+
+        if (! empty($filters['search'])) {
+            $search = trim($filters['search']);
+
+            $query->where(function ($categoryQuery) use ($search, $metricFilter) {
+                $categoryQuery->where('name', 'ILIKE', "%{$search}%")
+                    ->orWhere('description', 'ILIKE', "%{$search}%")
+                    ->orWhereHas('provincialMetrics', $metricFilter);
+            });
+        }
+
+        return $query
+            ->orderBy('name')
+            ->paginate($perPage)
+            ->withQueryString();
+    }
+
+    public function getProvincialKpiMetricSummary(array $filters = []): array
+    {
+        $query = ProvincialKpiMetric::query()
+            ->where('is_active', true);
+
+        if (! empty($filters['kpi_category_id'])) {
+            $query->where('kpi_category_id', $filters['kpi_category_id']);
+        }
+
+        if (! empty($filters['period_type']) && ($filters['period_type'] !== 'custom')) {
+            $query->where('period_type', $filters['period_type']);
+        }
+
+        if (! empty($filters['date_from'])) {
+            $query->whereDate('date_from', '>=', $filters['date_from']);
+        }
+
+        if (! empty($filters['date_to'])) {
+            $query->whereDate('date_to', '<=', $filters['date_to']);
+        }
+
+        if (! empty($filters['search'])) {
+            $search = trim($filters['search']);
+
+            $query->where(function ($subQuery) use ($search) {
+                $subQuery->where('metric_title', 'ILIKE', "%{$search}%")
+                    ->orWhere('metric_description', 'ILIKE', "%{$search}%")
+                    ->orWhere('source', 'ILIKE', "%{$search}%")
+                    ->orWhereHas('kpiCategory', function ($categoryQuery) use ($search) {
+                        $categoryQuery->where('name', 'ILIKE', "%{$search}%");
+                    });
+            });
+        }
+
+        $totalMetrics = (clone $query)->count();
+        $totalCategories = (clone $query)->distinct('kpi_category_id')->count('kpi_category_id');
+        $totalValue = (clone $query)->sum('metric_value');
+        $lastUpdated = (clone $query)->latest('updated_at')->value('updated_at');
+
+        return [
+            'total_metrics' => $totalMetrics,
+            'total_categories' => $totalCategories,
+            'total_value' => $totalValue,
+            'active_period' => $filters['period_type'] ?? 'last_week',
+            'last_updated' => $lastUpdated,
+        ];
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Legacy Inspection-Based Provincial Summary
+    |--------------------------------------------------------------------------
+    | Kept for backward compatibility if another view/report still uses it.
     */
     public function getProvincialKpiWiseData(array $filters)
     {
-        $query = Inspection::query()
-            ->select([
-                'kpi_category_id',
-                DB::raw('COUNT(*) as total_inspections'),
-                DB::raw("SUM(CASE WHEN status = 'approved' THEN 1 ELSE 0 END) as approved_count"),
-                DB::raw("SUM(CASE WHEN status = 'reviewed' THEN 1 ELSE 0 END) as reviewed_count"),
-                DB::raw("SUM(CASE WHEN status = 'submitted' THEN 1 ELSE 0 END) as submitted_count"),
-                DB::raw("SUM(CASE WHEN status = 'rejected' THEN 1 ELSE 0 END) as rejected_count"),
-            ])
-            ->with('kpiCategory:id,name')
-            ->groupBy('kpi_category_id');
-
-        $query = $this->applyUserScope($query);
-        $query = $this->applyInspectionFilters($query, $filters);
-
-        return $query
-            ->orderByDesc('total_inspections')
-            ->paginate(20)
-            ->withQueryString();
+        return $this->getProvincialKpiMetrics($filters);
     }
 
     /*
