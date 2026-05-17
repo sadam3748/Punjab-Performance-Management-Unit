@@ -164,6 +164,20 @@
                 </div>
 
                 <div class="col-xl-3 col-lg-4 col-md-6">
+                    <label class="form-label">Per Page</label>
+                    @php
+                        $currentPerPage = (int) ($filters['per_page'] ?? request('per_page', 10));
+                    @endphp
+                    <select name="per_page" class="form-select">
+                        @foreach ([10, 20, 25, 50] as $option)
+                            <option value="{{ $option }}" {{ $currentPerPage === $option ? 'selected' : '' }}>
+                                {{ $option }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+
+                <div class="col-xl-3 col-lg-4 col-md-6">
                     <label class="form-label">Search</label>
                     <input
                         type="text"
@@ -331,11 +345,80 @@
     </div>
 
     @if (method_exists($reportingStatus, 'links'))
-        <div class="card-ppmf-body border-top">
-            <div class="pagination-wrapper">
-                {{ $reportingStatus->links() }}
+        {{-- Custom Stable Pagination (Inspection List style) --}}
+        @if (method_exists($reportingStatus, 'lastPage') && $reportingStatus->lastPage() > 1)
+            @php
+                $reportingStatus->appends(request()->query());
+
+                $currentPage = $reportingStatus->currentPage();
+                $lastPage = $reportingStatus->lastPage();
+                $startPage = max(1, $currentPage - 2);
+                $endPage = min($lastPage, $currentPage + 2);
+
+                if ($currentPage <= 3) {
+                    $endPage = min($lastPage, 5);
+                }
+
+                if ($currentPage >= $lastPage - 2) {
+                    $startPage = max(1, $lastPage - 4);
+                }
+            @endphp
+
+            <div class="card-ppmf-body border-top p-0">
+                <div class="inspection-pagination-bar">
+                    <div class="inspection-pagination-summary-group">
+                        <div class="inspection-pagination-summary">
+                            Showing {{ number_format($reportingStatus->firstItem() ?? 0) }} to {{ number_format($reportingStatus->lastItem() ?? 0) }}
+                            of {{ number_format($reportingStatus->total() ?? 0) }} records
+                        </div>
+                        <div class="inspection-pagination-per-page">
+                            {{ (int) ($filters['per_page'] ?? request('per_page', 10)) }} per page
+                        </div>
+                    </div>
+
+                    <nav class="inspection-pagination-nav" aria-label="KPI reporting status pagination">
+                        <a
+                            href="{{ $reportingStatus->previousPageUrl() ?: 'javascript:void(0)' }}"
+                            class="inspection-page-link {{ $reportingStatus->onFirstPage() ? 'disabled' : '' }}"
+                        >
+                            <i class="bi bi-chevron-left"></i>
+                            Previous
+                        </a>
+
+                        @if ($startPage > 1)
+                            <a href="{{ $reportingStatus->url(1) }}" class="inspection-page-number">1</a>
+                            @if ($startPage > 2)
+                                <span class="inspection-page-dots">...</span>
+                            @endif
+                        @endif
+
+                        @for ($page = $startPage; $page <= $endPage; $page++)
+                            <a
+                                href="{{ $reportingStatus->url($page) }}"
+                                class="inspection-page-number {{ $page == $currentPage ? 'active' : '' }}"
+                            >
+                                {{ $page }}
+                            </a>
+                        @endfor
+
+                        @if ($endPage < $lastPage)
+                            @if ($endPage < $lastPage - 1)
+                                <span class="inspection-page-dots">...</span>
+                            @endif
+                            <a href="{{ $reportingStatus->url($lastPage) }}" class="inspection-page-number">{{ $lastPage }}</a>
+                        @endif
+
+                        <a
+                            href="{{ $reportingStatus->nextPageUrl() ?: 'javascript:void(0)' }}"
+                            class="inspection-page-link {{ $reportingStatus->hasMorePages() ? '' : 'disabled' }}"
+                        >
+                            Next
+                            <i class="bi bi-chevron-right"></i>
+                        </a>
+                    </nav>
+                </div>
             </div>
-        </div>
+        @endif
     @endif
 </div>
 
@@ -423,9 +506,134 @@
         border-radius: 999px;
     }
 
-    .pagination-wrapper nav {
+    /* Pagination (match Inspection List) */
+    .inspection-pagination-bar {
         display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 14px;
+        padding: 14px 18px;
+        border-top: 1px solid var(--border-light);
+        background: #ffffff;
+    }
+
+    .inspection-pagination-summary-group {
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+        min-width: 210px;
+    }
+
+    .inspection-pagination-summary {
+        color: #334155;
+        font-size: 13px;
+        font-weight: 850;
+        white-space: nowrap;
+    }
+
+    .inspection-pagination-per-page {
+        color: #64748b;
+        font-size: 12px;
+        font-weight: 750;
+        white-space: nowrap;
+    }
+
+    .inspection-pagination-nav {
+        display: flex;
+        align-items: center;
         justify-content: flex-end;
+        gap: 6px;
+        flex-wrap: wrap;
+    }
+
+    .inspection-page-link,
+    .inspection-page-number,
+    .inspection-page-dots {
+        min-width: 38px;
+        height: 36px;
+        padding: 0 12px;
+        border-radius: 11px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid #cbd5e1;
+        background: #ffffff;
+        color: #14532d;
+        font-size: 13px;
+        font-weight: 900;
+        text-decoration: none;
+        line-height: 1;
+        white-space: nowrap;
+    }
+
+    .inspection-page-link {
+        gap: 6px;
+    }
+
+    .inspection-page-number.active {
+        background: #166534;
+        color: #ffffff;
+        border-color: #166534;
+        box-shadow: 0 8px 18px rgba(22, 101, 52, 0.22);
+    }
+
+    .inspection-page-link:hover,
+    .inspection-page-number:hover {
+        background: #ecfdf3;
+        color: #14532d;
+        border-color: #86efac;
+    }
+
+    .inspection-page-link.disabled {
+        pointer-events: none;
+        color: #94a3b8;
+        background: #f1f5f9;
+        border-color: #e2e8f0;
+        box-shadow: none;
+    }
+
+    .inspection-page-dots {
+        border-color: transparent;
+        background: transparent;
+        color: #94a3b8;
+        min-width: 26px;
+        padding: 0 4px;
+    }
+
+    @media (max-width: 991px) {
+        .inspection-pagination-bar {
+            align-items: flex-start;
+            flex-direction: column;
+        }
+
+        .inspection-pagination-summary,
+        .inspection-pagination-per-page {
+            white-space: normal;
+        }
+
+        .inspection-pagination-summary-group {
+            min-width: 0;
+        }
+
+        .inspection-pagination-nav {
+            justify-content: flex-start;
+            width: 100%;
+        }
+    }
+
+    @media (max-width: 767px) {
+        .inspection-pagination-bar {
+            padding: 14px;
+        }
+
+        .inspection-page-link,
+        .inspection-page-number,
+        .inspection-page-dots {
+            min-width: 34px;
+            height: 34px;
+            padding: 0 10px;
+            font-size: 12px;
+        }
     }
 </style>
 @endpush

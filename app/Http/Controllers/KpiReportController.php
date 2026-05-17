@@ -108,10 +108,13 @@ class KpiReportController extends Controller
     {
         $filters = $request->only([
             'district_id',
+            'tehsil_id',
             'kpi_category_id',
             'date_from',
             'date_to',
             'status',
+            'search',
+            'per_page',
         ]);
 
         $reportingStatus = $this->kpiReportService->getKpiReportingStatus($filters);
@@ -120,6 +123,7 @@ class KpiReportController extends Controller
         return view('kpi.reporting-status', [
             'reportingStatus' => $reportingStatus,
             'districts' => $filterData['districts'],
+            'tehsils' => $filterData['tehsils'],
             'kpiCategories' => $filterData['kpiCategories'],
             'filters' => $filters,
         ]);

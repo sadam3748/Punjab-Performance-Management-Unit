@@ -202,9 +202,11 @@ class KpiReportService
         $query = $this->applyUserScope($query);
         $query = $this->applyInspectionFilters($query, $filters);
 
+        $perPage = $this->normalizePerPage($filters['per_page'] ?? 10);
+
         return $query
             ->orderByDesc('last_reported_at')
-            ->paginate(20)
+            ->paginate($perPage)
             ->withQueryString();
     }
 
