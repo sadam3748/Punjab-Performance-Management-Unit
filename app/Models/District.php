@@ -53,4 +53,9 @@ class District extends Model
     {
         return $this->hasMany(BaselineAsset::class);
     }
+
+    public function districtKpiMetricValues()
+    {
+        return $this->hasMany(DistrictKpiMetricValue::class);
+    }
 }

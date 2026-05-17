@@ -32,8 +32,14 @@ class KpiCategory extends Model
     {
         return $this->hasMany(BaselineAsset::class);
     }
+
     public function provincialMetrics(): HasMany
-{
-    return $this->hasMany(ProvincialKpiMetric::class, 'kpi_category_id');
-}
+    {
+        return $this->hasMany(ProvincialKpiMetric::class, 'kpi_category_id');
+    }
+
+    public function districtKpiMetricValues(): HasMany
+    {
+        return $this->hasMany(DistrictKpiMetricValue::class, 'kpi_category_id');
+    }
 }

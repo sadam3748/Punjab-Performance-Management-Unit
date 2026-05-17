@@ -67,6 +67,7 @@ class PpmfDummyInspectionSeeder extends Seeder
             })
             ->delete();
 
+        $allowedColumnKeys = array_flip($inspectionColumns->all());
         $records     = [];
         $recordIndex = 1;
         $now         = Carbon::now();
@@ -92,9 +93,24 @@ class PpmfDummyInspectionSeeder extends Seeder
 
                     $user = $users->random();
 
-                    $inspectionDate = $now->copy()
-                        ->subDays(rand(0, 120))
-                        ->setTime(rand(8, 18), rand(0, 59), 0);
+                    // Ensure recent-week data exists for graphical reports (last_week/current_week filters).
+                    // Weighted: 45% last_week, 25% current_week, 30% older (up to 120 days).
+                    $roll = rand(1, 100);
+                    if ($roll <= 45) {
+                        $inspectionDate = $now->copy()
+                            ->subWeek()
+                            ->startOfWeek()
+                            ->addDays(rand(0, 6));
+                    } elseif ($roll <= 70) {
+                        $inspectionDate = $now->copy()
+                            ->startOfWeek()
+                            ->addDays(rand(0, 6));
+                    } else {
+                        $inspectionDate = $now->copy()
+                            ->subDays(rand(0, 120));
+                    }
+
+                    $inspectionDate = $inspectionDate->setTime(rand(8, 18), rand(0, 59), 0);
 
                     [$latitude, $longitude] = $this->districtCoordinates($district, $districtIndex);
 
@@ -122,17 +138,20 @@ class PpmfDummyInspectionSeeder extends Seeder
                         'updated_at'          => now(),
                     ];
 
-                    $records[] = collect($record)
-                        ->only($inspectionColumns->all())
-                        ->toArray();
+                    $records[] = array_intersect_key($record, $allowedColumnKeys);
+
+                    if (count($records) >= 200) {
+                        DB::table('inspections')->insert($records);
+                        $records = [];
+                    }
 
                     $recordIndex++;
                 }
             }
         }
 
-        foreach (array_chunk($records, 200) as $chunk) {
-            DB::table('inspections')->insert($chunk);
+        if (! empty($records)) {
+            DB::table('inspections')->insert($records);
         }
     }
 

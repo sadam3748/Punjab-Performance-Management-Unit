@@ -102,8 +102,15 @@ Route::prefix('portal')->middleware('auth')->group(function () {
     Route::get('/kpi-reporting-status', [KpiReportController::class, 'reportingStatus'])
         ->name('kpi.reporting-status');
 
-    Route::get('/provincial-kpi-wise-data', [KpiReportController::class, 'provincialData'])
+    // New (preferred) KPI reporting URLs
+    Route::get('/kpi/provincial-data', [KpiReportController::class, 'provincialData'])
         ->name('kpi.provincial-data');
+
+    Route::get('/kpi/district-wise-kpi-score', [KpiReportController::class, 'districtWiseKpiScore'])
+        ->name('kpi.district-wise-kpi-score');
+
+    // Backward-compatible URL (keep existing bookmarks)
+    Route::get('/provincial-kpi-wise-data', [KpiReportController::class, 'provincialData']);
 
     Route::get('/kpi-graphical-report', [KpiReportController::class, 'graphicalReport'])
         ->name('kpi.graphical-report');

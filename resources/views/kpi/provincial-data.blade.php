@@ -4,28 +4,39 @@
 
 @push('styles')
 <style>
+    :root{
+        --ppmf-green: #006b3f;
+        --ppmf-green-dark: #004f2e;
+        --ppmf-green-soft: #e8f6ef;
+        --ppmf-border: #dbe5ee;
+        --ppmf-muted: #64748b;
+        --ppmf-text: #0f172a;
+        --ppmf-bg: #f4f7fa;
+    }
+
     .prov-kpi-hero {
         background: linear-gradient(135deg, #0f5132 0%, #198754 52%, #d6a84f 100%);
-        border-radius: 22px;
-        padding: 22px;
+        border-radius: 20px;
+        padding: 20px;
         color: #fff;
-        box-shadow: 0 18px 45px rgba(15, 81, 50, 0.18);
+        box-shadow: 0 14px 34px rgba(15, 81, 50, 0.16);
         margin-bottom: 20px;
     }
 
     .prov-kpi-hero h1 {
         margin: 0;
-        font-size: 24px;
+        font-size: 28px;
         font-weight: 900;
         letter-spacing: -0.03em;
     }
 
     .prov-kpi-hero p {
-        margin: 7px 0 0;
+        margin: 6px 0 0;
         max-width: 760px;
         color: rgba(255, 255, 255, 0.86);
         font-size: 13px;
-        font-weight: 600;
+        font-weight: 650;
+        line-height: 1.4;
     }
 
     .prov-kpi-actions {
@@ -33,6 +44,17 @@
         gap: 10px;
         flex-wrap: wrap;
         justify-content: flex-end;
+    }
+
+    .prov-kpi-actions .btn,
+    .prov-kpi-actions .btn-gov {
+        height: 42px;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        border-radius: 12px;
+        font-weight: 800;
+        white-space: nowrap;
     }
 
     .prov-summary-grid {
@@ -44,13 +66,16 @@
 
     .prov-summary-card {
         background: #fff;
-        border: 1px solid #e2e8f0;
+        border: 1px solid var(--ppmf-border);
         border-radius: 18px;
         padding: 16px;
         display: flex;
         align-items: center;
         gap: 13px;
-        box-shadow: 0 12px 30px rgba(15, 23, 42, 0.06);
+        box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05);
+        min-height: 78px;
+        position: relative;
+        overflow: hidden;
     }
 
     .prov-summary-icon {
@@ -60,16 +85,16 @@
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        background: #e9f7ef;
-        color: #146c43;
-        font-size: 21px;
+        background: var(--ppmf-green-soft);
+        color: var(--ppmf-green-dark);
+        font-size: 24px;
         flex-shrink: 0;
     }
 
     .prov-summary-card span {
         display: block;
-        color: #64748b;
-        font-size: 11px;
+        color: var(--ppmf-muted);
+        font-size: 12px;
         font-weight: 800;
         text-transform: uppercase;
         letter-spacing: 0.06em;
@@ -77,8 +102,8 @@
 
     .prov-summary-card strong {
         display: block;
-        color: #0f172a;
-        font-size: 22px;
+        color: var(--ppmf-text);
+        font-size: 26px;
         font-weight: 900;
         line-height: 1.1;
         margin-top: 3px;
@@ -87,16 +112,16 @@
     .prov-filter-card,
     .prov-category-card {
         background: #fff;
-        border: 1px solid #e2e8f0;
+        border: 1px solid var(--ppmf-border);
         border-radius: 20px;
-        box-shadow: 0 14px 34px rgba(15, 23, 42, 0.06);
+        box-shadow: 0 12px 30px rgba(15, 23, 42, 0.05);
         overflow: hidden;
     }
 
     .prov-card-header {
         padding: 16px 18px;
         background: linear-gradient(180deg, #f8fafc, #ffffff);
-        border-bottom: 1px solid #e2e8f0;
+        border-bottom: 1px solid var(--ppmf-border);
         display: flex;
         justify-content: space-between;
         align-items: center;
@@ -146,7 +171,7 @@
 
     .prov-category-top {
         padding: 16px 18px;
-        background: linear-gradient(135deg, #14532d, #198754);
+        background: linear-gradient(135deg, var(--ppmf-green-dark), var(--ppmf-green));
         color: #fff;
         display: flex;
         justify-content: space-between;
@@ -156,7 +181,7 @@
 
     .prov-category-name {
         margin: 0;
-        font-size: 18px;
+        font-size: 19px;
         font-weight: 900;
         letter-spacing: -0.02em;
         text-transform: uppercase;
@@ -189,12 +214,13 @@
     .prov-metric-card {
         position: relative;
         min-height: 176px;
-        border: 1px solid #e2e8f0;
+        border: 1px solid var(--ppmf-border);
         border-radius: 18px;
         padding: 16px;
         background: linear-gradient(180deg, #ffffff, #f8fafc);
         box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05);
         overflow: hidden;
+        transition: transform 120ms ease, box-shadow 120ms ease, border-color 120ms ease;
     }
 
     .prov-metric-card::before {
@@ -202,15 +228,15 @@
         position: absolute;
         inset: 0 auto 0 0;
         width: 5px;
-        background: linear-gradient(180deg, #198754, #d6a84f);
+        background: linear-gradient(180deg, var(--ppmf-green), #d6a84f);
     }
 
     .prov-metric-value {
         margin: 0;
-        color: #0f172a;
+        color: var(--ppmf-text);
         font-size: 34px;
         line-height: 1;
-        font-weight: 950;
+        font-weight: 900;
         letter-spacing: -0.05em;
     }
 
@@ -231,15 +257,15 @@
     .prov-metric-title {
         margin: 12px 0 6px;
         color: #14532d;
-        font-size: 14px;
-        font-weight: 900;
+        font-size: 15px;
+        font-weight: 800;
     }
 
     .prov-metric-description {
         margin: 0;
         color: #475569;
-        font-size: 12px;
-        line-height: 1.55;
+        font-size: 13px;
+        line-height: 1.45;
         font-weight: 600;
     }
 
@@ -248,9 +274,15 @@
         display: inline-flex;
         align-items: center;
         gap: 6px;
-        color: #64748b;
-        font-size: 11px;
+        color: var(--ppmf-muted);
+        font-size: 12px;
         font-weight: 800;
+    }
+
+    .prov-metric-card:hover {
+        transform: translateY(-1px);
+        border-color: #b7d4c5;
+        box-shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
     }
 
     .prov-empty-state {
@@ -266,7 +298,7 @@
     .prov-pagination-footer {
         margin-top: 18px;
         background: #fff;
-        border: 1px solid #e2e8f0;
+        border: 1px solid var(--ppmf-border);
         border-radius: 18px;
         padding: 14px 16px;
         display: flex;
@@ -274,7 +306,7 @@
         align-items: center;
         gap: 12px;
         flex-wrap: wrap;
-        box-shadow: 0 12px 30px rgba(15, 23, 42, 0.05);
+        box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05);
     }
 
     .prov-pagination-footer .pagination {
@@ -345,27 +377,56 @@
 
     $activePeriod = $filters['period_type'] ?? 'last_week';
     $perPage = (int) ($filters['per_page'] ?? 10);
+
+    $cleanMetricText = function ($text) {
+        $text = trim((string) $text);
+        if ($text === '') {
+            return null;
+        }
+
+        $lower = strtolower($text);
+        foreach (['dummy', 'test', 'sample', 'lorem', 'seeded'] as $bad) {
+            if (str_contains($lower, $bad)) {
+                return 'Reported KPI value for selected period.';
+            }
+        }
+
+        return $text;
+    };
 @endphp
 
 <div class="prov-kpi-hero">
     <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
         <div>
             <h1>Provincial KPI Wise Data</h1>
-            <p>
-                Old PPMF-style category-wise management metrics shown as clean KPI cards for senior review.
-                This report focuses on actions, visits, inspections, fines, meetings and field outcomes instead of workflow statuses.
-            </p>
+            <p>Category-wise provincial KPI metrics for senior management review.</p>
         </div>
 
         <div class="prov-kpi-actions">
+            @if (Route::has('kpi.district-wise-kpi-score'))
+                <a
+                    href="{{ route('kpi.district-wise-kpi-score', [
+                        'kpi_category_id' => $filters['kpi_category_id'] ?? '',
+                        'period_type' => $filters['period_type'] ?? 'last_week',
+                        'date_from' => $filters['date_from'] ?? '',
+                        'date_to' => $filters['date_to'] ?? '',
+                    ]) }}"
+                    class="btn-gov btn-gov-primary"
+                    target="_blank"
+                    rel="noopener"
+                >
+                    <i class="bi bi-speedometer2"></i> District Wise KPI Score
+                </a>
+            @endif
+
             @if (Route::has('kpi.reporting-status'))
-                <a href="{{ route('kpi.reporting-status') }}" class="btn btn-light btn-sm fw-bold">
+                <a href="{{ route('kpi.reporting-status') }}" class="btn-gov btn-gov-outline">
                     <i class="bi bi-list-check"></i> Reporting Status
                 </a>
             @endif
 
             @if (Route::has('kpi.graphical-report'))
-                <a href="{{ route('kpi.graphical-report') }}" class="btn btn-warning btn-sm fw-bold text-dark">
+                <a href="{{ route('kpi.graphical-report') }}" class="btn-gov btn-gov-outline">
                     <i class="bi bi-bar-chart-line"></i> Graphical Report
                 </a>
             @endif
@@ -486,9 +547,24 @@
         <div class="prov-category-card">
             <div class="prov-category-top">
                 <div>
-                    <h2 class="prov-category-name">{{ $category->name }}</h2>
+                    <h2 class="prov-category-name">
+                        <a
+                            href="{{ route('kpi.district-wise-kpi-score', [
+                                'kpi_category_id' => $category->id,
+                                'period_type' => $filters['period_type'] ?? 'last_week',
+                                'date_from' => $filters['date_from'] ?? '',
+                                'date_to' => $filters['date_to'] ?? '',
+                            ]) }}"
+                            class="text-white text-decoration-none"
+                            title="View district-wise KPI score report"
+                            target="_blank"
+                            rel="noopener"
+                        >
+                            {{ $category->name }}
+                        </a>
+                    </h2>
                     <div class="prov-category-meta">
-                        {{ $category->description ?: 'Category-wise provincial KPI metrics' }}
+                        Click to view district-wise KPI score report
                     </div>
                 </div>
 
@@ -499,15 +575,29 @@
 
             <div class="prov-metric-grid">
                 @forelse ($metrics as $metric)
-                    <div class="prov-metric-card">
+                    <a
+                        class="prov-metric-card text-decoration-none"
+                        href="{{ route('kpi.district-wise-kpi-score', [
+                            'kpi_category_id' => $category->id,
+                            'period_type' => $filters['period_type'] ?? 'last_week',
+                            'date_from' => $filters['date_from'] ?? '',
+                            'date_to' => $filters['date_to'] ?? '',
+                        ]) }}"
+                        title="View district-wise breakdown"
+                        target="_blank"
+                        rel="noopener"
+                    >
                         <h3 class="prov-metric-value">{{ $metric->formatted_value }}</h3>
                         <span class="prov-metric-unit">{{ $metric->unit_label }}</span>
 
                         <h4 class="prov-metric-title">{{ $metric->metric_title }}</h4>
 
-                        @if ($metric->metric_description)
-                            <p class="prov-metric-description">{{ $metric->metric_description }}</p>
-                        @endif
+                        @php
+                            $metricDescription = $cleanMetricText($metric->metric_description);
+                        @endphp
+                        <p class="prov-metric-description">
+                            {{ $metricDescription ?: 'Reported KPI value for selected period.' }}
+                        </p>
 
                         @if ($metric->source)
                             <div class="prov-metric-source">
@@ -515,7 +605,10 @@
                                 Source: {{ $metric->source }}
                             </div>
                         @endif
-                    </div>
+                        <div class="position-absolute" style="right:14px; bottom:14px; color:#16a34a;">
+                            <i class="bi bi-arrow-right-circle-fill"></i>
+                        </div>
+                    </a>
                 @empty
                     <div class="prov-empty-state">
                         No metric cards are available under this category for the selected filters.

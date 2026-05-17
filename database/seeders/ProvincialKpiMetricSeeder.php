@@ -153,18 +153,74 @@ class ProvincialKpiMetricSeeder extends Seeder
 
             'Functional and Clean Water Filtration Plants' => [
                 [
-                    'value'       => 2573,
-                    'title'       => 'Filter Change Record',
-                    'description' => 'Regular change of filters and affixing dates at functional filtration plants.',
+                    'value'       => 5341,
+                    'title'       => 'Total Water Filtration Plants',
+                    'description' => 'Total number of water filtration plants in the province.',
                     'unit'        => 'count',
                     'source'      => 'District',
                 ],
                 [
-                    'value'       => 4332,
-                    'title'       => 'Functional Plants',
-                    'description' => 'Inspection of all water filtration plants to confirm functionality.',
+                    'value'       => 3997,
+                    'title'       => 'Inspected',
+                    'description' => 'Total plants inspected during the selected period.',
                     'unit'        => 'count',
                     'source'      => 'Field Teams',
+                ],
+                [
+                    'value'       => 3732,
+                    'title'       => 'Functional',
+                    'description' => 'Plants found functional during inspection.',
+                    'unit'        => 'count',
+                    'source'      => 'Field Teams',
+                ],
+                [
+                    'value'       => 265,
+                    'title'       => 'Non-Functional',
+                    'description' => 'Plants found non-functional during inspection.',
+                    'unit'        => 'count',
+                    'source'      => 'Field Teams',
+                ],
+                [
+                    'value'       => 1138,
+                    'title'       => 'Not Inspected',
+                    'description' => 'Plants not inspected during the selected period.',
+                    'unit'        => 'count',
+                    'source'      => 'District',
+                ],
+                [
+                    'value'       => 3100,
+                    'title'       => 'RO / UF Plants',
+                    'description' => 'RO/UF plants reported in the province.',
+                    'unit'        => 'count',
+                    'source'      => 'District',
+                ],
+                [
+                    'value'       => 300,
+                    'title'       => 'RO Filter Changed',
+                    'description' => 'RO filter change recorded during the selected period.',
+                    'unit'        => 'count',
+                    'source'      => 'District',
+                ],
+                [
+                    'value'       => 345,
+                    'title'       => 'RO Filter Unchanged',
+                    'description' => 'RO filter unchanged during the selected period.',
+                    'unit'        => 'count',
+                    'source'      => 'District',
+                ],
+                [
+                    'value'       => 3532,
+                    'title'       => 'Cleaned',
+                    'description' => 'Plants cleaned during the selected period.',
+                    'unit'        => 'count',
+                    'source'      => 'District',
+                ],
+                [
+                    'value'       => 465,
+                    'title'       => 'Un-cleaned',
+                    'description' => 'Plants found un-cleaned during the selected period.',
+                    'unit'        => 'count',
+                    'source'      => 'District',
                 ],
             ],
 
@@ -299,7 +355,54 @@ class ProvincialKpiMetricSeeder extends Seeder
             ],
         ];
 
+        $periods = ['last_week', 'current_week', 'last_four_weeks'];
+
         foreach ($categories as $categoryName => $metrics) {
+            // Ensure each KPI category has enough metric cards for a meaningful district-wise table (>= 5).
+            // This keeps the UI dense and avoids very small/empty-looking tables.
+            if (count($metrics) < 5) {
+                $fillers = [
+                    [
+                        'value'       => mt_rand(20, 180),
+                        'title'       => 'Field Visits',
+                        'description' => 'Field visits conducted by district teams for monitoring and follow-up.',
+                        'unit'        => 'visits',
+                        'source'      => 'District',
+                    ],
+                    [
+                        'value'       => mt_rand(20, 220),
+                        'title'       => 'Follow-up Checks',
+                        'description' => 'Follow-up checks completed after initial observations to ensure compliance.',
+                        'unit'        => 'checks',
+                        'source'      => 'District',
+                    ],
+                    [
+                        'value'       => mt_rand(10, 160),
+                        'title'       => 'Compliance Actions',
+                        'description' => 'Compliance actions taken (warnings, fines, closures, etc.) based on field findings.',
+                        'unit'        => 'actions',
+                        'source'      => 'District',
+                    ],
+                    [
+                        'value'       => mt_rand(10, 140),
+                        'title'       => 'Citizen Complaints Resolved',
+                        'description' => 'Citizen complaints resolved through field action and monitoring.',
+                        'unit'        => 'actions',
+                        'source'      => 'Citizen',
+                    ],
+                    [
+                        'value'       => mt_rand(20, 260),
+                        'title'       => 'Coverage Index',
+                        'description' => 'Coverage index showing breadth of field monitoring and reporting.',
+                        'unit'        => 'count',
+                        'source'      => 'System',
+                    ],
+                ];
+
+                $needed = 5 - count($metrics);
+                $metrics = array_merge($metrics, array_slice($fillers, 0, $needed));
+            }
+
             $category = KpiCategory::firstOrCreate(
                 ['name' => $categoryName],
                 [
@@ -309,24 +412,47 @@ class ProvincialKpiMetricSeeder extends Seeder
                 ]
             );
 
-            foreach ($metrics as $index => $metric) {
-                ProvincialKpiMetric::updateOrCreate(
-                    [
-                        'kpi_category_id' => $category->id,
-                        'period_type'     => 'last_week',
-                        'metric_title'    => $metric['title'],
-                    ],
-                    [
-                        'date_from'          => now()->subWeek()->startOfWeek()->toDateString(),
-                        'date_to'            => now()->subWeek()->endOfWeek()->toDateString(),
-                        'metric_description' => $metric['description'],
-                        'metric_value'       => $metric['value'],
-                        'metric_unit'        => $metric['unit'],
-                        'source'             => $metric['source'],
-                        'sort_order'         => $index + 1,
-                        'is_active'          => true,
-                    ]
-                );
+            foreach ($periods as $periodType) {
+                $rangeFrom = null;
+                $rangeTo = null;
+                $valueFactor = 1.0;
+
+                if ($periodType === 'current_week') {
+                    $rangeFrom = now()->startOfWeek()->toDateString();
+                    $rangeTo = now()->endOfWeek()->toDateString();
+                    $valueFactor = 0.92;
+                } elseif ($periodType === 'last_four_weeks') {
+                    $rangeFrom = now()->subWeeks(4)->startOfWeek()->toDateString();
+                    $rangeTo = now()->endOfWeek()->toDateString();
+                    $valueFactor = 3.6;
+                } else { // last_week
+                    $rangeFrom = now()->subWeek()->startOfWeek()->toDateString();
+                    $rangeTo = now()->subWeek()->endOfWeek()->toDateString();
+                    $valueFactor = 1.0;
+                }
+
+                foreach ($metrics as $index => $metric) {
+                    $baseValue = (float) ($metric['value'] ?? 0);
+                    $finalValue = round(max(0, $baseValue * $valueFactor), 2);
+
+                    ProvincialKpiMetric::updateOrCreate(
+                        [
+                            'kpi_category_id' => $category->id,
+                            'period_type'     => $periodType,
+                            'metric_title'    => $metric['title'],
+                        ],
+                        [
+                            'date_from'          => $rangeFrom,
+                            'date_to'            => $rangeTo,
+                            'metric_description' => $metric['description'] ?? null,
+                            'metric_value'       => $finalValue,
+                            'metric_unit'        => $metric['unit'] ?? null,
+                            'source'             => $metric['source'] ?? null,
+                            'sort_order'         => $index + 1,
+                            'is_active'          => true,
+                        ]
+                    );
+                }
             }
         }
     }

@@ -142,6 +142,13 @@
 
     {{-- KPI / Data Reports --}}
     <div class="nav-item">
+      <a href="{{ route('kpi.district-wise-kpi-score') }}" class="nav-link {{ request()->routeIs('kpi.district-wise-kpi-score') ? 'active' : '' }}" title="District Wise KPI Score Report">
+        <i class="bi bi-speedometer2"></i>
+        <span class="nav-text">District Wise KPI Score</span>
+      </a>
+    </div>
+
+    <div class="nav-item">
       <a href="{{ route('kpi.provincial-data') }}" class="nav-link {{ request()->routeIs('kpi.provincial-data') ? 'active' : '' }}" title="Provincial KPI Wise Data">
         <i class="bi bi-database"></i>
         <span class="nav-text">Provincial KPI Wise Data</span>
