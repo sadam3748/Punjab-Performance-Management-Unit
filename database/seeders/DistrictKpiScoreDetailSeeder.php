@@ -44,10 +44,40 @@ class DistrictKpiScoreDetailSeeder extends Seeder
                 DistrictKpiScoreDetail::where('district_kpi_score_id', $score->id)->delete();
                 DistrictKpiPenalty::where('district_kpi_score_id', $score->id)->delete();
 
+                if (! $score->is_reported) {
+                    $score->reported_score = 0;
+                    $score->verified_score = 0;
+                    $score->penalty_score = 0;
+                    $score->final_score = 0;
+                    $score->save();
+                    continue;
+                }
+
                 $reportedScore = 0.0;
 
+                $targetFinal = $this->targetFinalScore($score);
+
+                $yesNoWeight = (float) $parameters
+                    ->where('scoring_method', 'yes_no')
+                    ->sum('weightage');
+
+                $yesNoEarn = ($targetFinal >= 70) ? $yesNoWeight : (($targetFinal >= 50) ? ($yesNoWeight * 0.5) : 0);
+                $remainingTarget = max(0, $targetFinal - $yesNoEarn);
+
+                $percentWeight = (float) $parameters
+                    ->where('scoring_method', '!=', 'yes_no')
+                    ->sum('weightage');
+                $percentFactor = $percentWeight > 0 ? min(100, max(0, ($remainingTarget / $percentWeight) * 100)) : 0;
+
                 foreach ($parameters as $param) {
-                    $reportedValue = $this->buildReportedValue($score, $param->scoring_method, (float) ($param->target_value ?? 0));
+                    $reportedValue = $this->buildReportedValueForTarget(
+                        $score,
+                        (string) $param->scoring_method,
+                        (float) ($param->target_value ?? 0),
+                        (float) $param->weightage,
+                        $percentFactor,
+                        $yesNoEarn
+                    );
 
                     $calc = $this->calculator->calculateParameterScore(
                         $reportedValue,
@@ -89,41 +119,44 @@ class DistrictKpiScoreDetailSeeder extends Seeder
         });
     }
 
-    private function buildReportedValue(DistrictKpiScore $score, string $method, float $target): float
+    private function buildReportedValueForTarget(
+        DistrictKpiScore $score,
+        string $method,
+        float $target,
+        float $weightage,
+        float $percentFactor,
+        float $yesNoEarn
+    ): float
     {
-        $seed = $this->stableRandInt(
-            (int) $score->district_id,
-            (int) $score->kpi_category_id,
-            (int) sprintf('%u', crc32((string) $score->period_type)),
-            (int) sprintf('%u', crc32((string) ($score->week_no ?? $score->month ?? $score->quarter ?? $score->year))),
-            (int) sprintf('%u', crc32((string) $method))
-        );
-
-        $r = ($seed % 10000) / 10000; // 0..0.9999
-
         if ($method === 'yes_no') {
-            return ($seed % 7 === 0) ? 0 : 1;
-        }
-
-        if ($method === 'direct_score') {
-            // Direct score is already a score (0..weightage), we still store a value.
-            return round(40 + ($r * 60), 2);
-        }
-
-        if ($method === 'inverse_percentage') {
-            // Lower is better. Keep values around the target with some variation.
-            if ($target <= 0) {
-                return round(10 + ($r * 60), 2);
+            // Earn yes/no score for higher bands, partial for average band.
+            if ($yesNoEarn <= 0) {
+                return 0;
             }
-            return round(max(0, $target * (0.6 + ($r * 1.2))), 2);
+            if ($yesNoEarn < $weightage) {
+                // ~50% chance to keep some yes/no points
+                return ($this->stableRandInt((int) $score->id, 221) % 2 === 0) ? 1 : 0;
+            }
+            return 1;
         }
 
-        // percentage
         if ($target <= 0) {
             $target = 100;
         }
 
-        return round(max(0, $target * (0.55 + ($r * 0.6))), 2); // 55%..115%
+        // Percentage-like methods: keep values close to target factor with small deterministic variation.
+        $seed = $this->stableRandInt((int) $score->id, (int) sprintf('%u', crc32($method)), (int) $score->district_id, (int) $score->kpi_category_id);
+        $jitter = (($seed % 700) / 100) - 3.5; // -3.5 .. +3.49
+        $effectivePercent = min(100, max(0, $percentFactor + $jitter));
+
+        if ($method === 'inverse_percentage') {
+            // Lower is better: percentFactor represents achievement; convert to a value around target.
+            $ratio = max(0.05, 1 - ($effectivePercent / 100));
+            return round($target * $ratio, 2);
+        }
+
+        // percentage / direct_score fallback
+        return round($target * ($effectivePercent / 100), 2);
     }
 
     private function buildVerifiedScore(DistrictKpiScore $score, float $reportedScore): float
@@ -136,8 +169,9 @@ class DistrictKpiScoreDetailSeeder extends Seeder
 
     private function maybeSeedPenalty(DistrictKpiScore $score): void
     {
+        // Keep penalties rare for small demo dataset.
         $seed = $this->stableRandInt((int) $score->id, (int) $score->district_id, (int) $score->kpi_category_id, 991);
-        if (($seed % 5) !== 0) {
+        if (($seed % 9) !== 0) {
             return;
         }
 
@@ -181,5 +215,33 @@ class DistrictKpiScoreDetailSeeder extends Seeder
     {
         return (int) sprintf('%u', crc32(implode(':', $parts)));
     }
-}
 
+    private function targetFinalScore(DistrictKpiScore $score): float
+    {
+        $band = (int) ($score->district_id % 5);
+
+        $base = match ($band) {
+            0 => 93, // Excellent
+            1 => 82, // Good
+            2 => 60, // Average
+            3 => 42, // Critical
+            default => 0,
+        };
+
+        $seed = $this->stableRandInt((int) $score->district_id, (int) $score->kpi_category_id, (int) sprintf('%u', crc32((string) $score->week_no)));
+        $delta = (($seed % 900) / 100) - 4.5; // -4.5..+4.49
+
+        $target = $base + $delta;
+
+        // Keep within band ranges for cleaner distribution on UI.
+        $target = match ($band) {
+            0 => min(96, max(90, $target)),
+            1 => min(89, max(75, $target)),
+            2 => min(69, max(55, $target)),
+            3 => min(49, max(30, $target)),
+            default => 0,
+        };
+
+        return round($target, 2);
+    }
+}

@@ -5,7 +5,21 @@
 
 @push('styles')
 <style>
-    .sc-page-card{background:#fff;border:1px solid rgba(15,23,42,.08);border-radius:20px;box-shadow:0 16px 38px rgba(15,23,42,.07);padding:22px}.sc-header-note{font-size:13px;color:#64748b}.sc-filter-card{background:linear-gradient(135deg,#f8fafc,#ffffff);border:1px solid rgba(148,163,184,.28);border-radius:18px;padding:18px;margin-bottom:22px}.sc-filter-card .form-label{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:#475569;margin-bottom:7px}.sc-filter-card .form-select,.sc-filter-card .form-control{height:42px;border-radius:11px;border-color:#cbd5e1;font-size:13px;font-weight:600;color:#334155;box-shadow:none}.sc-filter-card .form-select:focus,.sc-filter-card .form-control:focus{border-color:#1b6b57;box-shadow:0 0 0 3px rgba(27,107,87,.13)}.sc-layout{display:grid;grid-template-columns:minmax(0,1.12fr) minmax(390px,.88fr);gap:22px;align-items:start}.sc-panel{background:#fff;border:1px solid rgba(15,23,42,.08);border-radius:18px;box-shadow:0 12px 28px rgba(15,23,42,.05);overflow:hidden}.sc-panel-header{padding:16px 18px;border-bottom:1px solid rgba(148,163,184,.22);background:linear-gradient(135deg,#f8fafc,#ffffff);display:flex;align-items:flex-start;justify-content:space-between;gap:14px}.sc-panel-title{font-size:15px;font-weight:900;color:#0f172a;margin:0;text-transform:uppercase;letter-spacing:.04em}.sc-panel-subtitle{font-size:12px;color:#64748b;margin-top:4px}.sc-table{width:100%;border-collapse:separate;border-spacing:0;margin:0}.sc-table thead th{background:#174d43;color:#fff;padding:12px 12px;font-size:11px;text-transform:uppercase;letter-spacing:.06em;font-weight:900;white-space:nowrap}.sc-table tbody td{padding:12px;border-bottom:1px solid rgba(148,163,184,.18);font-size:13px;font-weight:700;color:#0f172a;vertical-align:middle}.sc-table tbody tr:hover{background:#f8fafc}.sc-rank{width:62px;text-align:center}.sc-rank-badge{width:34px;height:34px;border-radius:12px;background:#ecfdf5;color:#166534;display:inline-flex;align-items:center;justify-content:center;font-weight:900}.sc-district-name{font-weight:900;color:#0f172a;text-transform:uppercase}.sc-muted{font-size:12px;color:#64748b;font-weight:600}.sc-grade-badge{display:inline-flex;align-items:center;justify-content:center;min-width:52px;height:30px;border-radius:999px;padding:0 10px;color:#fff;font-size:12px;font-weight:900}.grade-critical{background:#dc2626}.grade-average{background:#f59e0b;color:#111827}.grade-good{background:#2563eb}.grade-excellent{background:#16a34a}.sc-progress{height:8px;background:#e2e8f0;border-radius:999px;overflow:hidden;min-width:105px}.sc-progress span{display:block;height:100%;border-radius:999px}.bar-critical{background:#dc2626}.bar-average{background:#f59e0b}.bar-good{background:#2563eb}.bar-excellent{background:#16a34a}.sc-map-panel{position:sticky;top:88px}.sc-google-map-wrap{height:430px;border-radius:18px;overflow:hidden;border:1px solid rgba(15,23,42,.12);background:#e2e8f0;position:relative}.sc-google-map-wrap iframe{width:100%;height:100%;border:0;display:block}.sc-map-label{position:absolute;left:14px;top:14px;background:rgba(15,23,42,.82);color:#fff;border-radius:999px;padding:8px 12px;font-size:12px;font-weight:800;backdrop-filter:blur(6px)}.sc-map-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.sc-map-actions a{border:1px solid #cbd5e1;background:#fff;color:#0f766e;border-radius:999px;padding:8px 12px;font-size:12px;font-weight:800;text-decoration:none}.sc-map-actions a:hover{background:#ecfdf5;border-color:#99f6e4;color:#14532d}.sc-district-map-list{max-height:315px;overflow:auto;padding:14px}.sc-district-map-item{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid rgba(148,163,184,.18)}.sc-district-map-item:last-child{border-bottom:0}.sc-map-pin{width:12px;height:12px;border-radius:50%;box-shadow:0 0 0 4px rgba(15,23,42,.06);flex:0 0 auto}.pin-critical{background:#dc2626}.pin-average{background:#f59e0b}.pin-good{background:#2563eb}.pin-excellent{background:#16a34a}.sc-pagination-wrap{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:14px 18px;background:#f8fafc;border-top:1px solid rgba(148,163,184,.22)}.sc-pagination-wrap .pagination{margin:0;gap:5px;flex-wrap:wrap}.sc-pagination-wrap .page-link{border-radius:10px!important;min-width:36px;height:36px;display:inline-flex;align-items:center;justify-content:center;color:#0f766e;font-weight:800;border-color:#cbd5e1;box-shadow:none}.sc-pagination-wrap .page-item.active .page-link{background:#0f766e;border-color:#0f766e;color:#fff}.sc-empty{padding:28px;text-align:center;color:#64748b;font-weight:700;background:#f8fafc}.sc-legend{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px;color:#334155;font-size:12px;font-weight:800}.sc-legend span{display:inline-flex;align-items:center;gap:7px}.sc-legend i{width:11px;height:11px;border-radius:50%;display:inline-block}@media(max-width:1199px){.sc-layout{grid-template-columns:1fr}.sc-map-panel{position:relative;top:auto}.sc-google-map-wrap{height:390px}}@media(max-width:767px){.sc-page-card{padding:14px}.sc-panel-header{display:block}.sc-google-map-wrap{height:320px}.sc-table{min-width:760px}.sc-pagination-wrap{align-items:flex-start}.sc-pagination-wrap .page-link{min-width:34px;height:34px;font-size:12px}}
+    .sc-page-card{background:#fff;border:1px solid rgba(15,23,42,.08);border-radius:20px;box-shadow:0 16px 38px rgba(15,23,42,.07);padding:22px}.sc-header-note{font-size:13px;color:#64748b}.sc-filter-card{background:linear-gradient(135deg,#f8fafc,#ffffff);border:1px solid rgba(148,163,184,.28);border-radius:18px;padding:18px;margin-bottom:22px}.sc-filter-card .form-label{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:#475569;margin-bottom:7px}.sc-filter-card .form-select,.sc-filter-card .form-control{height:42px;border-radius:11px;border-color:#cbd5e1;font-size:13px;font-weight:600;color:#334155;box-shadow:none}.sc-filter-card .form-select:focus,.sc-filter-card .form-control:focus{border-color:#1b6b57;box-shadow:0 0 0 3px rgba(27,107,87,.13)}.sc-layout{display:grid;grid-template-columns:minmax(0,1.12fr) minmax(390px,.88fr);gap:22px;align-items:start}.sc-panel{background:#fff;border:1px solid rgba(15,23,42,.08);border-radius:18px;box-shadow:0 12px 28px rgba(15,23,42,.05);overflow:hidden}.sc-panel-header{padding:16px 18px;border-bottom:1px solid rgba(148,163,184,.22);background:linear-gradient(135deg,#f8fafc,#ffffff);display:flex;align-items:flex-start;justify-content:space-between;gap:14px}.sc-panel-title{font-size:15px;font-weight:900;color:#0f172a;margin:0;text-transform:uppercase;letter-spacing:.04em}.sc-panel-subtitle{font-size:12px;color:#64748b;margin-top:4px}.sc-table{width:100%;border-collapse:separate;border-spacing:0;margin:0}.sc-table thead th{background:#174d43;color:#fff;padding:12px 12px;font-size:11px;text-transform:uppercase;letter-spacing:.06em;font-weight:900;white-space:nowrap}.sc-table tbody td{padding:12px;border-bottom:1px solid rgba(148,163,184,.18);font-size:13px;font-weight:700;color:#0f172a;vertical-align:middle}.sc-table tbody tr:hover{background:#f8fafc}.sc-rank{width:62px;text-align:center}.sc-rank-badge{width:34px;height:34px;border-radius:12px;background:#ecfdf5;color:#166534;display:inline-flex;align-items:center;justify-content:center;font-weight:900}.sc-district-name{font-weight:900;color:#0f172a;text-transform:uppercase}.sc-muted{font-size:12px;color:#64748b;font-weight:600}.sc-grade-badge{display:inline-flex;align-items:center;justify-content:center;min-width:52px;height:30px;border-radius:999px;padding:0 10px;color:#fff;font-size:12px;font-weight:900}.grade-critical{background:#dc2626}.grade-average{background:#f59e0b;color:#111827}.grade-good{background:#2563eb}.grade-excellent{background:#16a34a}.sc-progress{height:8px;background:#e2e8f0;border-radius:999px;overflow:hidden;min-width:105px}.sc-progress span{display:block;height:100%;border-radius:999px}.bar-critical{background:#dc2626}.bar-average{background:#f59e0b}.bar-good{background:#2563eb}.bar-excellent{background:#16a34a}.sc-map-panel{position:sticky;top:88px}.sc-google-map-wrap{height:430px;border-radius:18px;overflow:hidden;border:1px solid rgba(15,23,42,.12);background:#e2e8f0;position:relative}.sc-google-map-wrap iframe{width:100%;height:100%;border:0;display:block}.sc-map-label{position:absolute;left:14px;top:14px;background:rgba(15,23,42,.82);color:#fff;border-radius:999px;padding:8px 12px;font-size:12px;font-weight:800;backdrop-filter:blur(6px)}.sc-map-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.sc-map-actions a{border:1px solid #cbd5e1;background:#fff;color:#0f766e;border-radius:999px;padding:8px 12px;font-size:12px;font-weight:800;text-decoration:none}.sc-map-actions a:hover{background:#ecfdf5;border-color:#99f6e4;color:#14532d}.sc-district-map-list{max-height:315px;overflow:auto;padding:14px}.sc-district-map-item{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid rgba(148,163,184,.18)}.sc-district-map-item:last-child{border-bottom:0}.sc-map-pin{width:12px;height:12px;border-radius:50%;box-shadow:0 0 0 4px rgba(15,23,42,.06);flex:0 0 auto}.pin-critical{background:#dc2626}.pin-average{background:#f59e0b}.pin-good{background:#2563eb}.pin-excellent{background:#16a34a}.sc-pagination-wrap{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:14px 18px;background:#f8fafc;border-top:1px solid rgba(148,163,184,.22)}.sc-pagination-wrap .pagination{margin:0;gap:5px;flex-wrap:wrap}.sc-pagination-wrap .page-link{border-radius:10px!important;min-width:36px;height:36px;display:inline-flex;align-items:center;justify-content:center;color:#0f766e;font-weight:800;border-color:#cbd5e1;box-shadow:none}.sc-pagination-wrap .page-item.active .page-link{background:#0f766e;border-color:#0f766e;color:#fff}.sc-empty{padding:28px;text-align:center;color:#64748b;font-weight:700;background:#f8fafc}.sc-legend{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px;color:#334155;font-size:12px;font-weight:800}.sc-legend span{display:inline-flex;align-items:center;gap:7px}.sc-legend i{width:11px;height:11px;border-radius:50%;display:inline-block}
+    .sc-perf-card{display:flex;align-items:center;gap:12px;border:1px solid rgba(148,163,184,.25);border-radius:16px;background:#fff;padding:12px 14px;box-shadow:0 10px 24px rgba(15,23,42,.04);transition:.15s ease;min-height:72px}
+    .sc-perf-card:hover{transform:translateY(-1px);border-color:rgba(15,118,110,.35);background:#f8fafc}
+    .sc-perf-card.active{border-color:#0f766e;box-shadow:0 12px 26px rgba(15,118,110,.14)}
+    .sc-perf-ico{width:36px;height:36px;border-radius:14px;display:inline-flex;align-items:center;justify-content:center;color:#fff;font-size:16px;flex:0 0 auto}
+    .sc-perf-ico.excellent{background:#16a34a}
+    .sc-perf-ico.good{background:#2563eb}
+    .sc-perf-ico.average{background:#f59e0b}
+    .sc-perf-ico.critical{background:#dc2626}
+    .sc-perf-ico.unreported{background:#64748b}
+    .sc-perf-title{font-size:12px;font-weight:900;text-transform:uppercase;letter-spacing:.06em;color:#334155;line-height:1.2}
+    .sc-perf-count{font-size:20px;font-weight:900;color:#0f172a;line-height:1.1}
+    .sc-perf-sub{font-size:12px;color:#64748b;font-weight:700;line-height:1.2}
+    @media(max-width:1199px){.sc-layout{grid-template-columns:1fr}.sc-map-panel{position:relative;top:auto}.sc-google-map-wrap{height:390px}}
+    @media(max-width:767px){.sc-page-card{padding:14px}.sc-panel-header{display:block}.sc-google-map-wrap{height:320px}.sc-table{min-width:760px}.sc-pagination-wrap{align-items:flex-start}.sc-pagination-wrap .page-link{min-width:34px;height:34px;font-size:12px}}
 </style>
 @endpush
 
@@ -14,6 +28,7 @@
     $filters = $filters ?? [];
     $selectedScope = $filters['scope'] ?? 'all';
     $selectedPeriod = $filters['period'] ?? 'weekly';
+    $selectedPerformance = $filters['performance'] ?? 'all';
     $selectedWeekRange = $filters['week_range'] ?? '';
     $selectedMonth = $filters['month'] ?? now()->format('m');
     $selectedYear = $filters['year'] ?? now()->format('Y');
@@ -31,6 +46,24 @@
     $mapQuery = 'Punjab Pakistan districts';
     $googleMapEmbedUrl = 'https://maps.google.com/maps?q=' . rawurlencode($mapQuery) . '&t=m&z=7&output=embed';
     $googleMapOpenUrl = 'https://www.google.com/maps/search/?api=1&query=' . rawurlencode($mapQuery);
+
+    $perfHref = function (string $key) use ($mainRoute, $selectedPerformance) {
+        $query = request()->query();
+        if ($selectedPerformance === $key) {
+            unset($query['performance']);
+        } else {
+            $query['performance'] = $key;
+        }
+        $query['page'] = 1;
+        return $mainRoute . (count($query) ? ('?' . http_build_query($query)) : '');
+    };
+
+    $perfCards = [
+        ['key'=>'excellent','title'=>'Excellent','range'=>'90-100','icon'=>'bi-trophy-fill','class'=>'excellent','count'=>(int)($summary['excellent_count'] ?? 0)],
+        ['key'=>'good','title'=>'Good','range'=>'70-89','icon'=>'bi-check-circle-fill','class'=>'good','count'=>(int)($summary['good_count'] ?? 0)],
+        ['key'=>'average','title'=>'Average','range'=>'50-69','icon'=>'bi-exclamation-circle-fill','class'=>'average','count'=>(int)($summary['average_count'] ?? 0)],
+        ['key'=>'critical','title'=>'Critical','range'=>'< 50','icon'=>'bi-x-octagon-fill','class'=>'critical','count'=>(int)($summary['critical_count'] ?? 0)],
+    ];
 @endphp
 
 <div class="page-title-bar mb-4">
@@ -58,6 +91,23 @@
                 <div class="col-md-6 col-xl-3 d-flex gap-2"><button type="submit" class="btn btn-gov btn-gov-primary flex-fill"><i class="bi bi-search"></i> Apply</button><a href="{{ $mainRoute }}" class="btn btn-gov btn-gov-outline"><i class="bi bi-x-circle"></i> Reset</a></div>
             </div>
         </form>
+    </div>
+
+    <div class="mb-3">
+        <div class="row g-2">
+            @foreach($perfCards as $card)
+                <div class="col-6 col-md-3 col-xl-3">
+                    <a href="{{ $perfHref($card['key']) }}" class="sc-perf-card {{ $selectedPerformance===$card['key'] ? 'active' : '' }} text-decoration-none">
+                        <span class="sc-perf-ico {{ $card['class'] }}"><i class="bi {{ $card['icon'] }}"></i></span>
+                        <span class="d-block">
+                            <span class="sc-perf-title d-block">{{ $card['title'] }}</span>
+                            <span class="sc-perf-count d-block">{{ number_format($card['count']) }}</span>
+                            <span class="sc-perf-sub d-block">{{ $card['range'] }}</span>
+                        </span>
+                    </a>
+                </div>
+            @endforeach
+        </div>
     </div>
 
     <div class="sc-layout">
@@ -99,7 +149,13 @@
                                 @php $score=(float)($row->score_percentage ?? 0); $meta=$scoreMeta($score); $districtName=optional($row->district ?? null)->name ?? 'N/A'; $rank=$pageOffset+$loop->iteration; @endphp
                                 <tr>
                                     <td class="sc-rank"><span class="sc-rank-badge">{{ $rank }}</span></td>
-                                    <td><div class="sc-district-name">{{ $districtName }}</div><div class="sc-muted">Punjab District</div></td>
+                                    <td>
+                                        <a class="sc-district-name text-decoration-none" target="_blank" href="{{ route('scorecard.district-detail', array_merge(['district' => $row->district_id], request()->query())) }}">
+                                            {{ $districtName }}
+                                            <i class="bi bi-box-arrow-up-right ms-1" style="font-size:12px"></i>
+                                        </a>
+                                        <div class="sc-muted">Punjab District</div>
+                                    </td>
                                     <td><span class="sc-grade-badge grade-{{ $meta['class'] }}">{{ $meta['grade'] }}</span> <strong>{{ number_format($score,2) }}%</strong></td>
                                     <td><div class="d-flex align-items-center gap-2"><div class="sc-progress"><span class="bar-{{ $meta['class'] }}" style="width: {{ min(100, max(0, $score)) }}%"></span></div><strong>{{ $meta['label'] }}</strong></div></td>
                                 </tr>

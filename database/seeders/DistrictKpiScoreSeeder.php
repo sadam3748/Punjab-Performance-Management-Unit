@@ -20,38 +20,62 @@ class DistrictKpiScoreSeeder extends Seeder
         $categories = KpiCategory::query()
             ->where('is_active', true)
             ->orderBy('id')
+            ->limit(15)
             ->get(['id', 'name']);
 
         $now = now();
-        $periods = array_merge(
-            $this->weeklyPeriods($now, 4),
-            $this->monthlyPeriods($now),
-            $this->quarterlyPeriods($now),
-            $this->yearlyPeriods($now)
-        );
-
-        $calculationTypes = ['general', 'sixty_forty'];
+        // Keep seed data small: only latest week + previous two weeks (detail page needs 3).
+        $periods = $this->weeklyPeriods($now, 3);
 
         foreach ($districts as $district) {
             foreach ($categories as $category) {
                 foreach ($periods as $period) {
-                    foreach ($calculationTypes as $calcType) {
-                        // Intentionally keep a few missing rows to simulate "Unreported"
-                        $skipKey = $this->stableRandInt($district->id, $category->id, crc32($period['period_key']), crc32($calcType)) % 23;
-                        if ($skipKey === 0) {
-                            continue;
-                        }
+                    $calcType = 'general';
 
+                    // Unreported demo: for some districts, mark a few KPIs as not reported for the latest week.
+                    $isLatestWeek = ($period['week_no'] ?? null) === ($periods[0]['week_no'] ?? null);
+                    $band = $district->id % 5; // deterministic distribution
+                    $shouldBeUnreported = $isLatestWeek && $band === 4 && (($category->id + $district->id) % 2 === 0);
+
+                    DistrictKpiScore::updateOrCreate(
+                        [
+                            'district_id'      => $district->id,
+                            'kpi_category_id'  => $category->id,
+                            'period_type'      => $period['period_type'],
+                            'week_no'          => $period['week_no'],
+                            'month'            => null,
+                            'quarter'          => null,
+                            'year'             => $period['year'],
+                            'calculation_type' => $calcType,
+                        ],
+                        [
+                            'division_id'       => $district->division_id,
+                            'date_from'         => $period['date_from'],
+                            'date_to'           => $period['date_to'],
+                            'reported_score'    => 0,
+                            'verified_score'    => 0,
+                            'penalty_score'     => 0,
+                            'final_score'       => 0,
+                            'grade'             => null,
+                            'performance_label' => null,
+                            'is_reported'       => $shouldBeUnreported ? false : true,
+                            'is_active'         => true,
+                        ]
+                    );
+
+                    // Add a small sample of sixty_forty rows (not for every record).
+                    $addSixtyForty = $isLatestWeek && ($district->id % 7 === 0) && (($category->id % 3) === 0);
+                    if ($addSixtyForty) {
                         DistrictKpiScore::updateOrCreate(
                             [
                                 'district_id'      => $district->id,
                                 'kpi_category_id'  => $category->id,
                                 'period_type'      => $period['period_type'],
                                 'week_no'          => $period['week_no'],
-                                'month'            => $period['month'],
-                                'quarter'          => $period['quarter'],
+                                'month'            => null,
+                                'quarter'          => null,
                                 'year'             => $period['year'],
-                                'calculation_type' => $calcType,
+                                'calculation_type' => 'sixty_forty',
                             ],
                             [
                                 'division_id'       => $district->division_id,
@@ -63,7 +87,7 @@ class DistrictKpiScoreSeeder extends Seeder
                                 'final_score'       => 0,
                                 'grade'             => null,
                                 'performance_label' => null,
-                                'is_reported'       => true,
+                                'is_reported'       => $shouldBeUnreported ? false : true,
                                 'is_active'         => true,
                             ]
                         );
@@ -102,66 +126,4 @@ class DistrictKpiScoreSeeder extends Seeder
 
         return $periods;
     }
-
-    private function monthlyPeriods(Carbon $now): array
-    {
-        $periods = [];
-        foreach ([0, 1] as $back) {
-            $start = $now->copy()->subMonths($back)->startOfMonth();
-            $end = $start->copy()->endOfMonth();
-
-            $periods[] = [
-                'period_key' => 'monthly:' . $start->format('Y-m'),
-                'period_type' => 'monthly',
-                'week_no' => null,
-                'month' => (int) $start->month,
-                'quarter' => null,
-                'year' => (int) $start->year,
-                'date_from' => $start->toDateString(),
-                'date_to' => $end->toDateString(),
-            ];
-        }
-
-        return $periods;
-    }
-
-    private function quarterlyPeriods(Carbon $now): array
-    {
-        $start = $now->copy()->firstOfQuarter()->startOfDay();
-        $end = $now->copy()->lastOfQuarter()->endOfDay();
-
-        return [[
-            'period_key' => 'quarterly:' . $now->year . '-Q' . $now->quarter,
-            'period_type' => 'quarterly',
-            'week_no' => null,
-            'month' => null,
-            'quarter' => (int) $now->quarter,
-            'year' => (int) $now->year,
-            'date_from' => $start->toDateString(),
-            'date_to' => $end->toDateString(),
-        ]];
-    }
-
-    private function yearlyPeriods(Carbon $now): array
-    {
-        $start = $now->copy()->startOfYear();
-        $end = $now->copy()->endOfYear();
-
-        return [[
-            'period_key' => 'yearly:' . $now->year,
-            'period_type' => 'yearly',
-            'week_no' => null,
-            'month' => null,
-            'quarter' => null,
-            'year' => (int) $now->year,
-            'date_from' => $start->toDateString(),
-            'date_to' => $end->toDateString(),
-        ]];
-    }
-
-    private function stableRandInt(int ...$parts): int
-    {
-        return (int) sprintf('%u', crc32(implode(':', $parts)));
-    }
 }
-

@@ -62,6 +62,9 @@ Route::prefix('portal')->middleware('auth')->group(function () {
     Route::get('/scorecard/tier-wise', [ScorecardController::class, 'tierWise'])
         ->name('scorecard.tier');
 
+    Route::get('/scorecard/district/{district}', [ScorecardController::class, 'districtDetail'])
+        ->name('scorecard.district-detail');
+
 /*
 |--------------------------------------------------------------------------
 | KPI Category Management

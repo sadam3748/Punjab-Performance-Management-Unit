@@ -1,6 +1,7 @@
 <?php
 namespace App\Http\Controllers;
 
+use App\Models\District;
 use App\Services\ScorecardService;
 use Illuminate\Http\Request;
 
@@ -108,6 +109,38 @@ class ScorecardController extends Controller
             ),
 
             'filters'       => $filters,
+        ]);
+    }
+
+    public function districtDetail(Request $request, District $district)
+    {
+        $filters = $this->scorecardService->normalizeFilters(
+            $request->only([
+                'scope',
+                'period',
+                'week_range',
+                'month',
+                'year',
+                'area_type',
+                'division_id',
+                'district_id',
+                'tehsil_id',
+                'kpi_category_id',
+                'tier',
+                'date_from',
+                'date_to',
+                'performance',
+                'per_page',
+                'calculation_type',
+            ])
+        );
+
+        $detail = $this->scorecardService->getDistrictScorecardDetail($district, $filters);
+
+        return view('scorecard.district-detail', [
+            'district' => $district,
+            'filters' => $filters,
+            ...$detail,
         ]);
     }
 }

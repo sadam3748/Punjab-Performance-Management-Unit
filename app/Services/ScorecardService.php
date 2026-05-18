@@ -86,6 +86,10 @@ class ScorecardService
         if ($filters['period_type'] === 'weekly') {
             $filters['week_no'] = $filters['week_no'] ?? null;
 
+            if (! $filters['week_no'] && ! empty($filters['week_range'])) {
+                $filters['week_no'] = $this->weekNoFromRangeLabel((string) $filters['week_range'], (int) $filters['year']);
+            }
+
             if (! $filters['week_no']) {
                 $week = (int) now()->isoWeek();
                 $filters['week_no'] = sprintf('%d%02d', (int) now()->year, $week);
@@ -101,6 +105,26 @@ class ScorecardService
         }
 
         return $filters;
+    }
+
+    private function weekNoFromRangeLabel(string $label, int $year): ?string
+    {
+        // Expected label format: "07 May - 13 May" (from getWeekRanges()).
+        $parts = preg_split('/\s*-\s*/', trim($label));
+        if (! $parts || count($parts) < 1) {
+            return null;
+        }
+
+        try {
+            $start = Carbon::createFromFormat('d M Y', trim($parts[0]) . ' ' . $year)->startOfDay();
+        } catch (\Throwable) {
+            return null;
+        }
+
+        $isoYear = (int) $start->isoFormat('GGGG');
+        $isoWeek = (int) $start->isoWeek();
+
+        return sprintf('%d%02d', $isoYear, $isoWeek);
     }
 
     private function applyDistrictFilters($query, array $filters)
@@ -150,7 +174,7 @@ class ScorecardService
     |--------------------------------------------------------------------------
     | Applies on a numeric score expression/column.
     */
-    private function applyPerformanceFilter($query, array $filters, string $scoreExpression = '0')
+    private function applyPerformanceFilter($query, array $filters, string $scoreExpression = '0', ?string $unreportedExpression = null)
     {
         $performance = $filters['performance'] ?? 'all';
 
@@ -158,11 +182,14 @@ class ScorecardService
             return $query;
         }
 
+        $reportedExpr = $unreportedExpression ? "NOT ({$unreportedExpression})" : null;
+
         return match ($performance) {
-            'excellent' => $query->whereRaw("{$scoreExpression} >= 90"),
-            'good' => $query->whereRaw("{$scoreExpression} >= 70 AND {$scoreExpression} < 90"),
-            'average' => $query->whereRaw("{$scoreExpression} >= 50 AND {$scoreExpression} < 70"),
-            'critical', 'bad' => $query->whereRaw("{$scoreExpression} < 50"),
+            'excellent' => $query->whereRaw("{$scoreExpression} >= 90" . ($reportedExpr ? " AND {$reportedExpr}" : '')),
+            'good' => $query->whereRaw("{$scoreExpression} >= 70 AND {$scoreExpression} < 90" . ($reportedExpr ? " AND {$reportedExpr}" : '')),
+            'average' => $query->whereRaw("{$scoreExpression} >= 50 AND {$scoreExpression} < 70" . ($reportedExpr ? " AND {$reportedExpr}" : '')),
+            'critical', 'bad' => $query->whereRaw("{$scoreExpression} < 50" . ($reportedExpr ? " AND {$reportedExpr}" : '')),
+            'unreported' => $unreportedExpression ? $query->whereRaw("{$unreportedExpression}") : $query->whereRaw("{$scoreExpression} = 0"),
             default => $query,
         };
     }
@@ -187,6 +214,7 @@ class ScorecardService
         $scoreQuery = $this->applyScoreFilters($scoreQuery, $filters);
 
         $reportedDistrictIds = (clone $scoreQuery)
+            ->where('is_reported', true)
             ->select('district_id')
             ->distinct()
             ->pluck('district_id')
@@ -200,6 +228,51 @@ class ScorecardService
         $topRow = (clone $scoreQuery)->orderByDesc('final_score')->with('district:id,name')->first();
         $lowRow = (clone $scoreQuery)->orderBy('final_score')->with('district:id,name')->first();
 
+        // Performance distribution for cards (ignore performance filter; use same period/KPI/tier scope).
+        $scoreAgg = (clone $scoreQuery)
+            ->select([
+                'district_id',
+                DB::raw("AVG(CASE WHEN is_reported = true THEN final_score ELSE NULL END) as score_percentage"),
+                DB::raw('COUNT(*) as total_kpis'),
+                DB::raw("SUM(CASE WHEN is_reported = true THEN 1 ELSE 0 END) as reported_kpis"),
+            ])
+            ->groupBy('district_id');
+
+        $distRows = (clone $districtsQuery)
+            ->leftJoinSub($scoreAgg, 'score_agg', fn ($j) => $j->on('districts.id', '=', 'score_agg.district_id'))
+            ->get([
+                'districts.id',
+                DB::raw('COALESCE(score_agg.total_kpis, 0) as total_kpis'),
+                DB::raw('COALESCE(score_agg.reported_kpis, 0) as reported_kpis'),
+                DB::raw('COALESCE(score_agg.score_percentage, 0) as score_percentage'),
+            ]);
+
+        $excellentCount = 0;
+        $goodCount = 0;
+        $averageCount = 0;
+        $criticalCount = 0;
+        $unreportedBandCount = 0;
+
+        foreach ($distRows as $r) {
+            $reported = ((int) ($r->reported_kpis ?? 0)) > 0;
+            $score = (float) ($r->score_percentage ?? 0);
+
+            if (! $reported) {
+                $unreportedBandCount++;
+                continue;
+            }
+
+            if ($score >= 90) {
+                $excellentCount++;
+            } elseif ($score >= 70) {
+                $goodCount++;
+            } elseif ($score >= 50) {
+                $averageCount++;
+            } else {
+                $criticalCount++;
+            }
+        }
+
         return [
             'total_districts'     => $totalDistricts,
             'reported_districts'  => $reportedCount,
@@ -209,6 +282,11 @@ class ScorecardService
             'top_score'           => $topRow?->final_score,
             'low_district'        => $lowRow?->district?->name,
             'low_score'           => $lowRow?->final_score,
+            'excellent_count'     => $excellentCount,
+            'good_count'          => $goodCount,
+            'average_count'       => $averageCount,
+            'critical_count'      => $criticalCount,
+            'unreported_count'    => $unreportedBandCount,
         ];
     }
 
@@ -240,7 +318,7 @@ class ScorecardService
                 'district_id',
                 DB::raw('COUNT(*) as total_kpis'),
                 DB::raw("SUM(CASE WHEN is_reported = true THEN 1 ELSE 0 END) as reported_kpis"),
-                DB::raw('AVG(final_score) as score_percentage'),
+                DB::raw("AVG(CASE WHEN is_reported = true THEN final_score ELSE NULL END) as score_percentage"),
             ])
             ->groupBy('district_id');
 
@@ -255,7 +333,12 @@ class ScorecardService
             DB::raw('COALESCE(score_agg.score_percentage, 0) as score_percentage'),
         ]);
 
-        $districtsQuery = $this->applyPerformanceFilter($districtsQuery, $filters, 'COALESCE(score_agg.score_percentage, 0)');
+        $districtsQuery = $this->applyPerformanceFilter(
+            $districtsQuery,
+            $filters,
+            'COALESCE(score_agg.score_percentage, 0)',
+            'COALESCE(score_agg.reported_kpis, 0) = 0'
+        );
 
         $paginator = $districtsQuery
             ->orderByDesc('score_percentage')
@@ -400,14 +483,66 @@ class ScorecardService
             $scoreQuery->where('district_id', $filters['district_id']);
         }
 
-        $reportedDistricts = (clone $scoreQuery)->distinct('district_id')->count('district_id');
+        $reportedDistricts = (clone $scoreQuery)
+            ->where('is_reported', true)
+            ->distinct('district_id')
+            ->count('district_id');
         $avgScore = (float) ((clone $scoreQuery)->avg('final_score') ?? 0);
+
+        $scoreAgg = (clone $scoreQuery)
+            ->select([
+                'district_id',
+                DB::raw("AVG(CASE WHEN is_reported = true THEN final_score ELSE NULL END) as score_percentage"),
+                DB::raw('COUNT(*) as total_kpis'),
+                DB::raw("SUM(CASE WHEN is_reported = true THEN 1 ELSE 0 END) as reported_kpis"),
+            ])
+            ->groupBy('district_id');
+
+        $distRows = (clone $districtCountQuery)
+            ->leftJoinSub($scoreAgg, 'score_agg', fn ($j) => $j->on('districts.id', '=', 'score_agg.district_id'))
+            ->get([
+                'districts.id',
+                DB::raw('COALESCE(score_agg.total_kpis, 0) as total_kpis'),
+                DB::raw('COALESCE(score_agg.reported_kpis, 0) as reported_kpis'),
+                DB::raw('COALESCE(score_agg.score_percentage, 0) as score_percentage'),
+            ]);
+
+        $excellentCount = 0;
+        $goodCount = 0;
+        $averageCount = 0;
+        $criticalCount = 0;
+        $unreportedBandCount = 0;
+
+        foreach ($distRows as $r) {
+            $reported = ((int) ($r->reported_kpis ?? 0)) > 0;
+            $score = (float) ($r->score_percentage ?? 0);
+
+            if (! $reported) {
+                $unreportedBandCount++;
+                continue;
+            }
+
+            if ($score >= 90) {
+                $excellentCount++;
+            } elseif ($score >= 70) {
+                $goodCount++;
+            } elseif ($score >= 50) {
+                $averageCount++;
+            } else {
+                $criticalCount++;
+            }
+        }
 
         return [
             'selected_tier'      => $filters['tier'] ?? 'All Tiers',
             'district_count'     => $districtCount,
             'reported_districts' => $reportedDistricts,
             'average_score'      => round($avgScore, 2),
+            'excellent_count'    => $excellentCount,
+            'good_count'         => $goodCount,
+            'average_count'      => $averageCount,
+            'critical_count'     => $criticalCount,
+            'unreported_count'   => $unreportedBandCount,
         ];
     }
 
@@ -420,6 +555,259 @@ class ScorecardService
     {
         // Tier-wise list uses same ranking query; tier filter is applied by controller.
         return $this->getDistrictRanking($filters);
+    }
+
+    public function getDistrictScorecardDetail(District $district, array $filters): array
+    {
+        $filters = $this->normalizeFilters($filters);
+
+        $calculationType = $filters['calculation_type'] ?? 'general';
+
+        $detailPerPage = (int) (request('detail_per_page', 10));
+        if (! in_array($detailPerPage, [10, 20, 25, 50], true)) {
+            $detailPerPage = 10;
+        }
+
+        // Determine the 3 week buckets (previous_2, previous_1, current) for weekly.
+        $currentWeekNo = $filters['week_no'] ?? null;
+        if (! $currentWeekNo) {
+            $currentWeekNo = DistrictKpiScore::query()
+                ->where('district_id', $district->id)
+                ->where('period_type', 'weekly')
+                ->where('calculation_type', $calculationType)
+                ->where('is_active', true)
+                ->max('week_no');
+        }
+
+        $weekNos = $this->getWeeklyWindow($currentWeekNo);
+
+        $weekHeaders = collect($weekNos)->map(function ($weekNo, $key) {
+            $label = $weekNo ?: '—';
+            if ($weekNo && strlen($weekNo) === 6) {
+                $year = (int) substr($weekNo, 0, 4);
+                $week = (int) substr($weekNo, 4, 2);
+                $start = Carbon::now()->setISODate($year, $week)->startOfWeek(Carbon::MONDAY);
+                $end = $start->copy()->endOfWeek(Carbon::SUNDAY);
+                $label = $start->format('d M, Y') . ' - ' . $end->format('d M, Y');
+            }
+            return ['key' => $key, 'label' => $label, 'week_no' => $weekNo];
+        })->values()->all();
+
+        $periodLabel = ($weekHeaders[2]['label'] ?? '—');
+
+        // KPI categories to display (limit to those seeded/active).
+        $kpiCategories = KpiCategory::query()
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->limit(20)
+            ->get(['id', 'name']);
+
+        $selectedKpiCategory = null;
+        if (! empty($filters['kpi_category_id'])) {
+            $selectedKpiCategory = $kpiCategories->firstWhere('id', (int) $filters['kpi_category_id']);
+            $kpiCategories = $selectedKpiCategory ? collect([$selectedKpiCategory]) : $kpiCategories;
+        }
+
+        $displayWeights = $this->getKpiDisplayWeightages($kpiCategories);
+
+        $rows = [];
+        $totals = [
+            'weightage' => 0.0,
+            'previous_2' => 0.0,
+            'previous_1' => 0.0,
+            'current' => 0.0,
+        ];
+        $covered = [
+            'previous_2' => 0.0,
+            'previous_1' => 0.0,
+            'current' => 0.0,
+        ];
+
+        foreach ($kpiCategories as $cat) {
+            $weight = (float) ($displayWeights[$cat->id] ?? 0);
+
+            $scoresByWeek = DistrictKpiScore::query()
+                ->where('district_id', $district->id)
+                ->where('kpi_category_id', $cat->id)
+                ->where('period_type', 'weekly')
+                ->where('calculation_type', $calculationType)
+                ->where('is_active', true)
+                ->whereIn('week_no', array_values(array_filter($weekNos)))
+                ->get(['week_no', 'final_score', 'is_reported'])
+                ->keyBy('week_no');
+
+            $cell = function (?string $weekNo) use ($scoresByWeek, $weight): array {
+                if (! $weekNo) {
+                    return ['final_score' => null, 'weighted_score' => null];
+                }
+                $row = $scoresByWeek->get($weekNo);
+                if (! $row || ! $row->is_reported) {
+                    return ['final_score' => null, 'weighted_score' => null];
+                }
+                $final = (float) $row->final_score;
+                return [
+                    'final_score' => $final,
+                    'weighted_score' => round(($final / 100) * $weight, 2),
+                ];
+            };
+
+            $p2 = $cell($weekNos['previous_2']);
+            $p1 = $cell($weekNos['previous_1']);
+            $cur = $cell($weekNos['current']);
+
+            $rows[] = [
+                'kpi_category_id' => $cat->id,
+                'kpi_name' => $cat->name,
+                'weightage' => round($weight, 2),
+                'previous_2' => $p2,
+                'previous_1' => $p1,
+                'current' => $cur,
+            ];
+
+            $totals['weightage'] += $weight;
+            $totals['previous_2'] += (float) ($p2['weighted_score'] ?? 0);
+            $totals['previous_1'] += (float) ($p1['weighted_score'] ?? 0);
+            $totals['current'] += (float) ($cur['weighted_score'] ?? 0);
+
+            if (! empty($p2['final_score'])) {
+                $covered['previous_2'] += $weight;
+            }
+            if (! empty($p1['final_score'])) {
+                $covered['previous_1'] += $weight;
+            }
+            if (! empty($cur['final_score'])) {
+                $covered['current'] += $weight;
+            }
+        }
+
+        $rowsCollection = collect($rows);
+        $currentPage = max(1, (int) request('page', 1));
+        $pagedItems = $rowsCollection->slice(($currentPage - 1) * $detailPerPage, $detailPerPage)->values();
+
+        $rowsPaginator = new \Illuminate\Pagination\LengthAwarePaginator(
+            $pagedItems,
+            $rowsCollection->count(),
+            $detailPerPage,
+            $currentPage,
+            [
+                'path' => request()->url(),
+                'query' => request()->query(),
+            ]
+        );
+
+        // Totals shown on detail should match main scorecard behavior:
+        // exclude missing/unreported KPIs from denominator (weight covered).
+        $scaled = [
+            'previous_2' => $covered['previous_2'] > 0 ? (($totals['previous_2'] / $covered['previous_2']) * 100) : 0,
+            'previous_1' => $covered['previous_1'] > 0 ? (($totals['previous_1'] / $covered['previous_1']) * 100) : 0,
+            'current' => $covered['current'] > 0 ? (($totals['current'] / $covered['current']) * 100) : 0,
+        ];
+
+        $totals = [
+            'weightage' => 100.0,
+            'previous_2' => round($scaled['previous_2'], 2),
+            'previous_1' => round($scaled['previous_1'], 2),
+            'current' => round($scaled['current'], 2),
+            'covered_weight_previous_2' => round($covered['previous_2'], 2),
+            'covered_weight_previous_1' => round($covered['previous_1'], 2),
+            'covered_weight_current' => round($covered['current'], 2),
+        ];
+
+        // Rank and top summary: use current-week overall score_percentage among active districts.
+        $rank = $this->getDistrictRankForWeek($district, $filters, $weekNos['current']);
+
+        $summary = [
+            'rank' => $rank,
+            'score' => $totals['current'],
+            'tier' => $district->tier ?? null,
+            'reported_kpis' => collect($rows)->filter(fn ($r) => ! empty($r['current']['final_score']))->count(),
+            'total_kpis' => count($rows),
+            'calculation_type' => $calculationType,
+        ];
+
+        return [
+            'periodLabel' => $periodLabel,
+            'summary' => $summary,
+            'rows' => $rowsPaginator,
+            'totals' => $totals,
+            'weekHeaders' => $weekHeaders,
+            'kpiCategories' => $kpiCategories,
+            'selectedKpiCategory' => $selectedKpiCategory,
+            'calculationType' => $calculationType,
+            'detailPerPage' => $detailPerPage,
+        ];
+    }
+
+    private function getWeeklyWindow(?string $currentWeekNo): array
+    {
+        if (! $currentWeekNo || strlen($currentWeekNo) !== 6) {
+            return ['previous_2' => null, 'previous_1' => null, 'current' => $currentWeekNo];
+        }
+
+        $year = (int) substr($currentWeekNo, 0, 4);
+        $week = (int) substr($currentWeekNo, 4, 2);
+        $current = Carbon::now()->setISODate($year, $week)->startOfWeek(Carbon::MONDAY);
+        $p1 = $current->copy()->subWeek();
+        $p2 = $current->copy()->subWeeks(2);
+
+        $make = fn (Carbon $dt) => sprintf('%d%02d', (int) $dt->isoFormat('GGGG'), (int) $dt->isoWeek());
+
+        return [
+            'previous_2' => $make($p2),
+            'previous_1' => $make($p1),
+            'current' => $currentWeekNo,
+        ];
+    }
+
+    private function getKpiDisplayWeightages($kpiCategories): array
+    {
+        $catIds = $kpiCategories->pluck('id')->all();
+        if (! $catIds) {
+            return [];
+        }
+
+        $raw = DB::table('kpi_scoring_parameters')
+            ->select('kpi_category_id', DB::raw('SUM(weightage) as w'))
+            ->whereIn('kpi_category_id', $catIds)
+            ->where('is_active', true)
+            ->groupBy('kpi_category_id')
+            ->pluck('w', 'kpi_category_id')
+            ->map(fn ($v) => (float) $v)
+            ->all();
+
+        $total = array_sum($raw);
+        if ($total <= 0) {
+            // fallback equal distribution
+            $equal = 100 / max(1, count($catIds));
+            return collect($catIds)->mapWithKeys(fn ($id) => [$id => round($equal, 2)])->all();
+        }
+
+        return collect($catIds)->mapWithKeys(function ($id) use ($raw, $total) {
+            $w = (float) ($raw[$id] ?? 0);
+            return [$id => round(($w / $total) * 100, 2)];
+        })->all();
+    }
+
+    private function getDistrictRankForWeek(District $district, array $filters, ?string $weekNo): ?int
+    {
+        if (! $weekNo) {
+            return null;
+        }
+
+        $rankFilters = $filters;
+        $rankFilters['period_type'] = 'weekly';
+        $rankFilters['week_no'] = $weekNo;
+
+        $ranking = $this->getDistrictRanking($rankFilters);
+        $items = method_exists($ranking, 'getCollection') ? $ranking->getCollection() : collect();
+
+        foreach ($items as $i => $row) {
+            if ((int) ($row->district_id ?? 0) === (int) $district->id) {
+                return (int) (($ranking->firstItem() ?? 1) + $i);
+            }
+        }
+
+        return null;
     }
 
     /*
