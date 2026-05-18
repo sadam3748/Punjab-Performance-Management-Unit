@@ -42,4 +42,14 @@ class KpiCategory extends Model
     {
         return $this->hasMany(DistrictKpiMetricValue::class, 'kpi_category_id');
     }
+
+    public function scoringParameters(): HasMany
+    {
+        return $this->hasMany(KpiScoringParameter::class, 'kpi_category_id');
+    }
+
+    public function districtKpiScores(): HasMany
+    {
+        return $this->hasMany(DistrictKpiScore::class, 'kpi_category_id');
+    }
 }

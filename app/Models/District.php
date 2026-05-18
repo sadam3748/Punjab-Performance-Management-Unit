@@ -58,4 +58,9 @@ class District extends Model
     {
         return $this->hasMany(DistrictKpiMetricValue::class);
     }
+
+    public function districtKpiScores()
+    {
+        return $this->hasMany(DistrictKpiScore::class);
+    }
 }

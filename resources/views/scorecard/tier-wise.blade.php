@@ -1,4 +1,4 @@
-@extends('layouts.app')
+﻿@extends('layouts.app')
 
 @section('title', 'Chief Minister Governance Scorecard Tier Wise | PPMF Portal')
 @section('page_title', 'Chief Minister Governance Scorecard Tier Wise')
