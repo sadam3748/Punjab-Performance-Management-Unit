@@ -71,7 +71,14 @@
 <div class="page-title-bar mb-4">
     <div>
         <h2 class="page-title mb-1">Division {{ strtoupper($divisionName) }} Scorecard @if($periodHeadingLabel) ({{ $periodHeadingLabel }}) @endif</h2>
-        <p class="page-subtitle mb-0">Weekly Performance Comparison @if($currentWeekLabel)<span class="text-muted">· Current: {{ $currentWeekLabel }}</span>@endif</p>
+        <p class="page-subtitle mb-0">
+            Weekly Performance Comparison
+            @if(!empty($comparisonWeeks[0]['label']) && !empty($comparisonWeeks[2]['label']))
+                <span class="text-muted">· {{ $comparisonWeeks[0]['label'] }} to {{ $comparisonWeeks[2]['label'] }}</span>
+            @elseif($currentWeekLabel)
+                <span class="text-muted">· Current: {{ $currentWeekLabel }}</span>
+            @endif
+        </p>
     </div>
     <div class="d-flex flex-wrap gap-2">
         <a href="{{ route('scorecard.index', request()->query()) }}" class="btn btn-gov btn-gov-outline"><i class="bi bi-table"></i> Back to Scorecard</a>
@@ -81,7 +88,7 @@
 
 <div class="sc-page-card">
     <div class="row g-3 mb-3 justify-content-center ppmf-detail-stats">
-        <div class="col-xl-4 col-lg-4 col-md-6">
+        <div class="col-xl-3 col-lg-4 col-md-6">
             <div class="stat-card-ppmf">
                 <div class="stat-icon-ppmf success">
                     <i class="bi bi-graph-up-arrow"></i>
@@ -93,7 +100,7 @@
                 </div>
             </div>
         </div>
-        <div class="col-xl-4 col-lg-4 col-md-6">
+        <div class="col-xl-3 col-lg-4 col-md-6">
             <div class="stat-card-ppmf">
                 <div class="stat-icon-ppmf primary"><i class="bi bi-award"></i></div>
                 <div>
@@ -103,16 +110,7 @@
                 </div>
             </div>
         </div>
-        <div class="col-xl-4 col-lg-4 col-md-6">
-            <div class="stat-card-ppmf">
-                <div class="stat-icon-ppmf info"><i class="bi bi-calendar-week"></i></div>
-                <div>
-                    <span>Current Week</span>
-                    <strong style="font-size:16px">{{ $currentWeekLabel ?? '—' }}</strong>
-                    <small>Previous: {{ $previousWeekLabel ?? '—' }}</small>
-                </div>
-            </div>
-        </div>
+        {{-- Current Week card removed (requested) --}}
 
         @if(false)
         <div class="col-md-6 col-xl-3">
@@ -184,17 +182,25 @@
                     <tr>
                         <th class="sc-rank">#</th>
                         <th>District</th>
+                        <th style="width:190px">{!! $comparisonWeeks[0]['table_label'] ?? 'Previous Week' !!}</th>
                         <th style="width:190px">{!! $comparisonWeeks[1]['table_label'] ?? 'Previous Week' !!}</th>
                         <th style="width:190px">{!! $comparisonWeeks[2]['table_label'] ?? 'Current Week' !!}</th>
-                        <th style="width:120px">Trend</th>
                     </tr>
                 </thead>
                 <tbody>
                     @forelse($districtRows as $r)
                         @php
+                            $p2 = (float) ($r->previous_2_score ?? 0);
                             $p1 = (float) ($r->previous_1_score ?? 0);
                             $cur = (float) ($r->current_score ?? 0);
-                            $trend = $r->trend ?? 'eq';
+
+                            $arrow = function (float $a, float $b) {
+                                if ($b > $a) return ['cls' => 'text-success', 'icon' => 'bi-arrow-up'];
+                                if ($b < $a) return ['cls' => 'text-danger', 'icon' => 'bi-arrow-down'];
+                                return ['cls' => 'text-secondary', 'icon' => 'bi-dash'];
+                            };
+                            $a2 = $arrow($p2, $p1);
+                            $a1 = $arrow($p1, $cur);
                         @endphp
                         <tr>
                             <td class="sc-rank"><span class="sc-rank-badge">{{ $loop->iteration }}</span></td>
@@ -205,17 +211,9 @@
                                 </a>
                                 <div class="sc-muted">Tier {{ $r->tier ?? '—' }}</div>
                             </td>
-                            <td>{{ number_format($p1, 2) }}%</td>
-                            <td class="fw-bold">{{ number_format($cur, 2) }}%</td>
-                            <td class="sc-muted">
-                                @if($trend === 'up')
-                                    <span class="text-success fw-bold"><i class="bi bi-arrow-up"></i> Up</span>
-                                @elseif($trend === 'down')
-                                    <span class="text-danger fw-bold"><i class="bi bi-arrow-down"></i> Down</span>
-                                @else
-                                    <span class="text-secondary fw-bold"><i class="bi bi-dash"></i> Equal</span>
-                                @endif
-                            </td>
+                            <td>{{ number_format($p2, 2) }} <i class="bi bi-dash text-secondary"></i></td>
+                            <td>{{ number_format($p1, 2) }} <i class="bi {{ $a2['icon'] }} {{ $a2['cls'] }}"></i></td>
+                            <td class="fw-bold">{{ number_format($cur, 2) }} <i class="bi {{ $a1['icon'] }} {{ $a1['cls'] }}"></i></td>
                         </tr>
                     @empty
                         <tr><td colspan="5" class="text-center text-muted p-4">No district data found for this division.</td></tr>

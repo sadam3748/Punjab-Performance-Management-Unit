@@ -1432,7 +1432,24 @@ class ScorecardService
 
     public function getLatestCompletedPpmfWeekFilters(): array
     {
+        // Old PPMF default behavior: when opening the scorecard without filters,
+        // select the latest *completed* Thu->Wed reporting week based on calendar (not future/running week),
+        // even if local seed data is not yet refreshed.
+        $runningWeekNo = $this->getCurrentRunningPpmfWeekNo();
+        $calendarDefault = $this->weekNoShift($runningWeekNo, -1) ?: $runningWeekNo;
+
         $filters = $this->getLatestWeeklyFilters();
+
+        // Force calendar-based completed week when it differs from running week (prevents selecting 21-27 etc. on May 20).
+        if ($calendarDefault && $calendarDefault !== $runningWeekNo) {
+            $filters['period_type'] = 'weekly';
+            $filters['week_no'] = $calendarDefault;
+            $filters['week_range'] = $calendarDefault;
+            $filters['year'] = (int) substr($calendarDefault, 0, 4);
+            // Re-normalize to align month/quarter/year dropdowns with the selected PPMF week.
+            $filters = $this->normalizeFilters($filters);
+        }
+
         $filters['area_type'] = $filters['area_type'] ?? 'district';
         if (! in_array($filters['area_type'], ['district', 'division'], true)) {
             $filters['area_type'] = 'district';
@@ -1468,4 +1485,5 @@ class ScorecardService
         return $this->getLatestCompletedPpmfWeekFilters();
     }
 }
+
 
