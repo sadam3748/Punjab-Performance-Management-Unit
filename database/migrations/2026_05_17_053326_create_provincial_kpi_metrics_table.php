@@ -15,7 +15,7 @@ return new class extends Migration
                 ->constrained('kpi_categories')
                 ->cascadeOnDelete();
 
-            $table->string('period_type')->default('weekly');
+            $table->string('period_type')->default('last_week');
             // current_week, last_week, last_four_weeks, custom
 
             $table->date('date_from')->nullable();

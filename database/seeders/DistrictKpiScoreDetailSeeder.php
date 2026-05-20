@@ -2,30 +2,21 @@
 
 namespace Database\Seeders;
 
-use App\Models\DistrictKpiPenalty;
 use App\Models\DistrictKpiScore;
-use App\Models\DistrictKpiScoreDetail;
 use App\Models\KpiScoringParameter;
-use App\Services\ScorecardCalculationService;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 
 class DistrictKpiScoreDetailSeeder extends Seeder
 {
-    public function __construct(private readonly ScorecardCalculationService $calculator)
-    {
-    }
-
     public function run(): void
     {
-        $scores = DistrictKpiScore::query()
-            ->where('is_active', true)
-            ->orderBy('id')
-            ->get();
+        // Fresh seeding approach: truncate then bulk insert for speed.
+        DB::table('district_kpi_score_details')->truncate();
+        DB::table('district_kpi_penalties')->truncate();
 
-        if ($scores->isEmpty()) {
-            return;
-        }
+        // Practical cap for local dev.
+        $maxDetailRows = 2500;
 
         $parameterMap = KpiScoringParameter::query()
             ->where('is_active', true)
@@ -33,91 +24,122 @@ class DistrictKpiScoreDetailSeeder extends Seeder
             ->get()
             ->groupBy('kpi_category_id');
 
-        DB::transaction(function () use ($scores, $parameterMap) {
-            foreach ($scores as $score) {
-                $parameters = $parameterMap->get($score->kpi_category_id, collect());
-                if ($parameters->isEmpty()) {
-                    continue;
-                }
+        if ($parameterMap->isEmpty()) {
+            return;
+        }
 
-                // Re-seeding safety: clear existing details/penalties then recreate.
-                DistrictKpiScoreDetail::where('district_kpi_score_id', $score->id)->delete();
-                DistrictKpiPenalty::where('district_kpi_score_id', $score->id)->delete();
+        $detailBatch = [];
+        $detailBatchSize = 4000;
+        $nowTs = now();
 
-                if (! $score->is_reported) {
-                    $score->reported_score = 0;
-                    $score->verified_score = 0;
-                    $score->penalty_score = 0;
-                    $score->final_score = 0;
-                    $score->save();
-                    continue;
-                }
+        $detailRowsInserted = 0;
 
-                $reportedScore = 0.0;
+        $currentWeekNo = (string) (DistrictKpiScore::query()
+            ->where('is_active', true)
+            ->where('period_type', 'weekly')
+            ->where('calculation_type', 'general')
+            ->max('week_no') ?? '');
 
-                $targetFinal = $this->targetFinalScore($score);
+        if ($currentWeekNo === '') {
+            return;
+        }
 
-                $yesNoWeight = (float) $parameters
-                    ->where('scoring_method', 'yes_no')
-                    ->sum('weightage');
+        // Balanced approach: details for a subset of districts (keeps seed fast but still tests district detail page).
+        $districtIdsForDetails = DistrictKpiScore::query()
+            ->where('is_active', true)
+            ->where('period_type', 'weekly')
+            ->where('calculation_type', 'general')
+            ->where('week_no', $currentWeekNo)
+            ->distinct()
+            ->orderBy('district_id')
+            ->limit(20)
+            ->pluck('district_id')
+            ->all();
 
-                $yesNoEarn = ($targetFinal >= 70) ? $yesNoWeight : (($targetFinal >= 50) ? ($yesNoWeight * 0.5) : 0);
-                $remainingTarget = max(0, $targetFinal - $yesNoEarn);
+        if (! $districtIdsForDetails) {
+            return;
+        }
 
-                $percentWeight = (float) $parameters
-                    ->where('scoring_method', '!=', 'yes_no')
-                    ->sum('weightage');
-                $percentFactor = $percentWeight > 0 ? min(100, max(0, ($remainingTarget / $percentWeight) * 100)) : 0;
+        DB::transaction(function () use ($parameterMap, &$detailBatch, $detailBatchSize, $nowTs, $maxDetailRows, &$detailRowsInserted, $currentWeekNo, $districtIdsForDetails) {
+            DistrictKpiScore::query()
+                ->where('is_active', true)
+                ->where('period_type', 'weekly')
+                ->where('calculation_type', 'general')
+                ->where('week_no', $currentWeekNo)
+                ->where('is_reported', true)
+                ->whereIn('district_id', $districtIdsForDetails)
+                ->orderBy('id')
+                ->chunkById(400, function ($scores) use ($parameterMap, &$detailBatch, $detailBatchSize, $nowTs, $maxDetailRows, &$detailRowsInserted) {
+                    foreach ($scores as $score) {
+                        if ($detailRowsInserted >= $maxDetailRows) {
+                            break;
+                        }
 
-                foreach ($parameters as $param) {
-                    $reportedValue = $this->buildReportedValueForTarget(
-                        $score,
-                        (string) $param->scoring_method,
-                        (float) ($param->target_value ?? 0),
-                        (float) $param->weightage,
-                        $percentFactor,
-                        $yesNoEarn
-                    );
+                        $parameters = $parameterMap->get($score->kpi_category_id, collect());
+                        if ($parameters->isEmpty()) {
+                            continue;
+                        }
 
-                    $calc = $this->calculator->calculateParameterScore(
-                        $reportedValue,
-                        $param->target_value,
-                        (float) $param->weightage,
-                        (string) $param->scoring_method,
-                        (bool) $param->higher_is_better
-                    );
+                        $targetFinal = (float) ($score->final_score ?? 0);
+                        $targetFinal = max(0, min(100, $targetFinal));
 
-                    $reportedScore += (float) $calc['score_obtained'];
+                        $paramCount = $parameters->count();
+                        $sumSoFar = 0.0;
 
-                    DistrictKpiScoreDetail::create([
-                        'district_kpi_score_id'      => $score->id,
-                        'kpi_scoring_parameter_id'   => $param->id,
-                        'reported_value'             => $reportedValue,
-                        'target_value'               => $param->target_value,
-                        'achieved_percentage'        => (float) $calc['achieved_percentage'],
-                        'weightage'                  => (float) $param->weightage,
-                        'score_obtained'             => (float) $calc['score_obtained'],
-                        'evidence'                   => $this->buildEvidence($score, $param->id),
-                        'extra_data'                 => [
-                            'seed_key' => $this->seedKey($score, $param->id),
-                        ],
-                    ]);
-                }
+                        foreach ($parameters->values() as $i => $param) {
+                            if ($detailRowsInserted >= $maxDetailRows) {
+                                break;
+                            }
 
-                $reportedScore = round($reportedScore, 2);
-                $verifiedScore = $this->buildVerifiedScore($score, $reportedScore);
+                            $w = (float) $param->weightage;
+                            $base = ($targetFinal / 100) * $w;
 
-                $score->reported_score = $reportedScore;
-                $score->verified_score = $verifiedScore;
-                $score->penalty_score = 0;
-                $score->final_score = 0;
-                $score->save();
+                            // Small deterministic jitter; last parameter absorbs remainder to keep totals close to final_score.
+                            $seed = $this->stableRandInt((int) $score->district_id, (int) $score->kpi_category_id, (int) $param->id);
+                            $jitter = (($seed % 80) / 100) - 0.4; // -0.40..+0.39
 
-                $this->maybeSeedPenalty($score);
-                $this->calculator->calculateDistrictKpiFinalScore($score->refresh());
+                            $obtained = ($i === $paramCount - 1)
+                                ? max(0, min($w, $targetFinal - $sumSoFar))
+                                : max(0, min($w, $base + $jitter));
+
+                            $obtained = round($obtained, 2);
+                            $sumSoFar += $obtained;
+
+                            $achieved = $w > 0 ? round(($obtained / $w) * 100, 2) : 0.0;
+                            $reportedValue = $param->target_value ? round(((float) $param->target_value) * ($achieved / 100), 2) : $achieved;
+
+                            $detailBatch[] = [
+                                'district_kpi_score_id' => $score->id,
+                                'kpi_scoring_parameter_id' => $param->id,
+                                'reported_value' => $reportedValue,
+                                'target_value' => $param->target_value,
+                                'achieved_percentage' => $achieved,
+                                'weightage' => $w,
+                                'score_obtained' => $obtained,
+                                'evidence' => $this->buildEvidence($score, (int) $param->id),
+                                'extra_data' => json_encode(['seed_key' => $this->seedKey($score, (int) $param->id)]),
+                                'created_at' => $nowTs,
+                                'updated_at' => $nowTs,
+                            ];
+
+                            $detailRowsInserted++;
+
+                            if (count($detailBatch) >= $detailBatchSize) {
+                                DB::table('district_kpi_score_details')->insert($detailBatch);
+                                $detailBatch = [];
+                            }
+                        }
+                    }
+                });
+
+            if ($detailBatch) {
+                DB::table('district_kpi_score_details')->insert($detailBatch);
+                $detailBatch = [];
             }
         });
     }
+
+    // NOTE: We intentionally do not compute penalties/final score here; district_kpi_scores are already seeded.
 
     private function buildReportedValueForTarget(
         DistrictKpiScore $score,

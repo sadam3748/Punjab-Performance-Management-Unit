@@ -269,11 +269,12 @@ class KpiScoringParameterSeeder extends Seeder
             ];
         }
 
+        // Generic fallback parameters (internal KPI scoring only) totaling 100.
         return [
             [
-                'parameter_name' => 'Progress Achieved',
-                'description' => 'Progress achieved against assigned KPI targets.',
-                'weightage' => 50,
+                'parameter_name' => 'Achievement / Compliance',
+                'description' => 'Achievement or compliance against targets for the period.',
+                'weightage' => 60,
                 'unit' => 'percent',
                 'scoring_method' => 'percentage',
                 'target_value' => 100,
@@ -281,8 +282,8 @@ class KpiScoringParameterSeeder extends Seeder
                 'sort_order' => 1,
             ],
             [
-                'parameter_name' => 'Timely Reporting',
-                'description' => 'Timeliness of KPI reporting for the period.',
+                'parameter_name' => 'Timeliness',
+                'description' => 'Timely completion and/or timely reporting for the period.',
                 'weightage' => 20,
                 'unit' => 'percent',
                 'scoring_method' => 'percentage',
@@ -291,8 +292,8 @@ class KpiScoringParameterSeeder extends Seeder
                 'sort_order' => 2,
             ],
             [
-                'parameter_name' => 'Field Verification',
-                'description' => 'Field verification coverage for reported work.',
+                'parameter_name' => 'Evidence / Verification',
+                'description' => 'Evidence completeness and verification status.',
                 'weightage' => 20,
                 'unit' => 'percent',
                 'scoring_method' => 'percentage',
@@ -300,17 +301,6 @@ class KpiScoringParameterSeeder extends Seeder
                 'higher_is_better' => true,
                 'sort_order' => 3,
             ],
-            [
-                'parameter_name' => 'Evidence Completeness',
-                'description' => 'Evidence completeness (geo-tagged photos / documents).',
-                'weightage' => 10,
-                'unit' => 'yes_no',
-                'scoring_method' => 'yes_no',
-                'target_value' => null,
-                'higher_is_better' => true,
-                'sort_order' => 4,
-            ],
         ];
     }
 }
-

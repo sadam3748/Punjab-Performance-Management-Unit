@@ -1,4 +1,4 @@
-@extends('layouts.app')
+﻿@extends('layouts.app')
 
 @section('title', 'District Scorecard | PPMF Portal')
 @section('page_title', 'District Scorecard')
@@ -62,6 +62,14 @@
     .sd-legend{font-size:12px;color:#64748b;font-weight:700}
     .sd-legend i{margin-right:6px}
 
+    /* Detail stat cards: tighter + more centered */
+    .ppmf-detail-stats .stat-card-ppmf{min-height:86px;display:flex;align-items:center;justify-content:center;gap:14px}
+    .ppmf-detail-stats .stat-card-ppmf span{letter-spacing:.02em}
+    .ppmf-detail-stats .stat-card-ppmf strong{font-size:24px;line-height:1.05}
+    .ppmf-detail-stats .stat-card-ppmf small{font-weight:750;font-size:12px}
+    .ppmf-detail-stats .stat-icon-ppmf{width:46px;height:46px;border-radius:14px;display:flex;align-items:center;justify-content:center}
+    .ppmf-detail-stats .stat-icon-ppmf i{font-size:18px}
+
     /* Pagination styling aligned with Inspection List */
     .inspection-pagination-bar{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:14px 18px;border-top:1px solid #e2e8f0;background:#ffffff}
     .inspection-pagination-summary-group{display:flex;flex-direction:column;gap:3px;min-width:210px}
@@ -81,8 +89,13 @@
 @section('content')
 <div class="page-title-bar mb-4">
     <div>
-        <h2 class="page-title mb-1">District {{ $districtName }} Scorecard</h2>
-        <p class="page-subtitle mb-0">Period: {{ $periodLabel ?? '—' }} · Calculation: {{ ucfirst(str_replace('_',' ', $calcType)) }}</p>
+        <h2 class="page-title mb-1">District {{ strtoupper($districtName) }} Scorecard @if(!empty($weekHeaders[2]['label']))({{ $weekHeaders[2]['label'] }})@endif</h2>
+        <p class="page-subtitle mb-0">
+            Weekly KPI Performance Comparison
+            · Previous: {{ $weekHeaders[1]['label'] ?? '—' }}
+            · Current: {{ $weekHeaders[2]['label'] ?? '—' }}
+            · Calculation: {{ ucfirst(str_replace('_',' ', $calcType)) }}
+        </p>
     </div>
     <div class="d-flex flex-wrap gap-2">
         <a href="{{ $backUrl }}" class="btn btn-gov btn-gov-outline"><i class="bi bi-arrow-left"></i> Back</a>
@@ -95,11 +108,53 @@
     </div>
 </div>
 
-<div class="sd-wrap mb-3">
-    <div class="row g-2">
-        <div class="col-md-3">
-            <div class="sd-stat stat-rank">
-                <div class="k"><i class="bi bi-hash"></i> Rank</div>
+<div class="row g-3 mb-4 justify-content-center ppmf-detail-stats">
+    <div class="col-xl-4 col-lg-4 col-md-6">
+        <div class="stat-card-ppmf">
+            <div class="stat-icon-ppmf success">
+                <i class="bi bi-graph-up-arrow"></i>
+            </div>
+            <div>
+                <span>District Score</span>
+                <strong>{{ number_format($score, 2) }}%</strong>
+                <small>{{ $meta['label'] }} ({{ $meta['grade'] }})</small>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-4 col-lg-4 col-md-6">
+        <div class="stat-card-ppmf">
+            <div class="stat-icon-ppmf primary">
+                <i class="bi bi-trophy"></i>
+            </div>
+            <div>
+                <span>Rank</span>
+                <strong>{{ $rank ? '#'.$rank : '—' }}</strong>
+                <small>{{ $tier ? ('Tier '.$tier) : '—' }}</small>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-4 col-lg-4 col-md-6">
+        <div class="stat-card-ppmf">
+            <div class="stat-icon-ppmf warning">
+                <i class="bi bi-list-check"></i>
+            </div>
+            <div>
+                <span>Reported KPIs</span>
+                <strong>{{ $reported }} / {{ $totalKpis }}</strong>
+                <small>KPI categories</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+	@if(false)
+	<div class="sd-wrap mb-3">
+	    <div class="row g-2">
+	        <div class="col-md-3">
+	            <div class="sd-stat stat-rank">
+	                <div class="k"><i class="bi bi-hash"></i> Rank</div>
                 <div class="v">{{ $rank ? $rank : '—' }}</div>
                 <div class="s">Overall ranking</div>
             </div>
@@ -126,10 +181,10 @@
                 <div class="k"><i class="bi bi-list-check"></i> Reported KPIs</div>
                 <div class="v">{{ $reported }} / {{ $totalKpis }}</div>
                 <div class="s">{{ $tier ? ('Tier ' . $tier) : '—' }}</div>
-            </div>
-        </div>
-    </div>
-</div>
+	        </div>
+	    </div>
+	</div>
+	@endif
 
 <div class="card-ppmf">
     <div class="card-ppmf-header d-flex align-items-start justify-content-between gap-2 flex-wrap">
@@ -170,19 +225,18 @@
             <table class="table-ppmf mb-0 sd-table">
                 <thead>
                     <tr>
+                        <th style="width:70px;text-align:center">Sr. No.</th>
                         <th>Performance Indicators</th>
                         <th style="width:110px">Weightage</th>
-                        <th style="width:190px">{{ $weekHeaders[0]['label'] ?? 'Previous 2' }}</th>
-                        <th style="width:190px">{{ $weekHeaders[1]['label'] ?? 'Previous 1' }}</th>
-                        <th style="width:190px">{{ $weekHeaders[2]['label'] ?? 'Current' }}</th>
+                        <th style="width:190px">{!! str_replace(' - ', '<br>-<br>', e($weekHeaders[1]['label'] ?? 'Previous')) !!}</th>
+                        <th style="width:190px">{!! str_replace(' - ', '<br>-<br>', e($weekHeaders[2]['label'] ?? 'Current')) !!}</th>
                     </tr>
                 </thead>
                 <tbody>
                     @forelse(($rows->getCollection() ?? $rows) as $r)
                         @php
-                            $p2 = $r['previous_2']['weighted_score'] ?? null;
-                            $p1 = $r['previous_1']['weighted_score'] ?? null;
-                            $c = $r['current']['weighted_score'] ?? null;
+	                            $p1 = $r['previous_1']['final_score'] ?? null;
+	                            $c = $r['current']['final_score'] ?? null;
 
                             $trend = function($a, $b){
                                 if ($a === null || $b === null) return ['cls'=>'eq','icon'=>'bi-dash'];
@@ -190,27 +244,33 @@
                                 if ($b < $a) return ['cls'=>'down','icon'=>'bi-arrow-down'];
                                 return ['cls'=>'eq','icon'=>'bi-dash'];
                             };
-                            $t21 = $trend($p2, $p1);
-                            $t1c = $trend($p1, $c);
+	                            $t1c = $trend($p1, $c);
                         @endphp
                         <tr>
+                            <td class="text-center fw-bold">{{ $loop->iteration }}</td>
                             <td class="fw-bold">{{ $r['kpi_name'] }}</td>
                             <td>{{ number_format((float)$r['weightage'], 2) }}</td>
                             <td>
                                 <div class="sd-cell">
-                                    <span>{{ $p2 === null ? '—' : number_format((float)$p2, 2) }}</span>
+                                    <span>
+                                        @if($p1 === null)
+                                            <span class="text-muted">Unreported</span>
+                                        @else
+                                            {{ number_format((float)$p1, 2) }}
+                                        @endif
+                                    </span>
                                     <span class="sd-trend eq"><i class="bi bi-dash"></i></span>
                                 </div>
                             </td>
                             <td>
                                 <div class="sd-cell">
-                                    <span>{{ $p1 === null ? '—' : number_format((float)$p1, 2) }}</span>
-                                    <span class="sd-trend {{ $t21['cls'] }}"><i class="bi {{ $t21['icon'] }}"></i></span>
-                                </div>
-                            </td>
-                            <td>
-                                <div class="sd-cell">
-                                    <span class="fw-bold">{{ $c === null ? '—' : number_format((float)$c, 2) }}</span>
+                                    <span class="fw-bold">
+                                        @if($c === null)
+                                            <span class="text-muted">Unreported</span>
+                                        @else
+                                            {{ number_format((float)$c, 2) }}
+                                        @endif
+                                    </span>
                                     <span class="sd-trend {{ $t1c['cls'] }}"><i class="bi {{ $t1c['icon'] }}"></i></span>
                                 </div>
                             </td>
@@ -222,9 +282,8 @@
                 @if(($rows->total() ?? 0) > 0)
                     <tfoot>
                         <tr class="fw-bold">
-                            <td>Total</td>
+                            <td colspan="2">Total</td>
                             <td>{{ number_format((float)($totals['weightage'] ?? 0), 2) }}</td>
-                            <td>{{ number_format((float)($totals['previous_2'] ?? 0), 2) }}</td>
                             <td>{{ number_format((float)($totals['previous_1'] ?? 0), 2) }}</td>
                             <td>{{ number_format((float)($totals['current'] ?? 0), 2) }}</td>
                         </tr>
@@ -248,3 +307,4 @@
     @endif
 </div>
 @endsection
+

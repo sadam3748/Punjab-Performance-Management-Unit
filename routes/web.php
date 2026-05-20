@@ -56,14 +56,23 @@ Route::prefix('portal')->middleware('auth')->group(function () {
     Route::get('/scorecard', [ScorecardController::class, 'index'])
         ->name('scorecard.index');
 
+    Route::get('/scorecard/data', [ScorecardController::class, 'data'])
+        ->name('scorecard.data');
+
     Route::get('/scorecard/district-wise', [ScorecardController::class, 'index'])
         ->name('scorecard.district-wise');
 
     Route::get('/scorecard/tier-wise', [ScorecardController::class, 'tierWise'])
         ->name('scorecard.tier');
 
+    Route::get('/scorecard/tier-wise/data', [ScorecardController::class, 'tierWiseData'])
+        ->name('scorecard.tier-wise.data');
+
     Route::get('/scorecard/district/{district}', [ScorecardController::class, 'districtDetail'])
         ->name('scorecard.district-detail');
+
+    Route::get('/scorecard/division/{division}', [ScorecardController::class, 'divisionDetail'])
+        ->name('scorecard.division-detail');
 
 /*
 |--------------------------------------------------------------------------

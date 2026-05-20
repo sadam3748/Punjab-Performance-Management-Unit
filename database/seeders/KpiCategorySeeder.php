@@ -3,45 +3,62 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 
 class KpiCategorySeeder extends Seeder
 {
     public function run(): void
     {
+        // Old PPMF-style main KPI categories (category-level) for district scorecard.
+        // scorecard_weightage is distinct from kpi_scoring_parameters.weightage (internal KPI parameter weights).
         $categories = [
-            ['id' => 1, 'name' => 'Inspection of Marriage Halls', 'description' => 'Inspection of marriage halls for one dish, timing, fine, FIR, sealing and related actions.'],
-            ['id' => 2, 'name' => 'Inspection of Stray Dogs', 'description' => 'Inspection and reporting of stray dogs seized from streets and union councils.'],
-            ['id' => 3, 'name' => 'Inspection of Water Filtration Plants', 'description' => 'Inspection of water filtration plants including cleanliness, filter change date and functional status.'],
-            ['id' => 4, 'name' => 'Inspection of Manholes Covers', 'description' => 'Inspection of missing or damaged manhole covers and available repair stock.'],
-            ['id' => 5, 'name' => 'Inspection of Tandoors', 'description' => 'Inspection related to roti/tandoor price and compliance.'],
-            ['id' => 6, 'name' => 'Inspection of Bakery Bread', 'description' => 'Inspection related to bakery bread price and compliance.'],
-            ['id' => 7, 'name' => 'Inspection of Health Facilities', 'description' => 'Inspection of health facilities and related public service delivery.'],
-            ['id' => 8, 'name' => 'Inspection of Registered Drug Stores', 'description' => 'Inspection of registered drug stores and compliance.'],
-            ['id' => 9, 'name' => 'Inspection of Sale Points of LPG', 'description' => 'Inspection of LPG sale points and illegal filling.'],
-            ['id' => 10, 'name' => 'Inspection of Bus Terminals', 'description' => 'Inspection of bus terminals and facilities.'],
-            ['id' => 11, 'name' => 'Inspection of Fertilizers and Pesticides Sale Points', 'description' => 'Inspection of fertilizer and pesticide sale points.'],
-            ['id' => 12, 'name' => 'Inspection of Markets', 'description' => 'Inspection of markets and public service compliance.'],
-            ['id' => 13, 'name' => 'Inspection of Development Schemes', 'description' => 'Inspection of development schemes.'],
-            ['id' => 14, 'name' => 'Inspection of Bridges', 'description' => 'Inspection of bridges and infrastructure condition.'],
-            ['id' => 15, 'name' => 'Inspection of Roads with Streetlights', 'description' => 'Inspection of roads having streetlights.'],
-            ['id' => 16, 'name' => 'Inspection of Parks', 'description' => 'Inspection of parks and green belts.'],
-            ['id' => 17, 'name' => 'Inspection of Streets', 'description' => 'Inspection of streets and related public infrastructure.'],
-            ['id' => 18, 'name' => 'Inspection of Educational Institutions', 'description' => 'Inspection of educational institutions.'],
+            ['id' => 1, 'name' => 'Price of Roti', 'slug' => 'price-of-roti', 'scorecard_weightage' => 5, 'is_active' => true],
+            ['id' => 2, 'name' => 'Price of Plain Bakery Bread', 'slug' => 'price-of-plain-bakery-bread', 'scorecard_weightage' => 4, 'is_active' => true],
+            ['id' => 3, 'name' => 'Price Control of Essential Commodities', 'slug' => 'price-control-of-essential-commodities', 'scorecard_weightage' => 8, 'is_active' => true],
+            ['id' => 4, 'name' => 'Repair of Small Roads in both Urban and Rural Areas', 'slug' => 'repair-of-small-roads-in-both-urban-and-rural-areas', 'scorecard_weightage' => 7, 'is_active' => true],
+            ['id' => 5, 'name' => 'Zebra Crossings', 'slug' => 'zebra-crossings', 'scorecard_weightage' => 4, 'is_active' => true],
+            ['id' => 6, 'name' => 'Dysfunctional Streetlights', 'slug' => 'dysfunctional-streetlights', 'scorecard_weightage' => 5, 'is_active' => true],
+            ['id' => 7, 'name' => 'Covering of Manholes', 'slug' => 'covering-of-manholes', 'scorecard_weightage' => 7, 'is_active' => true],
+            ['id' => 8, 'name' => 'Functional And Clean Water Filtration Plants', 'slug' => 'functional-and-clean-water-filtration-plants', 'scorecard_weightage' => 8, 'is_active' => true],
+            ['id' => 9, 'name' => 'Inspection of Educational Institutions', 'slug' => 'inspection-of-educational-institutions', 'scorecard_weightage' => 5, 'is_active' => true],
+            ['id' => 10, 'name' => 'Inspection of Health Facilities', 'slug' => 'inspection-of-health-facilities', 'scorecard_weightage' => 5, 'is_active' => true],
+            ['id' => 11, 'name' => 'Violation of Marriage Functions Act', 'slug' => 'violation-of-marriage-functions-act', 'scorecard_weightage' => 5, 'is_active' => true],
+            ['id' => 12, 'name' => 'Anti-Encroachment Campaign', 'slug' => 'anti-encroachment-campaign', 'scorecard_weightage' => 5, 'is_active' => true],
+            ['id' => 13, 'name' => 'Stray Dogs', 'slug' => 'stray-dogs', 'scorecard_weightage' => 5, 'is_active' => true],
+            ['id' => 14, 'name' => 'Removal of Wall Chalking', 'slug' => 'removal-of-wall-chalking', 'scorecard_weightage' => 4, 'is_active' => true],
+            ['id' => 15, 'name' => 'Graveyards', 'slug' => 'graveyards', 'scorecard_weightage' => 3, 'is_active' => true],
+            ['id' => 16, 'name' => 'Illegal Decanting', 'slug' => 'illegal-decanting', 'scorecard_weightage' => 3, 'is_active' => true],
+            ['id' => 17, 'name' => 'Suthra Punjab Campaign', 'slug' => 'suthra-punjab-campaign', 'scorecard_weightage' => 7, 'is_active' => true],
+            ['id' => 18, 'name' => 'Maintenance of Greenbelts & DC’s Initiatives on Beautification', 'slug' => 'maintenance-of-greenbelts-dcs-initiatives-on-beautification', 'scorecard_weightage' => 3, 'is_active' => true],
+            ['id' => 19, 'name' => 'Maintenance Of Drains And Sewerage Lines', 'slug' => 'maintenance-of-drains-and-sewerage-lines', 'scorecard_weightage' => 4, 'is_active' => true],
+            ['id' => 20, 'name' => 'Bus Terminals', 'slug' => 'bus-terminals', 'scorecard_weightage' => 2, 'is_active' => true],
+            ['id' => 21, 'name' => 'Chief Minister’s Complaint Cell', 'slug' => 'chief-ministers-complaint-cell', 'scorecard_weightage' => 3, 'is_active' => true],
+            ['id' => 22, 'name' => 'Regulation Of Shops And Handcarts', 'slug' => 'regulation-of-shops-and-handcarts', 'scorecard_weightage' => 2, 'is_active' => true],
+            ['id' => 23, 'name' => 'E-Biz', 'slug' => 'e-biz', 'scorecard_weightage' => 1, 'is_active' => true],
         ];
 
-        foreach ($categories as $category) {
-            DB::table('kpi_categories')->updateOrInsert(
-                ['id' => $category['id']],
-                [
-                    'name'        => $category['name'],
-                    'slug'        => Str::slug($category['name']),
-                    'description' => $category['description'],
-                    'is_active'   => true,
-                    'created_at'  => now(),
-                    'updated_at'  => now(),
-                ]
-            );
-        }
+        $nowTs = now();
+
+        DB::table('kpi_categories')->upsert(
+            array_map(function (array $c) use ($nowTs) {
+                return [
+                    'id' => $c['id'],
+                    'name' => $c['name'],
+                    'slug' => $c['slug'],
+                    'description' => $c['name'],
+                    'scorecard_weightage' => (float) $c['scorecard_weightage'],
+                    'is_active' => (bool) $c['is_active'],
+                    'created_at' => $nowTs,
+                    'updated_at' => $nowTs,
+                ];
+            }, $categories),
+            ['id'],
+            ['name', 'slug', 'description', 'scorecard_weightage', 'is_active', 'updated_at']
+        );
+
+        // Deactivate anything not in the old PPMF list (prevents legacy inspection-style categories showing up).
+        $desiredIds = array_map(fn ($c) => (int) $c['id'], $categories);
+        DB::table('kpi_categories')
+            ->whereNotIn('id', $desiredIds)
+            ->update(['is_active' => false, 'updated_at' => $nowTs]);
     }
 }

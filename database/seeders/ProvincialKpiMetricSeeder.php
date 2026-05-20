@@ -403,12 +403,13 @@ class ProvincialKpiMetricSeeder extends Seeder
                 $metrics = array_merge($metrics, array_slice($fillers, 0, $needed));
             }
 
-            $category = KpiCategory::firstOrCreate(
-                ['name' => $categoryName],
+            $slug = (string) str($categoryName)->slug();
+            $category = KpiCategory::updateOrCreate(
+                ['slug' => $slug],
                 [
-                    'slug'        => str($categoryName)->slug(),
+                    'name' => $categoryName,
                     'description' => $categoryName,
-                    'is_active'   => true,
+                    'is_active' => true,
                 ]
             );
 

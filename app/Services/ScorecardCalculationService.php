@@ -87,7 +87,7 @@ class ScorecardCalculationService
 
         if ($calculationType === 'sixty_forty') {
             $final = ($reportedScore * 0.60) + ($verified * 0.40) - $penaltyScore;
-        } else { // general, negative_marking
+        } else { // general, special_branch_negative, victims_negative, negative_marking
             $final = $reportedScore - $penaltyScore;
         }
 
@@ -119,4 +119,3 @@ class ScorecardCalculationService
             });
     }
 }
-

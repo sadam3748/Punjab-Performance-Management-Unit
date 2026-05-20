@@ -34,6 +34,8 @@
     $selectedYear = $filters['year'] ?? now()->format('Y');
     $selectedAreaType = $filters['area_type'] ?? 'district';
     $selectedKpiCategoryId = $filters['kpi_category_id'] ?? '';
+    $selectedCalculationType = $filters['calculation_type'] ?? 'general';
+    if ($selectedCalculationType === 'negative_marking') { $selectedCalculationType = 'special_branch_negative'; }
     $selectedPerPage = (int) ($filters['per_page'] ?? 10);
     $perPageOptions = [10, 25, 50, 100];
     $mainRoute = Route::has('scorecard.index') ? route('scorecard.index') : url()->current();
@@ -79,20 +81,48 @@
 
 <div class="sc-page-card">
     <div class="sc-filter-card">
-        <form method="GET" action="{{ $mainRoute }}">
+        <form method="GET" action="{{ $mainRoute }}" id="scorecardFilters">
             <div class="row g-3 align-items-end">
-                <div class="col-md-6 col-xl-2"><label class="form-label">Scope</label><select name="scope" class="form-select"><option value="all" @selected($selectedScope==='all')>All</option><option value="division" @selected($selectedScope==='division')>Division</option><option value="district" @selected($selectedScope==='district')>District</option><option value="tehsil" @selected($selectedScope==='tehsil')>Tehsil</option></select></div>
-                <div class="col-md-6 col-xl-2"><label class="form-label">Period</label><select name="period" class="form-select"><option value="weekly" @selected($selectedPeriod==='weekly')>Weekly</option><option value="monthly" @selected($selectedPeriod==='monthly')>Monthly</option><option value="quarterly" @selected($selectedPeriod==='quarterly')>Quarterly</option><option value="yearly" @selected($selectedPeriod==='yearly')>Yearly</option><option value="all" @selected($selectedPeriod==='all')>All Time</option></select></div>
-                <div class="col-md-6 col-xl-2"><label class="form-label">Week</label><select name="week_range" class="form-select"><option value="">Select Week</option>@foreach(($weekOptions ?? []) as $value=>$label)<option value="{{ $value }}" @selected($selectedWeekRange===$value)>{{ $label }}</option>@endforeach</select></div>
-                <div class="col-md-6 col-xl-2"><label class="form-label">Month</label><select name="month" class="form-select">@foreach($monthOptions as $value=>$label)<option value="{{ $value }}" @selected((string)$selectedMonth===(string)$value)>{{ $label }}</option>@endforeach</select></div>
-                <div class="col-md-6 col-xl-2"><label class="form-label">Year</label><select name="year" class="form-select">@foreach($yearOptions as $year)<option value="{{ $year }}" @selected((string)$selectedYear===(string)$year)>{{ $year }}</option>@endforeach</select></div>
-                <div class="col-md-6 col-xl-2"><label class="form-label">Area Type</label><select name="area_type" class="form-select"><option value="district" @selected($selectedAreaType==='district')>District</option><option value="division" @selected($selectedAreaType==='division')>Division</option><option value="tehsil" @selected($selectedAreaType==='tehsil')>Tehsil</option></select></div>
-                <div class="col-md-6 col-xl-4"><label class="form-label">KPI Category</label><select name="kpi_category_id" class="form-select"><option value="">General</option>@foreach(($kpiCategories ?? []) as $category)<option value="{{ $category->id }}" @selected((string)$selectedKpiCategoryId===(string)$category->id)>{{ $category->name }}</option>@endforeach</select></div>
-                <div class="col-md-6 col-xl-3 d-flex gap-2"><button type="submit" class="btn btn-gov btn-gov-primary flex-fill"><i class="bi bi-search"></i> Apply</button><a href="{{ $mainRoute }}" class="btn btn-gov btn-gov-outline"><i class="bi bi-x-circle"></i> Reset</a></div>
+                <div class="col-12 col-md-6 col-lg-3"><label class="form-label">Period</label><select name="period" class="form-select"><option value="weekly" @selected($selectedPeriod==='weekly')>Weekly</option><option value="monthly" @selected($selectedPeriod==='monthly')>Monthly</option><option value="quarterly" @selected($selectedPeriod==='quarterly')>Quarterly</option><option value="yearly" @selected($selectedPeriod==='yearly')>Yearly</option><option value="all" @selected($selectedPeriod==='all')>All Time</option></select></div>
+                <div class="col-12 col-md-6 col-lg-3" data-period-field="week"><label class="form-label">Week</label><select name="week_range" class="form-select" id="weekRangeSelect"><option value="">Select Week</option>@foreach(($weekOptions ?? []) as $value=>$label)<option value="{{ $value }}" @selected((string)$selectedWeekRange === (string)$value)>{{ $label }}</option>@endforeach</select></div>
+                <div class="col-12 col-md-6 col-lg-3"><label class="form-label">Month</label><select name="month" class="form-select">@foreach($monthOptions as $value=>$label)<option value="{{ $value }}" @selected((string)$selectedMonth===(string)$value)>{{ $label }}</option>@endforeach</select></div>
+                <div class="col-12 col-md-6 col-lg-3"><label class="form-label">Year</label><select name="year" class="form-select">@foreach($yearOptions as $year)<option value="{{ $year }}" @selected((string)$selectedYear===(string)$year)>{{ $year }}</option>@endforeach</select></div>
+
+                <div class="col-12 col-md-6 col-lg-3"><label class="form-label">Area Type</label><select name="area_type" class="form-select"><option value="district" @selected($selectedAreaType==='district')>District</option><option value="division" @selected($selectedAreaType==='division')>Division</option></select></div>
+                <div class="col-12 col-md-6 col-lg-3"><label class="form-label">Scope</label><select name="scope" class="form-select"><option value="all" @selected($selectedScope==='all')>All</option><option value="division" @selected($selectedScope==='division')>Division</option><option value="district" @selected($selectedScope==='district')>District</option></select></div>
+                <div class="col-12 col-md-6 col-lg-3"><label class="form-label">Calculation Type</label><select name="calculation_type" class="form-select"><option value="general" @selected($selectedCalculationType==='general')>General</option><option value="sixty_forty" @selected($selectedCalculationType==='sixty_forty')>Sixty Forty Ratio</option><option value="special_branch_negative" @selected($selectedCalculationType==='special_branch_negative')>Special Branch Negative Marking</option><option value="victims_negative" @selected($selectedCalculationType==='victims_negative')>Victims Negative Marking</option></select></div>
+                <div class="col-12 col-md-6 col-lg-3">
+                    <label class="form-label">KPI Category</label>
+                    <select name="kpi_category_id" class="form-select">
+                        <option value="">General</option>
+                        @foreach(($kpiCategories ?? []) as $category)
+                            <option value="{{ $category->id }}" @selected((string)$selectedKpiCategoryId===(string)$category->id)>{{ $category->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+
+                {{-- Auto-applies on change; keep a hidden submit for accessibility. --}}
+                <button type="submit" class="d-none">Apply</button>
+
+                <div class="col-12 d-flex justify-content-end">
+                    <a href="{{ $mainRoute }}" class="btn btn-gov btn-gov-outline" id="scorecardResetBtn">
+                        <i class="bi bi-x-circle"></i> Reset
+                    </a>
+                </div>
             </div>
         </form>
     </div>
 
+    <div id="scorecardDynamic">
+        @include('scorecard.partials.scorecard-results', [
+            'summary' => $summary ?? [],
+            'districtRanking' => $districtRanking ?? null,
+            'divisionRanking' => $divisionRanking ?? null,
+            'categoryRanking' => $categoryRanking ?? null,
+            'filters' => $filters ?? [],
+        ])
+
+        @if(false)
     <div class="mb-3">
         <div class="row g-2">
             @foreach($perfCards as $card)
@@ -201,6 +231,140 @@
         </div>
     </div>
 
-    <div class="sc-legend"><span><i class="pin-excellent"></i> Excellent 90-100</span><span><i class="pin-good"></i> Good 70-89.99</span><span><i class="pin-average"></i> Average 50-69.99</span><span><i class="pin-critical"></i> Critical below 50</span></div>
+
+        @endif
+    </div>
 </div>
 @endsection
+
+@push('scripts')
+<script>
+    (function () {
+        const dataUrl = @json(route('scorecard.data'));
+
+        function serializeForm(form) {
+            const fd = new FormData(form);
+            const params = new URLSearchParams();
+            for (const [key, value] of fd.entries()) {
+                if (value === null || value === undefined) continue;
+                params.append(key, String(value));
+            }
+            return params.toString();
+        }
+
+        function pushQuery(queryString) {
+            const base = String(window.location.pathname);
+            const qs = queryString ? ('?' + queryString) : '';
+            window.history.pushState({}, '', base + qs);
+        }
+
+        function updatePeriodFieldVisibility(form) {
+            const period = String(form.querySelector('[name="period"]')?.value || 'weekly');
+            const weekWrap = form.querySelector('[data-period-field="week"]');
+            if (weekWrap) weekWrap.style.display = (period === 'weekly') ? '' : 'none';
+        }
+
+        async function loadScorecardData(form, queryStringOverride) {
+            const dynamic = document.getElementById('scorecardDynamic');
+            const weekSelect = document.getElementById('weekRangeSelect');
+            if (!dynamic) return;
+
+            const queryString = queryStringOverride || serializeForm(form);
+            const url = dataUrl + (queryString ? ('?' + queryString) : '');
+
+            dynamic.style.opacity = '0.6';
+            dynamic.style.pointerEvents = 'none';
+
+            try {
+                const res = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+                const json = await res.json();
+
+                if (!json || json.status !== 'success') {
+                    dynamic.innerHTML = '<div class="sc-empty">Unable to load scorecard data.</div>';
+                    return;
+                }
+
+                if (json.html && json.html.results) {
+                    dynamic.innerHTML = json.html.results;
+                }
+
+                if (json.html && json.html.week_options && weekSelect) {
+                    weekSelect.innerHTML = '<option value="">Select Week</option>' + json.html.week_options;
+                }
+
+                if (json.filters) {
+                    if (json.filters.month) {
+                        const el = form.querySelector('[name="month"]');
+                        if (el) el.value = String(json.filters.month);
+                    }
+                    if (json.filters.year) {
+                        const el = form.querySelector('[name="year"]');
+                        if (el) el.value = String(json.filters.year);
+                    }
+                    if (json.filters.week_range && weekSelect) {
+                        weekSelect.value = String(json.filters.week_range);
+                    }
+                }
+
+                pushQuery(queryString);
+            } catch (e) {
+                dynamic.innerHTML = '<div class="sc-empty">Error loading scorecard data. Please try again.</div>';
+            } finally {
+                dynamic.style.opacity = '1';
+                dynamic.style.pointerEvents = 'auto';
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            const form = document.getElementById('scorecardFilters');
+            if (!form) return;
+
+            updatePeriodFieldVisibility(form);
+
+            form.addEventListener('submit', function (e) {
+                e.preventDefault();
+                loadScorecardData(form);
+            });
+
+            form.addEventListener('change', function (e) {
+                const target = e.target;
+                if (!target) return;
+                if (target.matches('select, input')) {
+                    updatePeriodFieldVisibility(form);
+                    loadScorecardData(form);
+                }
+            });
+
+            document.addEventListener('click', function (e) {
+                const a = e.target.closest('#scorecardDynamic .pagination a');
+                if (a) {
+                    e.preventDefault();
+                    const href = a.getAttribute('href');
+                    if (!href) return;
+                    const url = new URL(href, window.location.origin);
+                    loadScorecardData(form, url.search.replace(/^\\?/, ''));
+                    return;
+                }
+
+                const perf = e.target.closest('#scorecardDynamic a.sc-perf-card');
+                if (perf) {
+                    e.preventDefault();
+                    const href = perf.getAttribute('href');
+                    if (!href) return;
+                    const url = new URL(href, window.location.origin);
+                    loadScorecardData(form, url.search.replace(/^\\?/, ''));
+                    return;
+                }
+
+                const resetBtn = e.target.closest('#scorecardResetBtn');
+                if (resetBtn) {
+                    e.preventDefault();
+                    form.reset();
+                    updatePeriodFieldVisibility(form);
+                    loadScorecardData(form);
+                }
+            });
+        });
+    })();
+</script>
+@endpush

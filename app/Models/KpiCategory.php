@@ -9,6 +9,7 @@ class KpiCategory extends Model
 {
     protected $fillable = [
         'name',
+        'scorecard_weightage',
         'slug',
         'description',
         'is_active',
@@ -16,6 +17,7 @@ class KpiCategory extends Model
 
     protected $casts = [
         'is_active' => 'boolean',
+        'scorecard_weightage' => 'decimal:2',
     ];
 
     public function inspections()
