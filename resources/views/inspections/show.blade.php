@@ -492,6 +492,10 @@
 
 @section('content')
 @php
+    $svc = app(\App\Services\InspectionService::class);
+    $displayFields = $svc->getInspectionDisplayFields($inspection);
+    $eaCounts = $svc->getEvidenceActionsCounts($inspection);
+
     $status = strtolower($inspection->status ?? 'submitted');
     $statusClass = match ($status) {
         'approved' => 'status-approved',
@@ -687,8 +691,8 @@
                         </div>
 
                         <div class="info-item">
-                            <div class="info-label">Main Title / Name</div>
-                            <div class="info-value">{{ $inspection->main_title ?? 'N/A' }}</div>
+                            <div class="info-label">{{ $displayFields['primary_label'] }}</div>
+                            <div class="info-value">{{ $displayFields['primary_value'] }}</div>
                         </div>
 
                         <div class="info-item">
@@ -697,8 +701,15 @@
                         </div>
 
                         <div class="info-item info-wide">
-                            <div class="info-label">Address</div>
-                            <div class="info-value">{{ $inspection->main_address ?? 'N/A' }}</div>
+                            <div class="info-label">{{ $displayFields['secondary_label'] }}</div>
+                            <div class="info-value">{{ $displayFields['secondary_value'] }}</div>
+                        </div>
+
+                        <div class="info-item">
+                            <div class="info-label">Evidence / Actions</div>
+                            <div class="info-value">
+                                Evidence: {{ $eaCounts['evidence_count'] }} &nbsp;·&nbsp; Actions: {{ $eaCounts['actions_count'] }}
+                            </div>
                         </div>
 
                         <div class="info-item">

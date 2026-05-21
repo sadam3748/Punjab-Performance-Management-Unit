@@ -31,7 +31,6 @@ class InspectionController extends Controller
             'district_id',
             'tehsil_id',
             'kpi_category_id',
-            'status',
             'date_from',
             'date_to',
             'search',
@@ -48,6 +47,38 @@ class InspectionController extends Controller
             'tehsils'       => $filterData['tehsils'],
             'kpiCategories' => $filterData['kpiCategories'],
             'filters'       => $filters,
+        ]);
+    }
+
+    /*
+    |----------------------------------------------------------------------
+    | Inspection List (AJAX Data)
+    |----------------------------------------------------------------------
+    | Returns table HTML only for AJAX onchange filters/pagination.
+    */
+    public function data(Request $request)
+    {
+        $filters = $request->only([
+            'district_id',
+            'tehsil_id',
+            'kpi_category_id',
+            'date_from',
+            'date_to',
+            'search',
+            'per_page',
+            'page',
+        ]);
+
+        $inspections = $this->inspectionService->getInspectionList($filters);
+
+        $html = view('inspections.partials._inspection-table', [
+            'inspections' => $inspections,
+        ])->render();
+
+        return response()->json([
+            'status' => 'success',
+            'html' => $html,
+            'total' => method_exists($inspections, 'total') ? $inspections->total() : $inspections->count(),
         ]);
     }
 

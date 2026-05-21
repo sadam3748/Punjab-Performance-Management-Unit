@@ -161,6 +161,9 @@ Route::prefix('portal')->middleware('auth')->group(function () {
     Route::get('/inspections/list', [InspectionController::class, 'list'])
         ->name('inspections.list');
 
+    Route::get('/inspections/data', [InspectionController::class, 'data'])
+        ->name('inspections.data');
+
     Route::get('/inspections/{id}', [InspectionController::class, 'show'])
         ->name('inspections.show');
 

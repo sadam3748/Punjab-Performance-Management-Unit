@@ -11,7 +11,7 @@
         <div>
             <h1 class="page-title mb-1">Inspection List</h1>
             <p class="page-subtitle mb-0">
-                Review field inspection records with district, tehsil, KPI category, status and location details.
+                Review field inspection records with district, tehsil, KPI category and location details.
             </p>
         </div>
 
@@ -38,7 +38,7 @@
             </div>
         </div>
 
-        <form method="GET" action="{{ route('inspections.list') }}">
+        <form method="GET" action="{{ route('inspections.list') }}" id="inspectionFilters">
             <input type="hidden" name="per_page" value="{{ $filters['per_page'] ?? request('per_page', 10) }}">
             <div class="row g-3 align-items-end">
 
@@ -82,19 +82,6 @@
                 </div>
 
                 <div class="col-xl-3 col-lg-4 col-md-6">
-                    <label class="form-label inspection-label">Status</label>
-                    <select name="status" class="form-select inspection-control">
-                        <option value="">All Status</option>
-                        @foreach (['submitted', 'reviewed', 'approved', 'rejected'] as $status)
-                            <option value="{{ $status }}"
-                                {{ ($filters['status'] ?? '') === $status ? 'selected' : '' }}>
-                                {{ ucfirst(str_replace('_', ' ', $status)) }}
-                            </option>
-                        @endforeach
-                    </select>
-                </div>
-
-                <div class="col-xl-3 col-lg-4 col-md-6">
                     <label class="form-label inspection-label">From Date</label>
                     <input
                         type="date"
@@ -132,252 +119,90 @@
         </form>
     </div>
 
-    {{-- Table --}}
-    <div class="inspection-table-card">
-        <div class="inspection-card-header">
-            <div>
-                <h5 class="inspection-section-title mb-1">
-                    <i class="bi bi-table"></i>
-                    Inspection Records
-                </h5>
-                <p class="inspection-section-subtitle mb-0">
-                    @if (method_exists($inspections, 'firstItem') && $inspections->total() > 0)
-                        Showing {{ number_format($inspections->firstItem()) }} to {{ number_format($inspections->lastItem()) }}
-                        of {{ number_format($inspections->total()) }} records
-                    @else
-                        Total records: {{ method_exists($inspections, 'total') ? number_format($inspections->total()) : number_format($inspections->count()) }}
-                    @endif
-                </p>
-            </div>
-
-            <form class="inspection-per-page-form" method="GET" action="{{ route('inspections.list') }}">
-                @foreach(request()->except('per_page', 'page') as $name => $value)
-                    <input type="hidden" name="{{ $name }}" value="{{ $value }}">
-                @endforeach
-                <label for="inspection-per-page" class="inspection-per-page-label">Per page</label>
-                <select id="inspection-per-page" name="per_page" class="form-select inspection-control inspection-per-page-select" onchange="this.form.submit()">
-                    @foreach ([10, 20, 25, 50] as $perPageOption)
-                        <option value="{{ $perPageOption }}"
-                            {{ (int) ($filters['per_page'] ?? request('per_page', 10)) === $perPageOption ? 'selected' : '' }}>
-                            {{ $perPageOption }}
-                        </option>
-                    @endforeach
-                </select>
-            </form>
-
-            <div class="inspection-table-legend">
-                <span><i class="legend-dot submitted"></i>Submitted</span>
-                <span><i class="legend-dot reviewed"></i>Reviewed</span>
-                <span><i class="legend-dot approved"></i>Approved</span>
-                <span><i class="legend-dot rejected"></i>Rejected</span>
-            </div>
-        </div>
-
-        <div class="inspection-table-wrap">
-            <table class="table inspection-table align-middle mb-0">
-                <thead>
-                    <tr>
-                        <th class="inspection-col-sr">Sr.</th>
-                        <th>Inspection Type</th>
-                        <th>Main Detail</th>
-                        <th>District</th>
-                        <th>Tehsil</th>
-                        <th>Performed By</th>
-                        <th>Date & Time</th>
-                        <th>Status</th>
-                        <th class="text-center inspection-col-action">Action</th>
-                    </tr>
-                </thead>
-
-                <tbody>
-                    @forelse ($inspections as $index => $inspection)
-                        @php
-                            $status = $inspection->status ?? 'submitted';
-                            $statusClass = match ($status) {
-                                'approved' => 'row-approved',
-                                'reviewed' => 'row-reviewed',
-                                'rejected' => 'row-rejected',
-                                default => 'row-submitted',
-                            };
-                        @endphp
-
-                        <tr class="{{ $statusClass }}">
-                            <td class="fw-bold text-muted">
-                                {{ method_exists($inspections, 'firstItem') ? $inspections->firstItem() + $index : $index + 1 }}
-                            </td>
-
-                            <td>
-                                <div class="inspection-type-cell">
-                                    <span class="inspection-type-icon">
-                                        <i class="bi bi-clipboard-check"></i>
-                                    </span>
-                                    <span>{{ $inspection->kpiCategory->name ?? 'N/A' }}</span>
-                                </div>
-                            </td>
-
-                            <td>
-                                <div class="inspection-title">
-                                    {{ $inspection->main_title ?? 'N/A' }}
-                                </div>
-
-                                <div class="inspection-address">
-                                    {{ $inspection->main_address ?? 'No address available' }}
-                                </div>
-
-                                @if (!empty($inspection->main_identifier))
-                                    <div class="inspection-meta">
-                                        ID/CNIC: {{ $inspection->main_identifier }}
-                                    </div>
-                                @endif
-                            </td>
-
-                            <td>
-                                <span class="area-chip district-chip">
-                                    {{ $inspection->district->name ?? 'N/A' }}
-                                </span>
-                            </td>
-
-                            <td>
-                                <span class="area-chip tehsil-chip">
-                                    {{ $inspection->tehsil->name ?? 'N/A' }}
-                                </span>
-                            </td>
-
-                            <td>
-                                <div class="inspection-user">
-                                    <div class="inspection-user-avatar">
-                                        {{ strtoupper(substr($inspection->performer->username ?? $inspection->performer->name ?? 'U', 0, 1)) }}
-                                    </div>
-                                    <div>
-                                        <div class="inspection-user-name">
-                                            {{ $inspection->performer->username ?? 'N/A' }}
-                                        </div>
-                                        <small class="inspection-user-role">
-                                            {{ $inspection->performer->designation ?? $inspection->performer->name ?? '' }}
-                                        </small>
-                                    </div>
-                                </div>
-                            </td>
-
-                            <td>
-                                @if ($inspection->inspection_datetime)
-                                    <div class="inspection-date">
-                                        {{ \Carbon\Carbon::parse($inspection->inspection_datetime)->format('d M, Y') }}
-                                    </div>
-                                    <div class="inspection-time">
-                                        {{ \Carbon\Carbon::parse($inspection->inspection_datetime)->format('h:i A') }}
-                                    </div>
-                                @else
-                                    <span class="text-muted">N/A</span>
-                                @endif
-                            </td>
-
-                            <td>
-                                <span class="inspection-status-badge status-{{ $status }}">
-                                    {{ ucfirst(str_replace('_', ' ', $status)) }}
-                                </span>
-                            </td>
-
-                            <td class="text-center">
-                                <a href="{{ route('inspections.show', $inspection->id) }}"
-                                   class="inspection-view-btn"
-                                   title="View Detail">
-                                    <i class="bi bi-eye"></i>
-                                </a>
-                            </td>
-                        </tr>
-                    @empty
-                        <tr>
-                            <td colspan="9" class="text-center py-5">
-                                <div class="inspection-empty-state">
-                                    <i class="bi bi-inbox"></i>
-                                    <h6>No inspection records found</h6>
-                                    <p>Try changing filters or add inspection dummy data.</p>
-                                </div>
-                            </td>
-                        </tr>
-                    @endforelse
-                </tbody>
-            </table>
-        </div>
-
-        {{-- Custom Stable Pagination --}}
-        @if (method_exists($inspections, 'lastPage') && $inspections->lastPage() > 1)
-            @php
-                $inspections->appends(request()->query());
-
-                $currentPage = $inspections->currentPage();
-                $lastPage = $inspections->lastPage();
-                $startPage = max(1, $currentPage - 2);
-                $endPage = min($lastPage, $currentPage + 2);
-
-                if ($currentPage <= 3) {
-                    $endPage = min($lastPage, 5);
-                }
-
-                if ($currentPage >= $lastPage - 2) {
-                    $startPage = max(1, $lastPage - 4);
-                }
-            @endphp
-
-            <div class="inspection-pagination-bar">
-                <div class="inspection-pagination-summary-group">
-                    <div class="inspection-pagination-summary">
-                        Showing {{ number_format($inspections->firstItem()) }} to {{ number_format($inspections->lastItem()) }}
-                        of {{ number_format($inspections->total()) }} records
-                    </div>
-                    <div class="inspection-pagination-per-page">
-                        {{ (int) ($filters['per_page'] ?? request('per_page', 10)) }} per page
-                    </div>
-                </div>
-
-                <nav class="inspection-pagination-nav" aria-label="Inspection pagination">
-                    <a
-                        href="{{ $inspections->previousPageUrl() ?: 'javascript:void(0)' }}"
-                        class="inspection-page-link {{ $inspections->onFirstPage() ? 'disabled' : '' }}"
-                    >
-                        <i class="bi bi-chevron-left"></i>
-                        Previous
-                    </a>
-
-                    @if ($startPage > 1)
-                        <a href="{{ $inspections->url(1) }}" class="inspection-page-number">1</a>
-                        @if ($startPage > 2)
-                            <span class="inspection-page-dots">...</span>
-                        @endif
-                    @endif
-
-                    @for ($page = $startPage; $page <= $endPage; $page++)
-                        <a
-                            href="{{ $inspections->url($page) }}"
-                            class="inspection-page-number {{ $page == $currentPage ? 'active' : '' }}"
-                        >
-                            {{ $page }}
-                        </a>
-                    @endfor
-
-                    @if ($endPage < $lastPage)
-                        @if ($endPage < $lastPage - 1)
-                            <span class="inspection-page-dots">...</span>
-                        @endif
-                        <a href="{{ $inspections->url($lastPage) }}" class="inspection-page-number">{{ $lastPage }}</a>
-                    @endif
-
-                    <a
-                        href="{{ $inspections->nextPageUrl() ?: 'javascript:void(0)' }}"
-                        class="inspection-page-link {{ $inspections->hasMorePages() ? '' : 'disabled' }}"
-                    >
-                        Next
-                        <i class="bi bi-chevron-right"></i>
-                    </a>
-                </nav>
-            </div>
-        @endif
+    {{-- Table (AJAX) --}}
+    <div id="inspectionDynamic">
+        @include('inspections.partials._inspection-table', ['inspections' => $inspections])
     </div>
 
 </div>
 
 @endsection
+
+@push('scripts')
+<script>
+    (function () {
+        const $form = $('#inspectionFilters');
+        const $dynamic = $('#inspectionDynamic');
+        const dataUrl = @json(route('inspections.data'));
+
+        let searchTimer = null;
+
+        function loadInspectionData(extraParams) {
+            let params = $form.serialize();
+            if (extraParams) {
+                params += (params.length ? '&' : '') + extraParams;
+            }
+
+            $dynamic.css('opacity', '0.55');
+
+            $.ajax({
+                url: dataUrl,
+                method: 'GET',
+                data: params,
+                success: function (resp) {
+                    if (resp && resp.status === 'success') {
+                        $dynamic.html(resp.html);
+                        const url = new URL(window.location.href);
+                        url.search = params;
+                        window.history.pushState({}, '', url.toString());
+                    }
+                },
+                complete: function () {
+                    $dynamic.css('opacity', '1');
+                },
+                error: function () {
+                    $dynamic.css('opacity', '1');
+                }
+            });
+        }
+
+        // Auto-apply for dropdowns + dates.
+        $form.on('change', 'select,input[type="date"]', function () {
+            loadInspectionData('page=1');
+        });
+
+        // Debounced search.
+        $form.on('input', 'input[name="search"]', function () {
+            clearTimeout(searchTimer);
+            searchTimer = setTimeout(function () {
+                loadInspectionData('page=1');
+            }, 350);
+        });
+
+        // Intercept Apply button.
+        $form.on('submit', function (e) {
+            e.preventDefault();
+            loadInspectionData('page=1');
+        });
+
+        // Intercept pagination links rendered inside partial.
+        $(document).on('click', '.inspection-pagination-nav a, .inspection-pagination-nav .inspection-page-number', function (e) {
+            const href = $(this).attr('href');
+            if (!href || href === 'javascript:void(0)') return;
+            e.preventDefault();
+            const url = new URL(href, window.location.origin);
+            const page = url.searchParams.get('page') || '1';
+            loadInspectionData('page=' + encodeURIComponent(page));
+        });
+
+        // Per-page changes (partial).
+        $(document).on('change', '.inspection-per-page-form select[name="per_page"]', function () {
+            $form.find('input[name="per_page"]').val($(this).val());
+            loadInspectionData('page=1');
+        });
+    })();
+</script>
+@endpush
 
 @push('styles')
 <style>

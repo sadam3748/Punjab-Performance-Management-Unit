@@ -5,6 +5,7 @@ use App\Models\District;
 use App\Models\Inspection;
 use App\Models\KpiCategory;
 use App\Models\Tehsil;
+use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Auth;
 
 class InspectionService
@@ -20,12 +21,13 @@ class InspectionService
     {
         return Inspection::query()
             ->with([
-                'kpiCategory:id,name',
+                'kpiCategory:id,name,slug',
                 'division:id,name',
                 'district:id,name',
                 'tehsil:id,name',
                 'performer:id,name,username,designation',
-            ]);
+            ])
+            ->withCount('attachments');
     }
 
     /*
@@ -193,7 +195,77 @@ class InspectionService
 
             'kpiCategories' => KpiCategory::where('is_active', true)
                 ->orderBy('name')
-                ->get(['id', 'name']),
+                ->get(['id', 'name', 'slug']),
+        ];
+    }
+
+    public function getInspectionDisplayFields(Inspection $inspection): array
+    {
+        $slug = (string) ($inspection->kpiCategory?->slug ?? '');
+        $detail = is_array($inspection->detail_data ?? null) ? ($inspection->detail_data ?? []) : [];
+
+        $getFirst = function (array $keys) use ($detail, $inspection) {
+            foreach ($keys as $k) {
+                if (array_key_exists($k, $detail) && $detail[$k] !== null && $detail[$k] !== '') {
+                    return $detail[$k];
+                }
+            }
+            return null;
+        };
+
+        $primaryLabel = 'Primary Detail';
+        $secondaryLabel = 'Secondary Detail / Address';
+
+        if (Str::contains($slug, ['water-filtration', 'filtration-plant'])) {
+            $primaryLabel = 'Filter Plant / UC';
+            $secondaryLabel = 'Address';
+        } elseif (Str::contains($slug, ['marriage', 'wedding', 'marriage-functions'])) {
+            $primaryLabel = 'Marriage Hall Name';
+            $secondaryLabel = 'Address';
+        } elseif (Str::contains($slug, ['manhole'])) {
+            $primaryLabel = 'Location / Road';
+            $secondaryLabel = 'Nearby Landmark / Address';
+        } elseif (Str::contains($slug, ['stray-dog', 'stray-dogs'])) {
+            $primaryLabel = 'Area / Location';
+            $secondaryLabel = 'Address / Remarks';
+        }
+
+        $primaryValue = $getFirst(['primary', 'name', 'title', 'location', 'site_name', 'plant_name']) ?? ($inspection->main_title ?? null);
+        $secondaryValue = $getFirst(['secondary', 'address', 'landmark', 'remarks', 'site_address']) ?? ($inspection->main_address ?? null);
+
+        return [
+            'primary_label' => $primaryLabel,
+            'primary_value' => $primaryValue ?: 'N/A',
+            'secondary_label' => $secondaryLabel,
+            'secondary_value' => $secondaryValue ?: 'N/A',
+        ];
+    }
+
+    public function getEvidenceActionsCounts(Inspection $inspection): array
+    {
+        $evidenceCount = (int) ($inspection->attachments_count ?? 0);
+
+        $actions = $inspection->actions ?? [];
+        if (! is_array($actions)) {
+            $actions = [];
+        }
+
+        // Count non-empty action fields/items.
+        $actionsCount = 0;
+        foreach ($actions as $value) {
+            if (is_array($value)) {
+                $actionsCount += count(array_filter($value, fn ($v) => $v !== null && $v !== ''));
+                continue;
+            }
+            if ($value !== null && $value !== '') {
+                $actionsCount++;
+            }
+        }
+
+        return [
+            'evidence_count' => $evidenceCount,
+            'actions_count' => $actionsCount,
+            'total_items' => $evidenceCount + $actionsCount,
         ];
     }
 }
