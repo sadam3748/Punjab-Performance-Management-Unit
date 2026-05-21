@@ -87,7 +87,7 @@ class KpiMetricValueSeeder extends Seeder
                 // - For Water Filtration: also seed functional/non_functional so special charts work.
                 $districtMetricKeys = [$defs[0]['key']]; // first metric is primary
                 if ($this->isWaterCategory($category->slug, $category->name)) {
-                    $extra = ['functional', 'non_functional'];
+                    $extra = ['functional', 'non_functional', 'ro_filter_changed', 'ro_filter_unchanged'];
                     foreach ($extra as $k) {
                         if (in_array($k, array_column($defs, 'key'), true)) {
                             $districtMetricKeys[] = $k;
@@ -210,6 +210,8 @@ class KpiMetricValueSeeder extends Seeder
                 ['key' => 'non_functional', 'title' => 'Non-Functional', 'unit' => 'count'],
                 ['key' => 'cleaned', 'title' => 'Cleaned', 'unit' => 'count'],
                 ['key' => 'uncleaned', 'title' => 'Un-cleaned', 'unit' => 'count'],
+                ['key' => 'ro_filter_changed', 'title' => 'RO Filter Changed', 'unit' => 'count'],
+                ['key' => 'ro_filter_unchanged', 'title' => 'RO Filter Unchanged', 'unit' => 'count'],
             ];
         }
 
@@ -290,6 +292,8 @@ class KpiMetricValueSeeder extends Seeder
             'non_functional' => mt_rand(80, 450),
             'cleaned' => mt_rand(1800, 4500),
             'uncleaned' => mt_rand(100, 900),
+            'ro_filter_changed' => mt_rand(120, 900),
+            'ro_filter_unchanged' => mt_rand(200, 1400),
 
             'total_inspections' => mt_rand(80, 520),
             'compliant' => mt_rand(40, 420),
@@ -337,7 +341,7 @@ class KpiMetricValueSeeder extends Seeder
         $val = $val * (1 + $skew);
 
         // For non_functional keep smaller.
-        if (in_array($metricKey, ['non_functional', 'uncovered', 'high_risk', 'follow_up_required', 'violations_found', 'overcharging_found'], true)) {
+        if (in_array($metricKey, ['non_functional', 'ro_filter_changed', 'uncovered', 'high_risk', 'follow_up_required', 'violations_found', 'overcharging_found'], true)) {
             $val = $val * (mt_rand(20, 60) / 100);
         }
 
@@ -355,4 +359,3 @@ class KpiMetricValueSeeder extends Seeder
         return round(min(100, max(0, $score)), 2);
     }
 }
-

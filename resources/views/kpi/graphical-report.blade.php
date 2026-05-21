@@ -282,6 +282,9 @@
 
     .gr-donut-row.donut-count-1{grid-template-columns:minmax(0, 360px);}
     .gr-donut-row.donut-count-2{grid-template-columns:repeat(2, minmax(0, 1fr));}
+    .gr-donut-row.donut-count-3{grid-template-columns:repeat(3, minmax(0, 1fr));}
+    .gr-donut-row.donut-count-4{grid-template-columns:repeat(4, minmax(0, 1fr));}
+    .gr-donut-row.donut-count-many{grid-template-columns:repeat(4, minmax(0, 1fr));}
 
     .gr-graph-row{
         display:grid;
@@ -472,9 +475,9 @@
     }
 
     .gr-type-badge{
-        color:#1d4ed8;
-        background:#eff6ff;
-        border:1px solid #bfdbfe;
+        color:#14532d;
+        background:#ecfdf3;
+        border:1px solid #bbf7d0;
     }
 
     .gr-district-badge{
@@ -996,57 +999,85 @@
         const container = document.getElementById('graphicalReportContentContainer');
         if (container) container.classList.add('loading');
 
-        if (!window.jQuery) {
-            form.submit();
+        // Prefer jQuery if available, otherwise fallback to fetch (still AJAX, no full reload).
+        if (window.jQuery) {
+            jQuery.ajax({
+                url: "{{ route('kpi.graphical-report.data') }}",
+                type: "GET",
+                data: params.toString(),
+                success: function (res) {
+                    if (res && res.status === 'success') {
+                        jQuery('#graphicalReportContentContainer').html(res.html);
+                        toggleWeekDisabled();
+                        renderCharts(extractChartDataFromContent());
+                        updateQueryString(params.toString());
+                    }
+                },
+                error: function () {
+                    if (container) {
+                        container.innerHTML = '<div class="gr-empty"><div>Failed to load report data.</div></div>';
+                    }
+                },
+                complete: function () {
+                    if (container) container.classList.remove('loading');
+                }
+            });
             return;
         }
 
-        jQuery.ajax({
-            url: "{{ route('kpi.graphical-report.data') }}",
-            type: "GET",
-            data: params.toString(),
-            success: function (res) {
+        fetch("{{ route('kpi.graphical-report.data') }}?" + params.toString(), {
+            method: 'GET',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        })
+            .then((r) => r.json())
+            .then((res) => {
                 if (res && res.status === 'success') {
-                    jQuery('#graphicalReportContentContainer').html(res.html);
+                    container.innerHTML = res.html;
                     toggleWeekDisabled();
                     renderCharts(extractChartDataFromContent());
                     updateQueryString(params.toString());
                 }
-            },
-            error: function () {
+            })
+            .catch(() => {
                 if (container) {
                     container.innerHTML = '<div class="gr-empty"><div>Failed to load report data.</div></div>';
                 }
-            },
-            complete: function () {
+            })
+            .finally(() => {
                 if (container) container.classList.remove('loading');
-            }
-        });
+            });
     }
 
     document.addEventListener('DOMContentLoaded', function () {
         toggleWeekDisabled();
         renderCharts(extractChartDataFromContent());
 
-        if (window.jQuery) {
-            jQuery('#graphicalReportFilters').on('change', 'select', function () {
+        // Strict onchange: any dropdown change triggers AJAX
+        document.getElementById('graphicalReportFilters')?.addEventListener('change', function (e) {
+            const t = e.target;
+            if (!t) return;
+            if (t.matches('select')) {
                 loadGraphicalReportData();
-            });
+            }
+        });
 
-            jQuery('#graphicalReportFilters').on('submit', function (e) {
-                e.preventDefault();
-                loadGraphicalReportData();
-            });
+        // Keep Apply/Report buttons but do not reload page
+        document.getElementById('graphicalReportFilters')?.addEventListener('submit', function (e) {
+            e.preventDefault();
+            loadGraphicalReportData();
+        });
 
-            jQuery(document).on('click', '#graphicalReportContentContainer .inspection-pagination-nav a, #graphicalReportContentContainer .pagination a', function (e) {
-                e.preventDefault();
-                const href = jQuery(this).attr('href');
-                if (!href || href === 'javascript:void(0)') return;
-                const url = new URL(href, window.location.origin);
-                const page = url.searchParams.get('page');
-                loadGraphicalReportData(page ? { page } : {});
-            });
-        }
+        // Pagination via AJAX
+        document.addEventListener('click', function (e) {
+            const a = e.target?.closest?.('#graphicalReportContentContainer .inspection-pagination-nav a, #graphicalReportContentContainer .pagination a');
+            if (!a) return;
+            const href = a.getAttribute('href');
+            if (!href || href === 'javascript:void(0)' || href === '#') return;
+            e.preventDefault();
+            const url = new URL(href, window.location.origin);
+            const page = url.searchParams.get('page');
+            loadGraphicalReportData(page ? { page } : {});
+        });
     });
 </script>
 @endpush

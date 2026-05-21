@@ -26,7 +26,9 @@
     $metricCount = count($summaryCards ?? []);
     $metricGridClass = $metricCount > 9 ? 'metric-count-many' : 'metric-count-' . max(1, $metricCount);
     $donutCount = count($donuts ?? []);
-    $donutGridClass = $donutCount === 1 ? 'donut-count-1' : ($donutCount === 2 ? 'donut-count-2' : 'donut-count-many');
+    $donutGridClass = $donutCount >= 1 && $donutCount <= 4
+        ? ('donut-count-' . $donutCount)
+        : 'donut-count-many';
 @endphp
 
 <div id="graphicalReportContent" data-chart='@json($chartData ?? [])'>
