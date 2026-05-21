@@ -463,7 +463,7 @@
     </div>
 
     <div class="card-ppmf-body">
-        <form method="GET" action="{{ route('kpi.district-wise-kpi-score') }}">
+        <form id="districtWiseKpiScoreFilters" method="GET" action="{{ route('kpi.district-wise-kpi-score') }}">
             <div class="row g-3 align-items-end">
                 <div class="col-xl-3 col-lg-4 col-md-6">
                     <label class="form-label">KPI Category</label>
@@ -537,6 +537,7 @@
     </div>
 </div>
 
+<div id="districtWiseKpiScoreResults">
 @if(($metricCards ?? collect())->count())
     <div class="card-ppmf mb-4">
         <div class="card-ppmf-header">
@@ -765,5 +766,79 @@
         </div>
     @endif
 </div>
-
 @endsection
+
+@push('scripts')
+<script>
+    (function () {
+        if (!window.jQuery) return;
+
+        let searchTimer = null;
+
+        function setLoading(isLoading) {
+            const $c = jQuery('#districtWiseKpiScoreResults');
+            if (!$c.length) return;
+            $c.css('opacity', isLoading ? 0.6 : 1);
+        }
+
+        function updateQueryString(serialized) {
+            const url = window.location.pathname + (serialized ? ('?' + serialized) : '');
+            window.history.pushState({}, '', url);
+        }
+
+        function loadDistrictWiseResults(urlOverride) {
+            const $form = jQuery('#districtWiseKpiScoreFilters');
+            const url = urlOverride || $form.attr('action');
+            const data = $form.serialize();
+
+            setLoading(true);
+
+            jQuery.get(url, data)
+                .done(function (html) {
+                    const $doc = jQuery('<div>').html(html);
+                    const $newResults = $doc.find('#districtWiseKpiScoreResults');
+                    if ($newResults.length) {
+                        jQuery('#districtWiseKpiScoreResults').html($newResults.html());
+                        updateQueryString(data);
+                    }
+                })
+                .fail(function () {
+                    jQuery('#districtWiseKpiScoreResults').html('<div class="p-4 text-danger fw-bold">Failed to load data. Please try again.</div>');
+                })
+                .always(function () {
+                    setLoading(false);
+                });
+        }
+
+        jQuery('#districtWiseKpiScoreFilters').on('change', 'select, input[type=\"date\"]', function () {
+            loadDistrictWiseResults();
+        });
+
+        jQuery('#districtWiseKpiScoreFilters').on('keyup', 'input[name=\"search\"]', function () {
+            clearTimeout(searchTimer);
+            searchTimer = setTimeout(function () {
+                loadDistrictWiseResults();
+            }, 400);
+        });
+
+        jQuery('#districtWiseKpiScoreFilters').on('submit', function (e) {
+            e.preventDefault();
+            loadDistrictWiseResults();
+        });
+
+        jQuery(document).on('click', '#districtWiseKpiScoreResults .kpi-pagination-nav a, #districtWiseKpiScoreResults .pagination a', function (e) {
+            const href = jQuery(this).attr('href');
+            if (!href || href === 'javascript:void(0)') return;
+            e.preventDefault();
+            loadDistrictWiseResults(href);
+        });
+
+        jQuery(document).on('change', '#districtWiseKpiScoreResults .kpi-per-page-select', function (e) {
+            e.preventDefault();
+            const $form = jQuery('#districtWiseKpiScoreFilters');
+            $form.find('select[name=\"per_page\"]').val(jQuery(this).val());
+            loadDistrictWiseResults();
+        });
+    })();
+</script>
+@endpush

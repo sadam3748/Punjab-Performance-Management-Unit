@@ -134,18 +134,14 @@ class KpiReportController extends Controller
         $filters = $request->only([
             'kpi_category_id',
             'period_type',
-            'date_from',
-            'date_to',
+            'week_no',
             'month',
             'year',
-            'district_id',
-            'tehsil_id',
             'per_page',
-            'search',
         ]);
 
         if (empty($filters['period_type'])) {
-            $filters['period_type'] = 'last_week';
+            $filters['period_type'] = 'weekly';
         }
 
         if (empty($filters['per_page'])) {
@@ -155,33 +151,37 @@ class KpiReportController extends Controller
         $graphFilters = $this->kpiReportService->getGraphicalFilters();
 
         if (empty($filters['kpi_category_id'])) {
-            // Prefer a category that has seeded KPI metric cards for selected period.
-            $periodType = $filters['period_type'] ?? 'last_week';
-            $preferred = \App\Models\KpiCategory::where('is_active', true)
-                ->where('name', 'Functional and Clean Water Filtration Plants')
-                ->whereHas('provincialMetrics', fn ($q) => $q->where('is_active', true)->where('period_type', $periodType))
-                ->whereHas('districtKpiMetricValues', fn ($q) => $q->where('is_active', true)->where('period_type', $periodType))
-                ->first(['id']);
+            $first = $graphFilters['kpiCategories']->first();
+            if ($first) $filters['kpi_category_id'] = $first->id;
+        }
 
-            $firstWithData = \App\Models\KpiCategory::where('is_active', true)
-                ->whereHas('provincialMetrics', fn ($q) => $q->where('is_active', true)->where('period_type', $periodType))
-                ->whereHas('districtKpiMetricValues', fn ($q) => $q->where('is_active', true)->where('period_type', $periodType))
-                ->orderBy('name')
-                ->first(['id']);
+        // Old PPMF default: weekly + latest completed Thu->Wed week (week_no is ISO week key YYYYWW).
+        $scorecardService = app(\App\Services\ScorecardService::class);
+        if (($filters['period_type'] ?? '') === 'weekly' && empty($filters['week_no'])) {
+            $default = $scorecardService->getLatestCompletedPpmfWeekFilters();
+            $filters['week_no'] = $default['week_no'] ?? null;
+            $filters['year'] = $default['year'] ?? null;
+            $filters['month'] = $default['month'] ?? null;
+        }
 
-            if ($preferred) {
-                $filters['kpi_category_id'] = $preferred->id;
-            } elseif ($firstWithData) {
-                $filters['kpi_category_id'] = $firstWithData->id;
-            } else {
-                $first = $graphFilters['kpiCategories']->first();
-                if ($first) {
-                    $filters['kpi_category_id'] = $first->id;
-                }
+        if (($filters['period_type'] ?? '') === 'weekly' && ! empty($filters['week_no']) && (empty($filters['year']) || empty($filters['month']))) {
+            $range = $scorecardService->getWeekDateRange((string) $filters['week_no']);
+            if (! empty($range['start'])) {
+                $filters['year'] = (int) $range['start']->format('Y');
+                $filters['month'] = (int) $range['start']->format('n');
             }
         }
 
-        $scopeTitle = $this->kpiReportService->getGraphicalScopeTitle($filters);
+        $weekOptions = [];
+        if (($filters['period_type'] ?? '') === 'weekly') {
+            $y = ! empty($filters['year']) ? (int) $filters['year'] : (int) now()->format('Y');
+            for ($m = 1; $m <= 12; $m++) {
+                $weekOptions = array_replace($weekOptions, $scorecardService->getWeekRanges($y, $m));
+            }
+            ksort($weekOptions);
+        }
+
+        $scopeTitle = 'PUNJAB';
         $summaryCards = $this->kpiReportService->getGraphicalSummaryCards($filters);
         $chartData = $this->kpiReportService->getGraphicalChartData($filters);
         $tableData = $this->kpiReportService->getGraphicalInspectionRecords($filters);
@@ -190,6 +190,7 @@ class KpiReportController extends Controller
             'filters'       => $filters,
             'scopeTitle'    => $scopeTitle,
             'periodOptions' => $graphFilters['periodOptions'],
+            'weekOptions'   => $weekOptions,
             'months'        => $graphFilters['months'],
             'years'         => $graphFilters['years'],
             'kpiCategories' => $graphFilters['kpiCategories'],
@@ -198,6 +199,68 @@ class KpiReportController extends Controller
             'summaryCards'  => $summaryCards ?? [],
             'chartData'     => $chartData,
             'tableData'     => $tableData,
+        ]);
+    }
+
+    public function graphicalReportData(Request $request)
+    {
+        $filters = $request->only([
+            'kpi_category_id',
+            'period_type',
+            'week_no',
+            'month',
+            'year',
+            'per_page',
+            'page',
+        ]);
+
+        if (empty($filters['period_type'])) {
+            $filters['period_type'] = 'weekly';
+        }
+        if (empty($filters['per_page'])) {
+            $filters['per_page'] = 10;
+        }
+
+        $graphFilters = $this->kpiReportService->getGraphicalFilters();
+        if (empty($filters['kpi_category_id'])) {
+            $first = $graphFilters['kpiCategories']->first();
+            if ($first) $filters['kpi_category_id'] = $first->id;
+        }
+
+        $scorecardService = app(\App\Services\ScorecardService::class);
+        if (($filters['period_type'] ?? '') === 'weekly' && empty($filters['week_no'])) {
+            $default = $scorecardService->getLatestCompletedPpmfWeekFilters();
+            $filters['week_no'] = $default['week_no'] ?? null;
+            $filters['year'] = $default['year'] ?? null;
+            $filters['month'] = $default['month'] ?? null;
+        }
+
+        if (($filters['period_type'] ?? '') === 'weekly' && ! empty($filters['week_no']) && (empty($filters['year']) || empty($filters['month']))) {
+            $range = $scorecardService->getWeekDateRange((string) $filters['week_no']);
+            if (! empty($range['start'])) {
+                $filters['year'] = (int) $range['start']->format('Y');
+                $filters['month'] = (int) $range['start']->format('n');
+            }
+        }
+
+        $summaryCards = $this->kpiReportService->getGraphicalSummaryCards($filters);
+        $chartData = $this->kpiReportService->getGraphicalChartData($filters);
+        $tableData = $this->kpiReportService->getGraphicalInspectionRecords($filters);
+
+        $html = view('kpi.partials._graphical-report-content', [
+            'filters' => $filters,
+            'scopeTitle' => 'PUNJAB',
+            'summaryCards' => $summaryCards ?? [],
+            'chartData' => $chartData,
+            'tableData' => $tableData,
+            'kpiCategories' => $graphFilters['kpiCategories'],
+        ])->render();
+
+        return response()->json([
+            'status' => 'success',
+            'html' => $html,
+            'filters' => $filters,
+            'chartData' => $chartData,
         ]);
     }
 }

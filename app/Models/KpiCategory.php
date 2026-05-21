@@ -37,12 +37,21 @@ class KpiCategory extends Model
 
     public function provincialMetrics(): HasMany
     {
-        return $this->hasMany(ProvincialKpiMetric::class, 'kpi_category_id');
+        // Backward-compatible alias (old name) for unified KPI metric values.
+        return $this->hasMany(KpiMetricValue::class, 'kpi_category_id')
+            ->where('area_level', 'province');
     }
 
     public function districtKpiMetricValues(): HasMany
     {
-        return $this->hasMany(DistrictKpiMetricValue::class, 'kpi_category_id');
+        // Backward-compatible alias (old name) for unified KPI metric values.
+        return $this->hasMany(KpiMetricValue::class, 'kpi_category_id')
+            ->where('area_level', 'district');
+    }
+
+    public function metricValues(): HasMany
+    {
+        return $this->hasMany(KpiMetricValue::class, 'kpi_category_id');
     }
 
     public function scoringParameters(): HasMany

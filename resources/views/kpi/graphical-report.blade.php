@@ -537,7 +537,7 @@
         </div>
     </div>
     <div class="gr-card-body">
-        <form method="GET" action="{{ route('kpi.graphical-report') }}">
+        <form id="graphicalReportFilters" method="GET" action="{{ route('kpi.graphical-report') }}">
             <div class="row g-3 align-items-end">
                 <div class="col-xl-3 col-lg-4 col-md-6">
                     <label class="form-label">KPI Category</label>
@@ -560,16 +560,18 @@
                 </div>
 
                 <div class="col-xl-2 col-lg-4 col-md-6">
-                    <label class="form-label">From Date</label>
-                    <input type="date" name="date_from" value="{{ $filters['date_from'] ?? '' }}" class="form-control">
+                    <label class="form-label">Week</label>
+                    <select name="week_no" class="form-select" {{ $activePeriod !== 'weekly' ? 'disabled' : '' }}>
+                        <option value="">-</option>
+                        @foreach(($weekOptions ?? []) as $wk => $label)
+                            <option value="{{ $wk }}" {{ (string)($filters['week_no'] ?? '') === (string)$wk ? 'selected' : '' }}>
+                                {{ $label }}
+                            </option>
+                        @endforeach
+                    </select>
                 </div>
 
-                <div class="col-xl-2 col-lg-4 col-md-6">
-                    <label class="form-label">To Date</label>
-                    <input type="date" name="date_to" value="{{ $filters['date_to'] ?? '' }}" class="form-control">
-                </div>
-
-                <div class="col-xl-1 col-lg-2 col-md-6">
+                <div class="col-xl-2 col-lg-2 col-md-6">
                     <label class="form-label">Month</label>
                     <select name="month" class="form-select">
                         <option value="">-</option>
@@ -579,7 +581,7 @@
                     </select>
                 </div>
 
-                <div class="col-xl-1 col-lg-2 col-md-6">
+                <div class="col-xl-2 col-lg-2 col-md-6">
                     <label class="form-label">Year</label>
                     <select name="year" class="form-select">
                         <option value="">-</option>
@@ -587,44 +589,6 @@
                             <option value="{{ $y }}" {{ (string)($filters['year'] ?? '') === (string)$y ? 'selected' : '' }}>{{ $y }}</option>
                         @endforeach
                     </select>
-                </div>
-
-                <div class="col-xl-3 col-lg-4 col-md-6">
-                    <label class="form-label">District</label>
-                    <select name="district_id" class="form-select">
-                        <option value="">Punjab / All Districts</option>
-                        @foreach ($districts as $district)
-                            <option value="{{ $district->id }}" {{ ($filters['district_id'] ?? '') == $district->id ? 'selected' : '' }}>
-                                {{ $district->name }}
-                            </option>
-                        @endforeach
-                    </select>
-                </div>
-
-                <div class="col-xl-3 col-lg-4 col-md-6">
-                    <label class="form-label">Tehsil</label>
-                    <select name="tehsil_id" class="form-select">
-                        <option value="">All Tehsils</option>
-                        @foreach ($tehsils as $tehsil)
-                            <option value="{{ $tehsil->id }}" {{ ($filters['tehsil_id'] ?? '') == $tehsil->id ? 'selected' : '' }}>
-                                {{ $tehsil->name }}
-                            </option>
-                        @endforeach
-                    </select>
-                </div>
-
-                <div class="col-xl-2 col-lg-4 col-md-6">
-                    <label class="form-label">Per Page</label>
-                    <select name="per_page" class="form-select">
-                        @foreach ([10, 20, 25, 50] as $option)
-                            <option value="{{ $option }}" {{ $perPage === $option ? 'selected' : '' }}>{{ $option }}</option>
-                        @endforeach
-                    </select>
-                </div>
-
-                <div class="col-xl-4 col-lg-8 col-md-12">
-                    <label class="form-label">Search (Table)</label>
-                    <input type="text" name="search" value="{{ $filters['search'] ?? '' }}" class="form-control" placeholder="Search name/address/remarks">
                 </div>
 
                 <div class="col-xl-12 d-flex gap-2 flex-wrap">
@@ -643,6 +607,18 @@
     </div>
 </div>
 
+<div id="graphicalReportContentContainer">
+    @include('kpi.partials._graphical-report-content', [
+        'filters' => $filters,
+        'scopeTitle' => $scopeTitle ?? 'PUNJAB',
+        'summaryCards' => $summaryCards ?? [],
+        'chartData' => $chartData ?? [],
+        'tableData' => $tableData ?? [],
+        'kpiCategories' => $kpiCategories ?? collect(),
+    ])
+</div>
+
+{{--
 <div class="gr-card mb-4">
     <div class="gr-card-header">
         <div>
@@ -888,12 +864,11 @@
     </div>
 </div>
 
+--}}
 @endsection
 
 @push('scripts')
 <script>
-    const chartData = @json($chartData ?? []);
-
     const palette = {
         green: '#006b3f',
         darkGreen: '#004f2e',
@@ -908,12 +883,21 @@
         border: '#dbe5ee',
     };
 
+    const chartInstances = {};
+
+    function destroyCharts() {
+        Object.keys(chartInstances).forEach((k) => {
+            try { chartInstances[k].destroy(); } catch (e) {}
+            delete chartInstances[k];
+        });
+    }
+
     function makeDonut(id, labels, data, colors) {
         const el = document.getElementById(id);
-        if (!el) return;
-        if (!labels || !labels.length) return;
+        if (!el) return null;
+        if (!labels || !labels.length) return null;
 
-        new Chart(el, {
+        return new Chart(el, {
             type: 'doughnut',
             data: {
                 labels,
@@ -943,9 +927,9 @@
 
     function makeBar(id, labels, datasets, extraOptions = {}) {
         const el = document.getElementById(id);
-        if (!el) return;
+        if (!el) return null;
 
-        new Chart(el, {
+        return new Chart(el, {
             type: 'bar',
             data: {
                 labels,
@@ -976,55 +960,117 @@
         });
     }
 
-    // Donuts (only render if data exists)
-    if (chartData.coverageChart) {
-        makeDonut('coverageChart', chartData.coverageChart.labels, chartData.coverageChart.data, [palette.teal, palette.amber, palette.green, palette.blue, palette.red]);
-    }
-    if (chartData.functionalChart) {
-        makeDonut('functionalChart', chartData.functionalChart.labels, chartData.functionalChart.data, [palette.green, palette.red, palette.teal, palette.blue, palette.amber]);
-    }
-    if (chartData.cleanlinessChart) {
-        makeDonut('cleanlinessChart', chartData.cleanlinessChart.labels, chartData.cleanlinessChart.data, [palette.green, palette.red, palette.teal, palette.blue, palette.amber]);
-    }
-    if (chartData.filterChangeChart) {
-        makeDonut('filterChangeChart', chartData.filterChangeChart.labels, chartData.filterChangeChart.data, [palette.green, palette.amber, palette.red, palette.teal, palette.blue]);
+    function extractChartDataFromContent() {
+        const el = document.getElementById('graphicalReportContent');
+        if (!el) return {};
+        const raw = el.getAttribute('data-chart');
+        if (!raw) return {};
+        try { return JSON.parse(raw); } catch (e) { return {}; }
     }
 
-    // District comparison bar
-    if (chartData.districtBarChart) {
-        makeBar(
-            'districtBarChart',
-            chartData.districtBarChart.labels,
-            chartData.districtBarChart.datasets,
-            chartData.districtBarChart.options ?? {}
-        );
+    function renderCharts(data) {
+        destroyCharts();
+        if (!data || typeof data !== 'object') return;
+
+        const donuts = data?.meta?.donuts ?? [
+            { key: 'coverageChart', id: 'coverageChart' },
+            { key: 'functionalChart', id: 'functionalChart' },
+            { key: 'cleanlinessChart', id: 'cleanlinessChart' },
+            { key: 'filterChangeChart', id: 'filterChangeChart' },
+        ];
+
+        const bars = data?.meta?.large ?? [
+            { key: 'districtBarChart', id: 'districtBarChart' },
+            { key: 'districtFunctionalChart', id: 'districtFunctionalChart' },
+            { key: 'topDistrictsChart', id: 'topDistrictsChart' },
+            { key: 'topIssuesChart', id: 'topIssuesChart' },
+        ];
+
+        donuts.forEach((c) => {
+            const cfg = data?.[c.key];
+            if (!cfg || !cfg.labels || !cfg.data) return;
+            const inst = makeDonut(c.id, cfg.labels, cfg.data, [palette.teal, palette.amber, palette.green, palette.blue, palette.red]);
+            if (inst) chartInstances[c.id] = inst;
+        });
+
+        bars.forEach((c) => {
+            const cfg = data?.[c.key];
+            if (!cfg || !cfg.labels || !cfg.datasets) return;
+            const inst = makeBar(c.id, cfg.labels, cfg.datasets, cfg.options ?? {});
+            if (inst) chartInstances[c.id] = inst;
+        });
     }
 
-    if (chartData.districtFunctionalChart) {
-        makeBar(
-            'districtFunctionalChart',
-            chartData.districtFunctionalChart.labels,
-            chartData.districtFunctionalChart.datasets,
-            chartData.districtFunctionalChart.options ?? {}
-        );
+    function updateQueryString(serialized) {
+        const qs = serialized ? ('?' + serialized) : '';
+        const url = window.location.pathname + qs;
+        window.history.pushState({}, '', url);
     }
 
-    if (chartData.topDistrictsChart) {
-        makeBar(
-            'topDistrictsChart',
-            chartData.topDistrictsChart.labels,
-            chartData.topDistrictsChart.datasets,
-            chartData.topDistrictsChart.options ?? {}
-        );
+    function toggleWeekDisabled() {
+        const period = document.querySelector('#graphicalReportFilters select[name=\"period_type\"]')?.value;
+        const weekSelect = document.querySelector('#graphicalReportFilters select[name=\"week_no\"]');
+        if (!weekSelect) return;
+        weekSelect.disabled = (period !== 'weekly');
     }
 
-    if (chartData.topIssuesChart) {
-        makeBar(
-            'topIssuesChart',
-            chartData.topIssuesChart.labels,
-            chartData.topIssuesChart.datasets,
-            chartData.topIssuesChart.options ?? {}
-        );
+    function loadGraphicalReportData(extra = {}) {
+        const $form = window.jQuery ? jQuery('#graphicalReportFilters') : null;
+        const serialized = $form ? $form.serialize() : new URLSearchParams(new FormData(document.getElementById('graphicalReportFilters'))).toString();
+        const params = new URLSearchParams(serialized);
+        Object.keys(extra).forEach((k) => params.set(k, extra[k]));
+
+        const $container = window.jQuery ? jQuery('#graphicalReportContentContainer') : null;
+        if ($container) $container.addClass('loading');
+
+        if (window.jQuery) {
+            jQuery.ajax({
+                url: "{{ route('kpi.graphical-report.data') }}",
+                type: "GET",
+                data: params.toString(),
+                success: function (res) {
+                    if (res && res.status === 'success') {
+                        jQuery('#graphicalReportContentContainer').html(res.html);
+                        toggleWeekDisabled();
+                        renderCharts(extractChartDataFromContent());
+                        updateQueryString(params.toString());
+                    }
+                },
+                error: function () {
+                    if ($container) {
+                        $container.html('<div class=\"chart-empty\"><div>Failed to load report data.</div></div>');
+                    }
+                },
+                complete: function () {
+                    if ($container) $container.removeClass('loading');
+                }
+            });
+        }
     }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        toggleWeekDisabled();
+        renderCharts(extractChartDataFromContent());
+
+        if (window.jQuery) {
+            jQuery('#graphicalReportFilters').on('change', 'select', function () {
+                loadGraphicalReportData();
+            });
+
+            jQuery('#graphicalReportFilters').on('submit', function (e) {
+                e.preventDefault();
+                loadGraphicalReportData();
+            });
+
+            jQuery(document).on('click', '#graphicalReportContentContainer .pagination a', function (e) {
+                e.preventDefault();
+                const href = jQuery(this).attr('href');
+                if (!href) return;
+                const url = new URL(href, window.location.origin);
+                const page = url.searchParams.get('page');
+                loadGraphicalReportData(page ? { page } : {});
+            });
+        }
+    });
 </script>
 @endpush

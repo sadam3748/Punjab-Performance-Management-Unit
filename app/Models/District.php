@@ -56,7 +56,13 @@ class District extends Model
 
     public function districtKpiMetricValues()
     {
-        return $this->hasMany(DistrictKpiMetricValue::class);
+        // Backward-compatible alias (old name) for unified KPI metric values.
+        return $this->hasMany(KpiMetricValue::class)->where('area_level', 'district');
+    }
+
+    public function metricValues()
+    {
+        return $this->hasMany(KpiMetricValue::class)->where('area_level', 'district');
     }
 
     public function districtKpiScores()

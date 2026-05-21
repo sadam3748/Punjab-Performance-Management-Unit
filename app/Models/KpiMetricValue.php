@@ -1,30 +1,42 @@
 <?php
+
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 
-class ProvincialKpiMetric extends Model
+class KpiMetricValue extends Model
 {
     protected $fillable = [
         'kpi_category_id',
+        'metric_key',
+        'metric_title',
+        'metric_value',
+        'metric_score',
+        'metric_unit',
+        'area_level',
+        'division_id',
+        'district_id',
+        'tehsil_id',
         'period_type',
+        'year',
+        'week_no',
+        'month',
+        'quarter',
         'date_from',
         'date_to',
-        'metric_title',
-        'metric_description',
-        'metric_value',
-        'metric_unit',
-        'source',
         'sort_order',
         'is_active',
     ];
 
     protected $casts = [
+        'metric_value' => 'decimal:2',
+        'metric_score' => 'decimal:2',
+        'year'         => 'integer',
+        'month'        => 'integer',
+        'quarter'      => 'integer',
         'date_from'    => 'date',
         'date_to'      => 'date',
-        'metric_value' => 'decimal:2',
         'sort_order'   => 'integer',
         'is_active'    => 'boolean',
     ];
@@ -34,9 +46,19 @@ class ProvincialKpiMetric extends Model
         return $this->belongsTo(KpiCategory::class, 'kpi_category_id');
     }
 
-    public function districtMetricValues(): HasMany
+    public function division(): BelongsTo
     {
-        return $this->hasMany(DistrictKpiMetricValue::class, 'provincial_kpi_metric_id');
+        return $this->belongsTo(Division::class, 'division_id');
+    }
+
+    public function district(): BelongsTo
+    {
+        return $this->belongsTo(District::class, 'district_id');
+    }
+
+    public function tehsil(): BelongsTo
+    {
+        return $this->belongsTo(Tehsil::class, 'tehsil_id');
     }
 
     public function getFormattedValueAttribute(): string
@@ -63,3 +85,4 @@ class ProvincialKpiMetric extends Model
         return strtoupper(str_replace('_', ' ', (string) $this->metric_unit));
     }
 }
+

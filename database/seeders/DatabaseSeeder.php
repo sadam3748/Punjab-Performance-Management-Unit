@@ -29,7 +29,7 @@ class DatabaseSeeder extends Seeder
             PpmfDummyDataSeeder::class,
             PpmfDummyGeoTaggingSeeder::class,
             PpmfDummyBaselineSeeder::class,
-            ProvincialKpiMetricSeeder::class,
+            KpiMetricValueSeeder::class,
 
             // Old PPMF-like CM Governance Scorecard (parameter/weightage based)
             KpiScoringParameterSeeder::class,

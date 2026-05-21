@@ -127,6 +127,9 @@ Route::prefix('portal')->middleware('auth')->group(function () {
     Route::get('/kpi-graphical-report', [KpiReportController::class, 'graphicalReport'])
         ->name('kpi.graphical-report');
 
+    Route::get('/kpi-graphical-report/data', [KpiReportController::class, 'graphicalReportData'])
+        ->name('kpi.graphical-report.data');
+
     /*
     |--------------------------------------------------------------------------
     | Performance
