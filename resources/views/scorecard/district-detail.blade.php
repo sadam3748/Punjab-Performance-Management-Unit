@@ -214,17 +214,25 @@
                         <th style="width:70px;text-align:center">Sr. No.</th>
                         <th>Performance Indicators</th>
                         <th style="width:110px">Weightage</th>
-                        <th style="width:190px">{!! str_replace(' - ', '<br>-<br>', e($weekHeaders[0]['label'] ?? 'Previous')) !!}</th>
-                        <th style="width:190px">{!! str_replace(' - ', '<br>-<br>', e($weekHeaders[1]['label'] ?? 'Previous')) !!}</th>
-                        <th style="width:190px">{!! str_replace(' - ', '<br>-<br>', e($weekHeaders[2]['label'] ?? 'Current')) !!}</th>
+                        <th style="width:170px">
+                            Previous Week<br>
+                            <span style="font-size:11px;font-weight:800;opacity:.9">{!! str_replace(' - ', ' &ndash; ', e($weekHeaders[1]['label'] ?? '—')) !!}</span>
+                        </th>
+                        <th style="width:170px">
+                            Current Week<br>
+                            <span style="font-size:11px;font-weight:800;opacity:.9">{!! str_replace(' - ', ' &ndash; ', e($weekHeaders[2]['label'] ?? '—')) !!}</span>
+                        </th>
+                        <th style="width:120px">KPI Score %</th>
+                        <th style="width:200px">Performance</th>
                     </tr>
                 </thead>
                 <tbody>
                     @forelse(($rows->getCollection() ?? $rows) as $r)
                         @php
-	                            $p2 = $r['previous_2']['weighted_score'] ?? null;
-	                            $p1 = $r['previous_1']['weighted_score'] ?? null;
-	                            $c = $r['current']['weighted_score'] ?? null;
+                                $prevFinal = $r['previous_1']['final_score'] ?? null;
+                                $curFinal = $r['current']['final_score'] ?? null;
+                                $prevWeighted = $r['previous_1']['weighted_score'] ?? null;
+                                $curWeighted = $r['current']['weighted_score'] ?? null;
 
                             $trend = function($a, $b){
                                 if ($a === null || $b === null) return ['cls'=>'eq','icon'=>'bi-dash'];
@@ -232,20 +240,33 @@
                                 if ($b < $a) return ['cls'=>'down','icon'=>'bi-arrow-down'];
                                 return ['cls'=>'eq','icon'=>'bi-dash'];
                             };
-	                            $t2t1 = $trend($p2, $p1);
-	                            $t1c = $trend($p1, $c);
+                                $tPrevCur = $trend($prevFinal, $curFinal);
+
+                                $perfMeta = function ($s) {
+                                    if ($s === null) return ['label' => 'Unreported', 'class' => 'secondary'];
+                                    $v = (float) $s;
+                                    // Match main scorecard bands:
+                                    // Excellent 90-100, Good 70-89.99, Average 50-69.99, Critical < 50
+                                    if ($v >= 90) return ['label' => 'Excellent', 'class' => 'excellent'];
+                                    if ($v >= 70) return ['label' => 'Good', 'class' => 'good'];
+                                    if ($v >= 50) return ['label' => 'Average', 'class' => 'average'];
+                                    return ['label' => 'Critical', 'class' => 'critical'];
+                                };
+                                $pm = $perfMeta($curFinal);
                         @endphp
                         <tr>
-                            <td class="text-center fw-bold">{{ $loop->iteration }}</td>
+                            <td class="text-center fw-bold">
+                                {{ method_exists($rows, 'currentPage') ? (($rows->currentPage() - 1) * $rows->perPage() + $loop->iteration) : $loop->iteration }}
+                            </td>
                             <td class="fw-bold">{{ $r['kpi_name'] }}</td>
-                            <td>{{ number_format((float)$r['weightage'], 2) }}</td>
+                            <td class="text-nowrap">{{ number_format((float)$r['weightage'], 2) }}</td>
                             <td>
                                 <div class="sd-cell">
                                     <span>
-                                        @if($p2 === null)
+                                        @if($prevWeighted === null)
                                             <span class="text-muted">Unreported</span>
                                         @else
-                                            {{ number_format((float)$p2, 2) }}
+                                            {{ number_format((float)$prevWeighted, 2) }}
                                         @endif
                                     </span>
                                     <span class="sd-trend eq"><i class="bi bi-dash"></i></span>
@@ -254,30 +275,40 @@
                             <td>
                                 <div class="sd-cell">
                                     <span class="fw-bold">
-                                        @if($p1 === null)
+                                        @if($curWeighted === null)
                                             <span class="text-muted">Unreported</span>
                                         @else
-                                            {{ number_format((float)$p1, 2) }}
+                                            {{ number_format((float)$curWeighted, 2) }}
                                         @endif
                                     </span>
-                                    <span class="sd-trend {{ $t2t1['cls'] }}"><i class="bi {{ $t2t1['icon'] }}"></i></span>
+                                    <span class="sd-trend {{ $tPrevCur['cls'] }}"><i class="bi {{ $tPrevCur['icon'] }}"></i></span>
                                 </div>
                             </td>
                             <td>
-                                <div class="sd-cell">
-                                    <span class="fw-bold">
-                                        @if($c === null)
-                                            <span class="text-muted">Unreported</span>
-                                        @else
-                                            {{ number_format((float)$c, 2) }}
-                                        @endif
-                                    </span>
-                                    <span class="sd-trend {{ $t1c['cls'] }}"><i class="bi {{ $t1c['icon'] }}"></i></span>
-                                </div>
+                                <span class="fw-bold text-nowrap">
+                                    @if($curFinal === null)
+                                        <span class="text-muted">—</span>
+                                    @else
+                                        {{ number_format((float)$curFinal, 2) }}%
+                                    @endif
+                                </span>
+                            </td>
+                            <td class="text-nowrap">
+                                @php
+                                    $statusIcon = $tPrevCur['cls'] === 'up' ? 'bi-arrow-up' : ($tPrevCur['cls'] === 'down' ? 'bi-arrow-down' : 'bi-dash');
+                                    $statusCls = $tPrevCur['cls'] === 'up' ? 'text-success' : ($tPrevCur['cls'] === 'down' ? 'text-danger' : 'text-secondary');
+                                    $statusText = $tPrevCur['cls'] === 'up' ? 'Improved' : ($tPrevCur['cls'] === 'down' ? 'Declined' : 'No change');
+                                @endphp
+                                <span class="{{ $statusCls }} fw-bold me-2" title="{{ $statusText }}"><i class="bi {{ $statusIcon }}"></i></span>
+                                @if($pm['class'] === 'secondary')
+                                    <span class="badge bg-secondary-subtle text-secondary" style="font-weight:900">Unreported</span>
+                                @else
+                                    <span class="sd-grade {{ $pm['class'] }}">{{ $pm['label'] }}</span>
+                                @endif
                             </td>
                         </tr>
                     @empty
-                        <tr><td colspan="6" class="text-center text-muted p-4">No KPI score data found for this district.</td></tr>
+                        <tr><td colspan="7" class="text-center text-muted p-4">No KPI score data found for this district.</td></tr>
                     @endforelse
                 </tbody>
                 @if(($rows->total() ?? 0) > 0)
@@ -285,9 +316,45 @@
                         <tr class="fw-bold">
                             <td colspan="2">Total</td>
                             <td>{{ number_format((float)($totals['weightage'] ?? 0), 2) }}</td>
-                            <td>{{ number_format((float)($totals['previous_2'] ?? 0), 2) }}</td>
-                            <td>{{ number_format((float)($totals['previous_1'] ?? 0), 2) }}</td>
-                            <td>{{ number_format((float)($totals['current'] ?? 0), 2) }}</td>
+                            @php
+                                $prevScaled = (float) ($totals['previous_1'] ?? 0);
+                                $curScaled = (float) ($totals['current'] ?? 0);
+                                $prevCoveredW = (float) ($totals['covered_weight_previous_1'] ?? 0);
+                                $curCoveredW = (float) ($totals['covered_weight_current'] ?? 0);
+
+                                // Convert scaled district score back to "total weighted marks" for display in Prev/Cur columns.
+                                $prevWeightedSum = $prevCoveredW > 0 ? (($prevScaled / 100) * $prevCoveredW) : 0.0;
+                                $curWeightedSum = $curCoveredW > 0 ? (($curScaled / 100) * $curCoveredW) : 0.0;
+
+                                $totalPerf = $curCoveredW > 0 ? $gradeMeta($curScaled) : ['grade' => '—', 'label' => 'Unreported', 'class' => 'secondary'];
+                                $totalTrend = null;
+                                if ($prevCoveredW > 0 && $curCoveredW > 0) {
+                                    if ($curScaled > $prevScaled) $totalTrend = 'up';
+                                    elseif ($curScaled < $prevScaled) $totalTrend = 'down';
+                                    else $totalTrend = 'eq';
+                                }
+                            @endphp
+                            <td>{{ number_format($prevWeightedSum, 2) }}</td>
+                            <td>{{ number_format($curWeightedSum, 2) }}</td>
+                            <td class="text-nowrap">{{ number_format($curScaled, 2) }}%</td>
+                            <td class="text-nowrap">
+                                @php
+                                    $totalIcon = $totalTrend === 'up' ? 'bi-arrow-up' : ($totalTrend === 'down' ? 'bi-arrow-down' : 'bi-dash');
+                                    $totalCls = $totalTrend === 'up' ? 'text-success' : ($totalTrend === 'down' ? 'text-danger' : 'text-secondary');
+                                    $totalTxt = $totalTrend === 'up' ? 'Improved' : ($totalTrend === 'down' ? 'Declined' : 'No change');
+                                    $totalPm = $totalPerf['class'] === 'secondary'
+                                        ? ['type' => 'secondary']
+                                        : ['type' => ($totalPerf['class'] ?? 'secondary')];
+                                @endphp
+                                <span class="{{ $totalCls }} fw-bold me-2" title="{{ $totalTxt }}"><i class="bi {{ $totalIcon }}"></i></span>
+                                @if($totalPm['type'] === 'secondary')
+                                    <span class="badge bg-secondary-subtle text-secondary" style="font-weight:900">Unreported</span>
+                                @else
+                                    <span class="sd-grade {{ $totalPm['type'] }}">
+                                        {{ $totalPerf['label'] }}{{ $totalPerf['grade'] !== '—' ? ' ('.$totalPerf['grade'].')' : '' }}
+                                    </span>
+                                @endif
+                            </td>
                         </tr>
                     </tfoot>
                 @endif

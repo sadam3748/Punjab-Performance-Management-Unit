@@ -26,7 +26,6 @@
 @section('content')
 @php
     $filters = $filters ?? [];
-    $selectedScope = $filters['scope'] ?? 'all';
     $selectedPeriod = $filters['period'] ?? 'weekly';
     $selectedPerformance = $filters['performance'] ?? 'all';
     $selectedWeekRange = $filters['week_range'] ?? '';
@@ -96,7 +95,6 @@
                 <div class="col-12 col-md-6 col-lg-3"><label class="form-label">Year</label><select name="year" class="form-select">@foreach($yearOptions as $year)<option value="{{ $year }}" @selected((string)$selectedYear===(string)$year)>{{ $year }}</option>@endforeach</select></div>
 
                 <div class="col-12 col-md-6 col-lg-3"><label class="form-label">Area Type</label><select name="area_type" class="form-select"><option value="district" @selected($selectedAreaType==='district')>District</option><option value="division" @selected($selectedAreaType==='division')>Division</option></select></div>
-                <div class="col-12 col-md-6 col-lg-3"><label class="form-label">Scope</label><select name="scope" class="form-select"><option value="all" @selected($selectedScope==='all')>All</option><option value="division" @selected($selectedScope==='division')>Division</option><option value="district" @selected($selectedScope==='district')>District</option></select></div>
                 <div class="col-12 col-md-6 col-lg-3"><label class="form-label">Calculation Type</label><select name="calculation_type" class="form-select"><option value="general" @selected($selectedCalculationType==='general')>General</option><option value="sixty_forty" @selected($selectedCalculationType==='sixty_forty')>Sixty Forty Ratio</option><option value="special_branch_negative" @selected($selectedCalculationType==='special_branch_negative')>Special Branch Negative Marking</option><option value="victims_negative" @selected($selectedCalculationType==='victims_negative')>Victims Negative Marking</option></select></div>
                 <div class="col-12 col-md-6 col-lg-3">
                     <label class="form-label">KPI Category</label>
@@ -111,7 +109,7 @@
                 {{-- Auto-applies on change; keep a hidden submit for accessibility. --}}
                 <button type="submit" class="d-none">Apply</button>
 
-                <div class="col-12 d-flex justify-content-end">
+                <div class="col-12 d-flex justify-content-end pt-1">
                     <a href="{{ $tierRoute }}?tier=1" class="btn btn-gov btn-gov-outline" id="tierResetBtn">
                         <i class="bi bi-x-circle"></i> Reset
                     </a>
