@@ -109,10 +109,12 @@
                 {{-- Auto-applies on change; keep a hidden submit for accessibility. --}}
                 <button type="submit" class="d-none">Apply</button>
 
-                <div class="col-12 d-flex justify-content-end pt-1">
-                    <a href="{{ $tierRoute }}?tier=1" class="btn btn-gov btn-gov-outline" id="tierResetBtn">
-                        <i class="bi bi-x-circle"></i> Reset
-                    </a>
+                <div class="col-12 col-md-6 col-lg-3 d-flex align-items-end justify-content-end">
+                    <div class="w-100 d-flex justify-content-end">
+                        <a href="{{ $tierRoute }}?tier=1" class="btn btn-gov btn-gov-outline w-100" id="tierResetBtn">
+                            <i class="bi bi-x-circle"></i> Reset
+                        </a>
+                    </div>
                 </div>
             </div>
         </form>
