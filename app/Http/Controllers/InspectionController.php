@@ -33,7 +33,6 @@ class InspectionController extends Controller
             'kpi_category_id',
             'date_from',
             'date_to',
-            'search',
             'per_page',
         ]);
 
@@ -64,7 +63,6 @@ class InspectionController extends Controller
             'kpi_category_id',
             'date_from',
             'date_to',
-            'search',
             'per_page',
             'page',
         ]);

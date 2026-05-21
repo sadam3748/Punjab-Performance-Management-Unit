@@ -59,18 +59,25 @@ class PpmfDummyInspectionSeeder extends Seeder
             return;
         }
 
+        // Clear previous seeded inspections (keeps any real data intact).
         DB::table('inspections')
-            ->where(function ($query) {
-                $query->where('remarks', 'LIKE', 'PPMF dummy inspection record%')
-                    ->orWhere('remarks', 'LIKE', 'Bulk dummy inspection%')
-                    ->orWhere('remarks', 'LIKE', 'PPMF scorecard dummy inspection%');
-            })
+            ->where('main_identifier', 'LIKE', 'PPMF-INS-%')
             ->delete();
 
         $allowedColumnKeys = array_flip($inspectionColumns->all());
         $records     = [];
         $recordIndex = 1;
         $now         = Carbon::now();
+
+        // Keep seed volume reasonable (hundreds, not thousands):
+        // - Use all districts
+        // - For each district, seed a rotating subset of KPI categories (8)
+        // - 2 inspections per selected category
+        $categoriesPerDistrict = 8;
+        $inspectionsPerCategory = 2;
+
+        $categoryList = $kpiCategories->values();
+        $categoryCount = max(1, $categoryList->count());
 
         foreach ($districts as $districtIndex => $district) {
             $districtTehsils = $tehsils
@@ -79,12 +86,13 @@ class PpmfDummyInspectionSeeder extends Seeder
 
             $gradeProfile = $this->districtGradeProfile($districtIndex);
 
-            foreach ($kpiCategories as $category) {
-                $totalRecords   = 12;
-                $approvedTarget = (int) round($totalRecords * $gradeProfile['approved_ratio']);
-                $approvedTarget = max(1, min($approvedTarget, $totalRecords - 3));
+            $start = $districtIndex % $categoryCount;
+            $selectedCategories = collect(range(0, $categoriesPerDistrict - 1))
+                ->map(fn ($i) => $categoryList[($start + $i) % $categoryCount])
+                ->values();
 
-                $statuses = $this->buildStatusSequence($totalRecords, $approvedTarget);
+            foreach ($selectedCategories as $category) {
+                $statuses = $this->buildStatusSequence($inspectionsPerCategory, (int) max(1, round($inspectionsPerCategory * $gradeProfile['approved_ratio'])));
 
                 foreach ($statuses as $status) {
                     $tehsil = $districtTehsils->isNotEmpty()
@@ -117,6 +125,9 @@ class PpmfDummyInspectionSeeder extends Seeder
                     $referenceNo = 'PPMF-INS-' . str_pad((string) $recordIndex, 6, '0', STR_PAD_LEFT);
                     $categoryName = $category->name ?? 'General KPI';
 
+                    $mainTitle = $this->buildMainTitle($categoryName, $district, $tehsil);
+                    $mainAddress = $this->buildMainAddress($categoryName, $district, $tehsil);
+
                     $record = [
                         'kpi_category_id'     => $category->id,
                         'division_id'         => $district->division_id ?? null,
@@ -126,14 +137,14 @@ class PpmfDummyInspectionSeeder extends Seeder
                         'inspection_datetime' => $inspectionDate,
                         'latitude'            => $latitude,
                         'longitude'           => $longitude,
-                        'main_title'          => $categoryName . ' Inspection - ' . $district->name,
+                        'main_title'          => $mainTitle,
                         'main_identifier'     => $referenceNo,
-                        'main_address'        => 'Sample site near ' . ($tehsil->name ?? $district->name) . ', ' . $district->name,
+                        'main_address'        => $mainAddress,
                         'detail_data'         => json_encode($this->buildDetailData($referenceNo, $categoryName, $district, $tehsil), JSON_UNESCAPED_UNICODE),
                         'observations'        => json_encode($this->buildObservations($categoryName, $status, $gradeProfile), JSON_UNESCAPED_UNICODE),
                         'actions'             => json_encode($this->buildActions($categoryName, $status, $gradeProfile), JSON_UNESCAPED_UNICODE),
                         'status'              => $status,
-                        'remarks'             => 'PPMF scorecard dummy inspection record for list, detail, map and scorecard testing.',
+                        'remarks'             => 'Routine field inspection conducted for weekly monitoring.',
                         'created_at'          => now(),
                         'updated_at'          => now(),
                     ];
@@ -235,7 +246,7 @@ class PpmfDummyInspectionSeeder extends Seeder
     {
         $base = [
             'reference_no'      => $referenceNo,
-            'inspection_source' => 'PPMF Dummy Seeder',
+            'inspection_source' => 'PPMF Seeder',
             'district'          => $district->name,
             'tehsil'            => $tehsil->name ?? 'N/A',
             'union_council'     => 'UC-' . rand(1, 120),
@@ -389,8 +400,78 @@ class PpmfDummyInspectionSeeder extends Seeder
         return $common + [
             'recommended_action' => collect(['Re-inspection', 'Issue direction', 'Resolve minor issue', 'Escalate for compliance'])->random(),
             'compliance_deadline'=> now()->addDays(rand(5, 20))->toDateString(),
-            'remarks'            => 'Dummy action data generated for inspection detail testing.',
+            'remarks'            => 'Actions recorded for follow-up and compliance tracking.',
         ];
+    }
+
+    private function buildMainTitle(string $categoryName, object $district, ?object $tehsil): string
+    {
+        $d = $district->name ?? 'District';
+        $t = $tehsil->name ?? $d;
+        $uc = 'UC-' . rand(1, 40);
+        $lower = Str::lower($categoryName);
+
+        if (Str::contains($lower, ['water', 'filtration', 'filter'])) {
+            return "Govt Water Filtration Plant, {$uc}";
+        }
+
+        if (Str::contains($lower, ['marriage', 'hall'])) {
+            return collect(['Royal Palace Marriage Hall', 'Al-Noor Marriage Hall', 'City Banquet Hall', 'Mehfil Marriage Hall'])->random();
+        }
+
+        if (Str::contains($lower, ['manhole', 'cover'])) {
+            return 'Open Manhole Inspection - ' . collect(['Main Bazaar Road', 'Circular Road', 'Railway Road', 'College Road'])->random();
+        }
+
+        if (Str::contains($lower, ['dog', 'stray'])) {
+            return 'Stray Dogs Complaint Verification - Ward ' . str_pad((string) rand(1, 25), 2, '0', STR_PAD_LEFT);
+        }
+
+        if (Str::contains($lower, ['roti', 'tandoor'])) {
+            return 'Roti Price Inspection - Local Tandoor';
+        }
+
+        if (Str::contains($lower, ['essential', 'commodity', 'price control', 'price'])) {
+            return 'Essential Commodities Price Inspection - General Store';
+        }
+
+        return $categoryName . ' Field Inspection - ' . $t;
+    }
+
+    private function buildMainAddress(string $categoryName, object $district, ?object $tehsil): string
+    {
+        $d = $district->name ?? 'District';
+        $t = $tehsil->name ?? $d;
+        $lower = Str::lower($categoryName);
+
+        $areas = ['Main Market', 'Model Town', 'Civil Lines', 'B-block', 'Railway Colony', 'Bus Stand Area', 'Near THQ Hospital'];
+        $landmarks = ['Union Council Office', 'Civil Hospital', 'Govt High School', 'Municipal Office', 'Police Station', 'Post Office'];
+
+        if (Str::contains($lower, ['water', 'filtration', 'filter'])) {
+            return 'Near ' . collect($landmarks)->random() . ', ' . collect($areas)->random() . ", {$t}, {$d}";
+        }
+
+        if (Str::contains($lower, ['marriage', 'hall'])) {
+            return 'Main Road, ' . collect($areas)->random() . ", {$t}, {$d}";
+        }
+
+        if (Str::contains($lower, ['manhole', 'cover'])) {
+            return collect(['Main Bazaar Road', 'Circular Road', 'Railway Road', 'College Road'])->random() . ' near ' . collect($landmarks)->random() . ", {$t}, {$d}";
+        }
+
+        if (Str::contains($lower, ['dog', 'stray'])) {
+            return 'Ward area near ' . collect(['Government Primary School', 'Park', 'Bus Stop', 'Marketplace'])->random() . ", {$t}, {$d}";
+        }
+
+        if (Str::contains($lower, ['roti', 'tandoor'])) {
+            return 'Main Market, ' . $t . ", {$d}";
+        }
+
+        if (Str::contains($lower, ['essential', 'commodity', 'price control', 'price'])) {
+            return collect($areas)->random() . ", {$t}, {$d}";
+        }
+
+        return collect($areas)->random() . ", {$t}, {$d}";
     }
 
     private function conditionByStatus(string $status): string

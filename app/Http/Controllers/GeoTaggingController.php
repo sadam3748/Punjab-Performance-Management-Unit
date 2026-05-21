@@ -50,6 +50,34 @@ class GeoTaggingController extends Controller
         ]);
     }
 
+    public function data(Request $request)
+    {
+        $filters = $request->only([
+            'district_id',
+            'tehsil_id',
+            'geo_tagging_type_id',
+            'status',
+            'date_from',
+            'date_to',
+            'search',
+            'per_page',
+            'page',
+        ]);
+
+        $geoTaggings = $this->geoTaggingService->getGeoTaggingList($filters);
+
+        $html = view('geo_taggings.partials._geo-tagging-table', [
+            'geoTaggings' => $geoTaggings,
+            'filters' => $filters,
+        ])->render();
+
+        return response()->json([
+            'status' => 'success',
+            'html' => $html,
+            'total' => method_exists($geoTaggings, 'total') ? $geoTaggings->total() : $geoTaggings->count(),
+        ]);
+    }
+
     /*
     |--------------------------------------------------------------------------
     | Geo Tagging Map Page

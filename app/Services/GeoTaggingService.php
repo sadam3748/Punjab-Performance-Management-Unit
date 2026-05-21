@@ -116,9 +116,14 @@ class GeoTaggingService
         $query = $this->applyUserScope($query);
         $query = $this->applyFilters($query, $filters);
 
+        $perPage = (int) ($filters['per_page'] ?? 20);
+        if (! in_array($perPage, [10, 20, 25, 50], true)) {
+            $perPage = 20;
+        }
+
         return $query
             ->latest('tagged_at')
-            ->paginate(20)
+            ->paginate($perPage)
             ->withQueryString();
     }
 

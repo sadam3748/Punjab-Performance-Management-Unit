@@ -131,74 +131,101 @@
 @push('scripts')
 <script>
     (function () {
-        const $form = $('#inspectionFilters');
-        const $dynamic = $('#inspectionDynamic');
+        const form = document.getElementById('inspectionFilters');
+        if (!form) return;
+
         const dataUrl = @json(route('inspections.data'));
 
-        let searchTimer = null;
-
-        function loadInspectionData(extraParams) {
-            let params = $form.serialize();
-            if (extraParams) {
-                params += (params.length ? '&' : '') + extraParams;
-            }
-
-            $dynamic.css('opacity', '0.55');
-
-            $.ajax({
-                url: dataUrl,
-                method: 'GET',
-                data: params,
-                success: function (resp) {
-                    if (resp && resp.status === 'success') {
-                        $dynamic.html(resp.html);
-                        const url = new URL(window.location.href);
-                        url.search = params;
-                        window.history.pushState({}, '', url.toString());
-                    }
-                },
-                complete: function () {
-                    $dynamic.css('opacity', '1');
-                },
-                error: function () {
-                    $dynamic.css('opacity', '1');
-                }
-            });
+        function tableContainer() {
+            return document.getElementById('inspectionTableContainer');
         }
 
-        // Auto-apply for dropdowns + dates.
-        $form.on('change', 'select,input[type="date"]', function () {
-            loadInspectionData('page=1');
+        function setLoading(isLoading) {
+            const el = tableContainer();
+            if (!el) return;
+            el.style.opacity = isLoading ? '0.55' : '1';
+        }
+
+        function showError(message) {
+            const el = tableContainer();
+            if (!el) return;
+            el.innerHTML =
+                '<div class="p-4 text-center text-danger fw-bold">' +
+                (message || 'Failed to load inspection data. Please try again.') +
+                '</div>';
+        }
+
+        async function loadInspectionData(extraParams) {
+            const params = new URLSearchParams(new FormData(form));
+            if (extraParams) {
+                Object.entries(extraParams).forEach(([k, v]) => params.set(k, String(v)));
+            }
+
+            setLoading(true);
+
+            try {
+                const resp = await fetch(dataUrl + '?' + params.toString(), {
+                    method: 'GET',
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                });
+                const json = await resp.json();
+
+                if (!resp.ok || !json || json.status !== 'success') {
+                    setLoading(false);
+                    showError('Failed to load inspection data.');
+                    return;
+                }
+
+                const current = tableContainer();
+                if (current) {
+                    current.outerHTML = json.html;
+                }
+
+                const url = new URL(window.location.href);
+                url.search = params.toString();
+                window.history.pushState({}, '', url.toString());
+
+                setLoading(false);
+            } catch (e) {
+                setLoading(false);
+                showError('Failed to load inspection data.');
+            }
+        }
+
+        // Strict onchange: selects + dates -> immediate AJAX load.
+        form.addEventListener('change', function (e) {
+            const target = e.target;
+            if (!target) return;
+            if (target.matches('select') || target.matches('input[type="date"]')) {
+                loadInspectionData({ page: 1 });
+            }
         });
 
-        // Debounced search.
-        $form.on('input', 'input[name="search"]', function () {
-            clearTimeout(searchTimer);
-            searchTimer = setTimeout(function () {
-                loadInspectionData('page=1');
-            }, 350);
-        });
-
-        // Intercept Apply button.
-        $form.on('submit', function (e) {
+        // Apply button should not reload page.
+        form.addEventListener('submit', function (e) {
             e.preventDefault();
-            loadInspectionData('page=1');
+            loadInspectionData({ page: 1 });
         });
 
-        // Intercept pagination links rendered inside partial.
-        $(document).on('click', '.inspection-pagination-nav a, .inspection-pagination-nav .inspection-page-number', function (e) {
-            const href = $(this).attr('href');
+        // AJAX pagination inside table container.
+        document.addEventListener('click', function (e) {
+            const link = e.target.closest('#inspectionTableContainer .pagination a, #inspectionTableContainer .inspection-pagination-nav a, #inspectionTableContainer .inspection-page-number');
+            if (!link) return;
+            const href = link.getAttribute('href');
             if (!href || href === 'javascript:void(0)') return;
             e.preventDefault();
             const url = new URL(href, window.location.origin);
             const page = url.searchParams.get('page') || '1';
-            loadInspectionData('page=' + encodeURIComponent(page));
+            loadInspectionData({ page });
         });
 
-        // Per-page changes (partial).
-        $(document).on('change', '.inspection-per-page-form select[name="per_page"]', function () {
-            $form.find('input[name="per_page"]').val($(this).val());
-            loadInspectionData('page=1');
+        // Per-page dropdown inside table header.
+        document.addEventListener('change', function (e) {
+            const select = e.target.closest('#inspectionTableContainer .inspection-per-page-form select[name="per_page"]');
+            if (!select) return;
+            const hidden = form.querySelector('input[name="per_page"]');
+            if (hidden) hidden.value = select.value;
+            loadInspectionData({ page: 1 });
         });
     })();
 </script>

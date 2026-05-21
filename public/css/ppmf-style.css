@@ -564,16 +564,16 @@ body {
   font-size: 13px;
 }
 .table-ppmf thead tr {
-  background: var(--gov-green-light);
+  background: var(--gov-green);
 }
 .table-ppmf thead th {
   padding: 10px 14px;
   font-weight: 700;
   font-size: 11.5px;
   letter-spacing: .4px;
-  color: var(--gov-green-dark);
+  color: #ffffff;
   text-transform: uppercase;
-  border-bottom: 2px solid var(--gov-green);
+  border-bottom: 1px solid rgba(255,255,255,.12);
   white-space: nowrap;
 }
 .table-ppmf tbody tr {
@@ -587,6 +587,19 @@ body {
   vertical-align: middle;
 }
 .table-ppmf tbody tr:last-child { border-bottom: none; }
+
+/* Apply the same header look to module-specific tables without changing markup */
+.inspection-table thead tr,
+.sc-table thead tr,
+.sd-table thead tr {
+  background: var(--gov-green);
+}
+.inspection-table thead th,
+.sc-table thead th,
+.sd-table thead th {
+  color: #ffffff;
+  border-bottom: 1px solid rgba(255,255,255,.12);
+}
 
 /* rank badge */
 .rank-badge {

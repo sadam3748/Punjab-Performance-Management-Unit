@@ -36,6 +36,31 @@ class BaselineDataController extends Controller
         ]);
     }
 
+    public function districtBaselineData(Request $request)
+    {
+        $filters = $request->only([
+            'district_id',
+            'kpi_category_id',
+            'year',
+            'search',
+            'per_page',
+            'page',
+        ]);
+
+        $baselineData = $this->baselineDataService->getDistrictBaselineList($filters);
+
+        $html = view('baseline.partials._baseline-table', [
+            'baselineData' => $baselineData,
+            'filters' => $filters,
+        ])->render();
+
+        return response()->json([
+            'status' => 'success',
+            'html' => $html,
+            'total' => method_exists($baselineData, 'total') ? $baselineData->total() : $baselineData->count(),
+        ]);
+    }
+
     public function index(Request $request)
     {
         $filters = $request->only([
@@ -56,6 +81,31 @@ class BaselineDataController extends Controller
             'districts'     => $filterData['districts'],
             'kpiCategories' => $filterData['kpiCategories'],
             'filters'       => $filters,
+        ]);
+    }
+
+    public function indexData(Request $request)
+    {
+        $filters = $request->only([
+            'district_id',
+            'kpi_category_id',
+            'year',
+            'search',
+            'per_page',
+            'page',
+        ]);
+
+        $baselineData = $this->baselineDataService->getDistrictBaselineList($filters);
+
+        $html = view('baseline.partials._baseline-table', [
+            'baselineData' => $baselineData,
+            'filters' => $filters,
+        ])->render();
+
+        return response()->json([
+            'status' => 'success',
+            'html' => $html,
+            'total' => method_exists($baselineData, 'total') ? $baselineData->total() : $baselineData->count(),
         ]);
     }
 
@@ -143,6 +193,33 @@ class BaselineDataController extends Controller
             'tehsils'       => $filterData['tehsils'],
             'kpiCategories' => $filterData['kpiCategories'],
             'filters'       => $filters,
+        ]);
+    }
+
+    public function assetsData(Request $request)
+    {
+        $filters = $request->only([
+            'division_id',
+            'district_id',
+            'tehsil_id',
+            'kpi_category_id',
+            'status',
+            'search',
+            'per_page',
+            'page',
+        ]);
+
+        $assets = $this->baselineDataService->getBaselineAssetList($filters);
+
+        $html = view('baseline.partials._assets-table', [
+            'assets' => $assets,
+            'filters' => $filters,
+        ])->render();
+
+        return response()->json([
+            'status' => 'success',
+            'html' => $html,
+            'total' => method_exists($assets, 'total') ? $assets->total() : $assets->count(),
         ]);
     }
 

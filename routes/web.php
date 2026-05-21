@@ -179,6 +179,9 @@ Route::prefix('portal')->middleware('auth')->group(function () {
     Route::get('/geo-taggings/list', [GeoTaggingController::class, 'list'])
         ->name('geo-taggings.list');
 
+    Route::get('/geo-taggings/data', [GeoTaggingController::class, 'data'])
+        ->name('geo-taggings.data');
+
     Route::get('/geo-taggings/detail', [GeoTaggingController::class, 'detail'])
         ->name('geo-taggings.detail');
 
@@ -192,8 +195,14 @@ Route::prefix('portal')->middleware('auth')->group(function () {
     Route::get('/district-baseline-data-report', [BaselineDataController::class, 'districtBaseline'])
         ->name('baseline.district-baseline');
 
+    Route::get('/district-baseline-data-report/data', [BaselineDataController::class, 'districtBaselineData'])
+        ->name('baseline.district-baseline.data');
+
     Route::get('/baseline-data', [BaselineDataController::class, 'index'])
         ->name('baseline.index');
+
+    Route::get('/baseline-data/data', [BaselineDataController::class, 'indexData'])
+        ->name('baseline.index.data');
 
     Route::get('/baseline-data/create', [BaselineDataController::class, 'create'])
         ->name('baseline.create');
@@ -218,6 +227,9 @@ Route::prefix('portal')->middleware('auth')->group(function () {
 
     Route::get('/baseline-assets', [BaselineDataController::class, 'assets'])
         ->name('baseline.assets');
+
+    Route::get('/baseline-assets/data', [BaselineDataController::class, 'assetsData'])
+        ->name('baseline.assets.data');
 
     Route::get('/baseline-assets/{id}', [BaselineDataController::class, 'showAsset'])
         ->name('baseline.assets.show');

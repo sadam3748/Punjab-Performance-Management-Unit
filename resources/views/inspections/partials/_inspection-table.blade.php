@@ -3,7 +3,7 @@
     $svc = app(\App\Services\InspectionService::class);
 @endphp
 
-<div class="inspection-table-card">
+<div id="inspectionTableContainer" class="inspection-table-card">
     <div class="inspection-card-header">
         <div>
             <h5 class="inspection-section-title mb-1">
@@ -37,8 +37,8 @@
         </form>
     </div>
 
-    <div class="inspection-table-wrap" id="inspectionTableContainer">
-        <table class="table inspection-table align-middle mb-0">
+    <div class="inspection-table-wrap">
+            <table class="table inspection-table align-middle mb-0">
             <thead>
                 <tr>
                     <th class="inspection-col-sr">Sr. No.</th>
@@ -225,4 +225,3 @@
         </div>
     @endif
 </div>
-
