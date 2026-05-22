@@ -597,7 +597,7 @@ class KpiReportService
             ->where('period_type', $periodType)
             ->groupBy('district_id')
             ->orderByDesc('total_value')
-            ->limit(12);
+            ->limit(10);
 
         if ($dateFrom && $dateTo) {
             $districtAggQuery->whereDate('date_from', $dateFrom)->whereDate('date_to', $dateTo);
@@ -713,7 +713,7 @@ class KpiReportService
                 ->when($periodType === 'weekly' && $weekNo, fn ($q) => $q->where('week_no', $weekNo))
                 ->groupBy('district_id')
                 ->orderByDesc('functional')
-                ->limit(12)
+                ->limit(10)
                 ->get();
 
             $charts['districtFunctionalChart'] = [
