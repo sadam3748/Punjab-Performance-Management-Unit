@@ -15,25 +15,20 @@
     }
 
     .kpi-summary .stat-card-ppmf span {
-        font-size: 12px;
+        font-size: 11px;
         font-weight: 800;
         letter-spacing: 0.05em;
     }
 
-    .kpi-summary .stat-card-ppmf strong {
-        font-size: 26px;
-        font-weight: 900;
-    }
-
     .kpi-summary-value {
-        font-size: 24px;
+        font-size: 22px;
         font-weight: 900;
         color: var(--ppmf-text);
         line-height: 1.2;
     }
 
     .kpi-summary-period {
-        font-size: 24px;
+        font-size: 22px;
         font-weight: 900;
         color: var(--ppmf-text);
         line-height: 1.2;
@@ -41,20 +36,38 @@
 
     .kpi-selected-category {
         font-weight: 900;
-        font-size: 18px;
+        font-size: 16px;
         line-height: 1.2;
         color: var(--ppmf-text);
         max-width: 520px;
     }
+
+    .kpi-summary .stat-icon-ppmf {
+        width: 38px;
+        height: 38px;
+        border-radius: 12px;
+        font-size: 20px;
+    }
+
+    .kpi-metric-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 14px;
+    }
+
+    .kpi-metric-grid.cols-1 { grid-template-columns: repeat(1, minmax(0, 1fr)); }
+    .kpi-metric-grid.cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .kpi-metric-grid.cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .kpi-metric-grid.cols-4 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 
     .kpi-metric-card {
         position: relative;
         border: 1px solid #e2e8f0;
         border-radius: 16px;
         background: linear-gradient(180deg, #ffffff, #f8fafc);
-        padding: 14px 14px 12px;
+        padding: 12px 12px 10px;
         box-shadow: 0 10px 22px rgba(15, 23, 42, 0.05);
-        min-height: 150px;
+        min-height: 132px;
         overflow: hidden;
     }
 
@@ -68,7 +81,7 @@
 
     .kpi-metric-value {
         margin: 0;
-        font-size: 30px;
+        font-size: 26px;
         font-weight: 900;
         letter-spacing: -0.04em;
         color: #0f172a;
@@ -92,16 +105,21 @@
     .kpi-metric-title {
         margin: 10px 0 4px;
         color: #14532d;
-        font-size: 15px;
+        font-size: 14px;
         font-weight: 800;
     }
 
     .kpi-metric-desc {
         margin: 0;
         color: #475569;
-        font-size: 13px;
+        font-size: 12px;
         line-height: 1.5;
         font-weight: 600;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        min-height: calc(1.5em * 2);
     }
 
     .sticky-sr {
@@ -118,18 +136,11 @@
         left: 70px;
         background: #fff;
         z-index: 2;
-        min-width: 220px;
-    }
-
-    .metric-cell {
         min-width: 160px;
     }
 
-    .metric-cell .val {
-        font-weight: 800;
-        color: #0f172a;
-        font-size: 13px;
-        line-height: 1.2;
+    .metric-cell {
+        min-width: 300px;
     }
 
     .metric-cell .sub {
@@ -144,28 +155,30 @@
     }
 
     .kpi-score-table thead th {
-        background: var(--ppmf-green-dark);
+        background: var(--gov-green);
         color: #fff;
-        font-size: 12px;
-        font-weight: 800;
-        letter-spacing: 0.03em;
+        font-size: 13px;
+        font-weight: 700;
+        text-align: center;
         vertical-align: middle;
-        padding-top: 12px;
-        padding-bottom: 12px;
-        white-space: nowrap;
+        white-space: normal;
+        word-break: normal;
+        line-height: 1.35;
+        padding: 14px 12px;
+        white-space: normal;
     }
 
     .kpi-score-table thead th.sticky-sr,
     .kpi-score-table thead th.sticky-district {
-        background: var(--ppmf-green-dark);
+        background: var(--gov-green);
         z-index: 5;
     }
 
     .kpi-score-table tbody td {
         font-size: 13px;
-        padding-top: 10px;
-        padding-bottom: 10px;
-        vertical-align: top;
+        padding: 14px 12px;
+        vertical-align: middle;
+        text-align: center;
     }
 
     .kpi-score-table tbody tr:hover td {
@@ -175,6 +188,60 @@
     .kpi-score-table tbody tr:hover td.sticky-sr,
     .kpi-score-table tbody tr:hover td.sticky-district {
         background: #f8fafc;
+    }
+
+    .kpi-score-table thead th.col-sr {
+        min-width: 60px;
+        width: 60px;
+        max-width: 60px;
+    }
+
+    .kpi-score-table thead th.col-district {
+        min-width: 160px;
+        width: 160px;
+        max-width: 160px;
+        text-align: left;
+    }
+
+    .kpi-score-table thead th.col-evidence {
+        min-width: 110px;
+        width: 110px;
+        max-width: 110px;
+    }
+
+    .kpi-score-table tbody td.district-cell {
+        text-align: left;
+        font-weight: 800;
+        text-transform: uppercase;
+    }
+
+    .metric-score-label {
+        color: #1f2937;
+        font-weight: 600;
+        margin-bottom: 4px;
+        font-size: 12px;
+    }
+
+    .metric-score-value {
+        color: #0f172a;
+        font-weight: 800;
+        font-size: 14px;
+    }
+
+    .metric-value-text {
+        margin-top: 4px;
+        font-weight: 800;
+        color: #0f172a;
+        font-size: 13px;
+        line-height: 1.2;
+    }
+
+    @media (max-width: 991px) {
+        .metric-cell { min-width: 260px; }
+    }
+
+    @media (max-width: 575px) {
+        .metric-cell { min-width: 220px; }
     }
 
     .kpi-pagination-footer {
@@ -313,6 +380,16 @@
     }
 
     @media (max-width: 991px) {
+        .kpi-metric-grid,
+        .kpi-metric-grid.cols-4,
+        .kpi-metric-grid.cols-3 {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .kpi-metric-grid.cols-2 {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
         .kpi-pagination-bar {
             align-items: flex-start;
             flex-direction: column;
@@ -333,6 +410,14 @@
     }
 
     @media (max-width: 767px) {
+        .kpi-metric-grid,
+        .kpi-metric-grid.cols-1,
+        .kpi-metric-grid.cols-2,
+        .kpi-metric-grid.cols-3,
+        .kpi-metric-grid.cols-4 {
+            grid-template-columns: 1fr;
+        }
+
         .kpi-pagination-bar {
             padding: 14px;
         }
@@ -361,22 +446,6 @@
     $activePeriod = $filters['period_type'] ?? 'last_week';
     $perPage = (int) ($filters['per_page'] ?? 10);
 
-    $cleanMetricText = function ($text) {
-        $text = trim((string) $text);
-        if ($text === '') {
-            return null;
-        }
-
-        $lower = strtolower($text);
-        foreach (['dummy', 'test', 'sample', 'lorem', 'seeded'] as $bad) {
-            if (str_contains($lower, $bad)) {
-                return 'Reported KPI value for selected period.';
-            }
-        }
-
-        return $text;
-    };
-
     $bestEvidence = function (array $states) {
         $statesLower = array_map(fn ($s) => strtolower((string) $s), $states);
         if (collect($statesLower)->contains(fn ($s) => str_contains($s, 'verified'))) return 'Verified';
@@ -402,7 +471,7 @@
     </div>
 </div>
 
-<div class="row g-3 mb-4 kpi-summary">
+<div class="row g-3 mb-4 kpi-summary" style="display: none;">
     <div class="col-xl-4 col-lg-6">
         <div class="stat-card-ppmf">
             <div class="stat-icon-ppmf success">
@@ -539,6 +608,14 @@
 
 <div id="districtWiseKpiScoreResults">
 @if(($metricCards ?? collect())->count())
+    @php
+        $metricCount = ($metricCards ?? collect())->count();
+        $metricCols = match (true) {
+            $metricCount <= 1 => 1,
+            $metricCount === 2 => 2,
+            default => 3,
+        };
+    @endphp
     <div class="card-ppmf mb-4">
         <div class="card-ppmf-header">
             <div class="card-ppmf-title">
@@ -547,28 +624,19 @@
             </div>
         </div>
         <div class="card-ppmf-body">
-            <div class="row g-3">
+            <div class="kpi-metric-grid cols-{{ $metricCols }}">
                 @foreach ($metricCards as $metric)
-                    <div class="col-xl-3 col-lg-4 col-md-6">
-                        <div class="kpi-metric-card">
-                            <h3 class="kpi-metric-value">{{ $metric->formatted_value }}</h3>
-                            <span class="kpi-metric-unit">{{ $metric->unit_label }}</span>
+                    <div class="kpi-metric-card">
+                        <h3 class="kpi-metric-value">{{ $metric->formatted_value }}</h3>
+                        <span class="kpi-metric-unit">{{ $metric->unit_label }}</span>
 
-                            <div class="kpi-metric-title">{{ $metric->metric_title }}</div>
+                        <div class="kpi-metric-title">{{ $metric->metric_title }}</div>
 
-                            @php
-                                $metricDescription = $cleanMetricText($metric->metric_description);
-                            @endphp
-                            <p class="kpi-metric-desc">
-                                {{ $metricDescription ?: 'Reported KPI value for selected period.' }}
-                            </p>
-
-                            @if ($metric->source)
-                                <div class="mt-2 small text-muted fw-bold">
-                                    <i class="bi bi-person-badge"></i> {{ $metric->source }}
-                                </div>
-                            @endif
-                        </div>
+                        @if ($metric->source)
+                            <div class="mt-2 small text-muted fw-bold">
+                                <i class="bi bi-person-badge"></i> {{ $metric->source }}
+                            </div>
+                        @endif
                     </div>
                 @endforeach
             </div>
@@ -594,75 +662,61 @@
             <table class="table-ppmf kpi-score-table">
                 <thead>
                     <tr>
-                        <th class="sticky-sr">Sr.</th>
-                        <th class="sticky-district">District</th>
+                        <th class="sticky-sr col-sr">Sr.</th>
+                        <th class="sticky-district col-district">District</th>
                         @foreach ($metricTitles as $title)
                             <th class="metric-cell">{{ $title }}</th>
                         @endforeach
-                        <th style="min-width: 140px;">Average Score</th>
-                        <th style="min-width: 140px;">Performance</th>
-                        <th style="min-width: 220px;">Evidence</th>
+                        <th class="col-evidence">Evidence</th>
                     </tr>
                 </thead>
 
                 <tbody>
+                    @php
+                        $pageTotals = [];
+                        foreach ($metricTitles as $t) {
+                            $pageTotals[$t] = ['value' => 0.0, 'score_sum' => 0.0, 'score_count' => 0];
+                        }
+                    @endphp
                     @forelse ($reportData as $index => $row)
                         <tr>
                             <td class="sticky-sr">{{ method_exists($reportData, 'firstItem') ? $reportData->firstItem() + $index : $index + 1 }}</td>
 
-                            <td class="sticky-district">
-                                <strong>{{ $row['district_name'] }}</strong>
-                            </td>
+                            <td class="sticky-district district-cell">{{ $row['district_name'] }}</td>
 
                             @foreach ($metricTitles as $title)
                                 @php
                                     $cell = $row['metrics'][$title] ?? null;
+                                    if (! empty($cell) && $cell['value'] !== null) {
+                                        $pageTotals[$title]['value'] += (float) $cell['value'];
+                                    }
+                                    if (! empty($cell) && $cell['score'] !== null) {
+                                        $pageTotals[$title]['score_sum'] += (float) $cell['score'];
+                                        $pageTotals[$title]['score_count']++;
+                                    }
                                 @endphp
                                 <td class="metric-cell">
-                                    <div class="val">{{ $cell['formatted'] ?? '-' }}</div>
-                                    <div class="sub">
+                                    <div class="metric-score-label">Performance Score :</div>
+                                    <div class="metric-score-value">
                                         @if(!empty($cell) && $cell['score'] !== null)
-                                            <span class="badge-ppmf {{ $cell['badge_class'] }}">
-                                                {{ number_format((float) $cell['score'], 2) }}%
-                                            </span>
+                                            {{ number_format((float) $cell['score'], 2) }}
                                         @else
-                                            <span class="badge-ppmf secondary">N/A</span>
+                                            -
                                         @endif
                                     </div>
+                                    <div class="metric-value-text">{{ $cell['formatted'] ?? '-' }}</div>
                                 </td>
                             @endforeach
 
                             <td>
-                                @if($row['average_score'] !== null)
-                                    <span class="badge-ppmf {{ $row['score_badge_class'] }}">
-                                        {{ number_format((float) $row['average_score'], 2) }}%
-                                    </span>
-                                @else
-                                    <span class="badge-ppmf secondary">N/A</span>
-                                @endif
-                            </td>
-
-                            <td>
-                                <span class="badge-ppmf {{ $row['score_badge_class'] }}">
-                                    {{ $row['performance_label'] }}
-                                </span>
-                            </td>
-
-                            <td>
-                                @php
-                                    $states = $row['evidence_states'] ?? [];
-                                    $evidence = $bestEvidence($states);
-                                    $badge = 'secondary';
-                                    if (str_contains(strtolower($evidence), 'verified')) $badge = 'success';
-                                    elseif (str_contains(strtolower($evidence), 'uploaded')) $badge = 'info';
-                                    elseif (str_contains(strtolower($evidence), 'pending')) $badge = 'warning';
-                                @endphp
-                                <span class="badge-ppmf {{ $badge }}">{{ $evidence }}</span>
+                                <a href="javascript:void(0)" class="btn btn-sm btn-outline-success fw-bold" title="Evidence (demo)">
+                                    <i class="bi bi-eye"></i>
+                                </a>
                             </td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="{{ 6 + count($metricTitles) }}" class="text-center py-5">
+                            <td colspan="{{ 3 + count($metricTitles) }}" class="text-center py-5">
                                 <div class="manual-box-ppmf">
                                     <i class="bi bi-inbox"></i>
                                     <h5>No District KPI Score Data</h5>
@@ -671,6 +725,25 @@
                             </td>
                         </tr>
                     @endforelse
+
+                    @if(($reportData ?? collect())->count())
+                        <tr class="fw-bold">
+                            <td class="sticky-sr"></td>
+                            <td class="sticky-district">Total</td>
+                            @foreach ($metricTitles as $title)
+                                @php
+                                    $t = $pageTotals[$title];
+                                    $avgScore = $t['score_count'] ? ($t['score_sum'] / $t['score_count']) : null;
+                                @endphp
+                                <td class="metric-cell">
+                                    <div class="metric-score-label">Performance Score :</div>
+                                    <div class="metric-score-value">{{ $avgScore !== null ? number_format((float) $avgScore, 2) : '-' }}</div>
+                                    <div class="metric-value-text">{{ number_format((float) $t['value'], 2) }}</div>
+                                </td>
+                            @endforeach
+                            <td></td>
+                        </tr>
+                    @endif
                 </tbody>
             </table>
         </div>

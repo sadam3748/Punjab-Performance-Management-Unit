@@ -14,31 +14,6 @@
         --ppmf-bg: #f4f7fa;
     }
 
-    .prov-kpi-hero {
-        background: linear-gradient(135deg, #0f5132 0%, #198754 52%, #d6a84f 100%);
-        border-radius: 20px;
-        padding: 20px;
-        color: #fff;
-        box-shadow: 0 14px 34px rgba(15, 81, 50, 0.16);
-        margin-bottom: 20px;
-    }
-
-    .prov-kpi-hero h1 {
-        margin: 0;
-        font-size: 28px;
-        font-weight: 900;
-        letter-spacing: -0.03em;
-    }
-
-    .prov-kpi-hero p {
-        margin: 6px 0 0;
-        max-width: 760px;
-        color: rgba(255, 255, 255, 0.86);
-        font-size: 13px;
-        font-weight: 650;
-        line-height: 1.4;
-    }
-
     .prov-kpi-actions {
         display: flex;
         gap: 10px;
@@ -48,7 +23,7 @@
 
     .prov-kpi-actions .btn,
     .prov-kpi-actions .btn-gov {
-        height: 42px;
+        height: 38px;
         display: inline-flex;
         align-items: center;
         gap: 8px;
@@ -67,34 +42,34 @@
     .prov-summary-card {
         background: #fff;
         border: 1px solid var(--ppmf-border);
-        border-radius: 18px;
-        padding: 16px;
+        border-radius: 16px;
+        padding: 10px 12px;
         display: flex;
         align-items: center;
-        gap: 13px;
+        gap: 11px;
         box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05);
-        min-height: 78px;
+        min-height: 58px;
         position: relative;
         overflow: hidden;
     }
 
     .prov-summary-icon {
-        width: 46px;
-        height: 46px;
-        border-radius: 15px;
+        width: 38px;
+        height: 38px;
+        border-radius: 12px;
         display: inline-flex;
         align-items: center;
         justify-content: center;
         background: var(--ppmf-green-soft);
         color: var(--ppmf-green-dark);
-        font-size: 24px;
+        font-size: 20px;
         flex-shrink: 0;
     }
 
     .prov-summary-card span {
         display: block;
         color: var(--ppmf-muted);
-        font-size: 12px;
+        font-size: 11px;
         font-weight: 800;
         text-transform: uppercase;
         letter-spacing: 0.06em;
@@ -103,7 +78,7 @@
     .prov-summary-card strong {
         display: block;
         color: var(--ppmf-text);
-        font-size: 26px;
+        font-size: 20px;
         font-weight: 900;
         line-height: 1.1;
         margin-top: 3px;
@@ -131,7 +106,7 @@
     .prov-card-title {
         margin: 0;
         color: #14532d;
-        font-size: 16px;
+        font-size: 14px;
         font-weight: 900;
         display: flex;
         align-items: center;
@@ -160,7 +135,7 @@
     .prov-filter-body .form-select {
         border-radius: 12px;
         border-color: #cbd5e1;
-        min-height: 42px;
+        min-height: 40px;
         font-size: 13px;
         font-weight: 600;
     }
@@ -170,7 +145,7 @@
     }
 
     .prov-category-top {
-        padding: 16px 18px;
+        padding: 14px 16px;
         background: linear-gradient(135deg, var(--ppmf-green-dark), var(--ppmf-green));
         color: #fff;
         display: flex;
@@ -181,16 +156,15 @@
 
     .prov-category-name {
         margin: 0;
-        font-size: 19px;
+        font-size: 16px;
         font-weight: 900;
         letter-spacing: -0.02em;
-        text-transform: uppercase;
     }
 
     .prov-category-meta {
         margin-top: 5px;
         color: rgba(255, 255, 255, 0.82);
-        font-size: 12px;
+        font-size: 11px;
         font-weight: 600;
     }
 
@@ -213,10 +187,10 @@
 
     .prov-metric-card {
         position: relative;
-        min-height: 176px;
+        min-height: 142px;
         border: 1px solid var(--ppmf-border);
         border-radius: 18px;
-        padding: 16px;
+        padding: 14px;
         background: linear-gradient(180deg, #ffffff, #f8fafc);
         box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05);
         overflow: hidden;
@@ -231,10 +205,26 @@
         background: linear-gradient(180deg, var(--ppmf-green), #d6a84f);
     }
 
+    .prov-metric-iconbox {
+        position: absolute;
+        right: 12px;
+        top: 12px;
+        width: 34px;
+        height: 34px;
+        border-radius: 12px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: #ecfdf5;
+        border: 1px solid #bbf7d0;
+        color: #166534;
+        font-size: 18px;
+    }
+
     .prov-metric-value {
         margin: 0;
         color: var(--ppmf-text);
-        font-size: 34px;
+        font-size: 24px;
         line-height: 1;
         font-weight: 900;
         letter-spacing: -0.05em;
@@ -245,7 +235,7 @@
         margin-top: 8px;
         border-radius: 999px;
         padding: 4px 9px;
-        font-size: 10px;
+        font-size: 9px;
         font-weight: 900;
         text-transform: uppercase;
         letter-spacing: 0.06em;
@@ -257,16 +247,21 @@
     .prov-metric-title {
         margin: 12px 0 6px;
         color: #14532d;
-        font-size: 15px;
+        font-size: 13px;
         font-weight: 800;
     }
 
     .prov-metric-description {
         margin: 0;
         color: #475569;
-        font-size: 13px;
+        font-size: 12px;
         line-height: 1.45;
         font-weight: 600;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        min-height: calc(1.45em * 2);
     }
 
     .prov-metric-source {
@@ -338,20 +333,22 @@
         font-weight: 800;
     }
 
-    @media (max-width: 1199px) {
-        .prov-summary-grid,
+    @media (max-width: 991px) {
+        .prov-summary-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
         .prov-metric-grid {
             grid-template-columns: repeat(2, minmax(0, 1fr));
         }
     }
 
-    @media (max-width: 767px) {
+    @media (max-width: 575px) {
         .prov-summary-grid,
         .prov-metric-grid {
             grid-template-columns: 1fr;
         }
 
-        .prov-kpi-hero,
         .prov-card-header,
         .prov-category-top,
         .prov-pagination-footer {
@@ -376,65 +373,48 @@
     ];
 
     $activePeriod = $filters['period_type'] ?? 'last_week';
-    $perPage = (int) ($filters['per_page'] ?? 10);
+    $perPage = (int) ($filters['per_page'] ?? 5);
 
-    $cleanMetricText = function ($text) {
-        $text = trim((string) $text);
-        if ($text === '') {
-            return null;
-        }
-
-        $lower = strtolower($text);
-        foreach (['dummy', 'test', 'sample', 'lorem', 'seeded'] as $bad) {
-            if (str_contains($lower, $bad)) {
-                return 'Reported KPI value for selected period.';
-            }
-        }
-
-        return $text;
-    };
 @endphp
 
-<div class="prov-kpi-hero">
-    <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
-        <div>
-            <h1>Provincial KPI Wise Data</h1>
-            <p>Category-wise provincial KPI metrics for senior management review.</p>
-        </div>
+<div class="page-title-bar">
+    <div>
+        <h1 class="page-title">Provincial KPI Wise Data</h1>
+        <p class="page-subtitle">Category-wise provincial KPI metrics for selected reporting period.</p>
+    </div>
 
-        <div class="prov-kpi-actions">
-            @if (Route::has('kpi.district-wise-kpi-score'))
-                <a
-                    href="{{ route('kpi.district-wise-kpi-score', [
-                        'kpi_category_id' => $filters['kpi_category_id'] ?? '',
-                        'period_type' => $filters['period_type'] ?? 'last_week',
-                        'date_from' => $filters['date_from'] ?? '',
-                        'date_to' => $filters['date_to'] ?? '',
-                    ]) }}"
-                    class="btn-gov btn-gov-primary"
-                    target="_blank"
-                    rel="noopener"
-                >
-                    <i class="bi bi-speedometer2"></i> District Wise KPI Score
-                </a>
-            @endif
+    <div class="page-title-actions prov-kpi-actions">
+        @if (Route::has('kpi.district-wise-kpi-score'))
+            <a
+                href="{{ route('kpi.district-wise-kpi-score', [
+                    'kpi_category_id' => $filters['kpi_category_id'] ?? '',
+                    'period_type' => $filters['period_type'] ?? 'last_week',
+                    'date_from' => $filters['date_from'] ?? '',
+                    'date_to' => $filters['date_to'] ?? '',
+                ]) }}"
+                class="btn-gov btn-gov-primary"
+                target="_blank"
+                rel="noopener"
+            >
+                <i class="bi bi-speedometer2"></i> District Wise KPI Score
+            </a>
+        @endif
 
-            @if (Route::has('kpi.reporting-status'))
-                <a href="{{ route('kpi.reporting-status') }}" class="btn-gov btn-gov-outline">
-                    <i class="bi bi-list-check"></i> Reporting Status
-                </a>
-            @endif
+        @if (Route::has('kpi.reporting-status'))
+            <a href="{{ route('kpi.reporting-status') }}" class="btn-gov btn-gov-outline">
+                <i class="bi bi-list-check"></i> Reporting Status
+            </a>
+        @endif
 
-            @if (Route::has('kpi.graphical-report'))
-                <a href="{{ route('kpi.graphical-report') }}" class="btn-gov btn-gov-outline">
-                    <i class="bi bi-bar-chart-line"></i> Graphical Report
-                </a>
-            @endif
-        </div>
+        @if (Route::has('kpi.graphical-report'))
+            <a href="{{ route('kpi.graphical-report') }}" class="btn-gov btn-gov-outline">
+                <i class="bi bi-bar-chart-line"></i> Graphical Report
+            </a>
+        @endif
     </div>
 </div>
 
-<div class="prov-summary-grid">
+<div class="prov-summary-grid" style="display: none;">
     <div class="prov-summary-card">
         <div class="prov-summary-icon"><i class="bi bi-grid-3x3-gap"></i></div>
         <div>
@@ -463,7 +443,7 @@
         <div class="prov-summary-icon"><i class="bi bi-calendar-week"></i></div>
         <div>
             <span>Active Period</span>
-            <strong style="font-size:18px;">{{ $periodOptions[$summary['active_period'] ?? $activePeriod] ?? 'Last Week' }}</strong>
+            <strong style="font-size:16px;">{{ $periodOptions[$summary['active_period'] ?? $activePeriod] ?? 'Last Week' }}</strong>
         </div>
     </div>
 </div>
@@ -477,7 +457,7 @@
     </div>
 
     <div class="prov-filter-body">
-        <form method="GET" action="{{ route('kpi.provincial-data') }}">
+        <form id="provincialKpiFilters" method="GET" action="{{ route('kpi.provincial-data') }}">
             <div class="row g-3 align-items-end">
                 <div class="col-xl-3 col-lg-4 col-md-6">
                     <label class="form-label">Report Period</label>
@@ -513,7 +493,7 @@
                 <div class="col-xl-2 col-lg-4 col-md-6">
                     <label class="form-label">Per Page</label>
                     <select name="per_page" class="form-select">
-                        @foreach ([10, 20, 25, 50] as $option)
+                        @foreach ([5, 10, 20, 25, 50] as $option)
                             <option value="{{ $option }}" {{ $perPage === $option ? 'selected' : '' }}>{{ $option }} categories</option>
                         @endforeach
                     </select>
@@ -587,17 +567,39 @@
                         target="_blank"
                         rel="noopener"
                     >
+                        @php
+                            $iconMap = [
+                                'total' => 'bi-grid-3x3-gap',
+                                'inspected' => 'bi-clipboard-check',
+                                'functional' => 'bi-check-circle',
+                                'non_functional' => 'bi-x-circle',
+                                'not_inspected' => 'bi-hourglass-split',
+                                'cleaned' => 'bi-droplet-half',
+                                'uncleaned' => 'bi-exclamation-triangle',
+                                'filter_changed' => 'bi-arrow-repeat',
+                                'filter_unchanged' => 'bi-arrow-left-right',
+                                'violations' => 'bi-shield-exclamation',
+                                'compliant' => 'bi-shield-check',
+                                'fines' => 'bi-cash-coin',
+                            ];
+
+                            $metricKey = strtolower((string) ($metric->metric_key ?? ''));
+                            $picked = 'bi-bar-chart-line';
+                            foreach ($iconMap as $needle => $icon) {
+                                if ($metricKey !== '' && str_contains($metricKey, $needle)) {
+                                    $picked = $icon;
+                                    break;
+                                }
+                            }
+                        @endphp
+                        <span class="prov-metric-iconbox" aria-hidden="true">
+                            <i class="bi {{ $picked }}"></i>
+                        </span>
+
                         <h3 class="prov-metric-value">{{ $metric->formatted_value }}</h3>
                         <span class="prov-metric-unit">{{ $metric->unit_label }}</span>
 
                         <h4 class="prov-metric-title">{{ $metric->metric_title }}</h4>
-
-                        @php
-                            $metricDescription = $cleanMetricText($metric->metric_description);
-                        @endphp
-                        <p class="prov-metric-description">
-                            {{ $metricDescription ?: 'Reported KPI value for selected period.' }}
-                        </p>
 
                         @if ($metric->source)
                             <div class="prov-metric-source">
@@ -605,9 +607,6 @@
                                 Source: {{ $metric->source }}
                             </div>
                         @endif
-                        <div class="position-absolute" style="right:14px; bottom:14px; color:#16a34a;">
-                            <i class="bi bi-arrow-right-circle-fill"></i>
-                        </div>
                     </a>
                 @empty
                     <div class="prov-empty-state">
@@ -635,3 +634,28 @@
 @endif
 
 @endsection
+
+@push('scripts')
+<script>
+    (function () {
+        if (!window.jQuery) return;
+
+        let searchTimer = null;
+
+        function submitFilters() {
+            const $form = jQuery('#provincialKpiFilters');
+            if (!$form.length) return;
+            $form.trigger('submit');
+        }
+
+        jQuery('#provincialKpiFilters').on('change', 'select, input[type="date"]', function () {
+            submitFilters();
+        });
+
+        jQuery('#provincialKpiFilters').on('keyup', 'input[name="search"]', function () {
+            clearTimeout(searchTimer);
+            searchTimer = setTimeout(submitFilters, 400);
+        });
+    })();
+</script>
+@endpush

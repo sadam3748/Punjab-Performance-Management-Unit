@@ -919,7 +919,7 @@ class KpiReportService
     private function normalizePerPage($perPage): int
     {
         $perPage = (int) ($perPage ?? 10);
-        $allowed = [10, 20, 25, 50];
+        $allowed = [5, 10, 20, 25, 50];
 
         return in_array($perPage, $allowed, true) ? $perPage : 10;
     }
@@ -928,37 +928,43 @@ class KpiReportService
     {
         $period = (string) ($filters['period_type'] ?? 'last_week');
 
-        // Unified KPI metrics table uses: weekly/monthly/yearly.
+        // Graphical report uses: weekly/monthly/yearly.
         if (in_array($period, ['weekly', 'monthly', 'yearly'], true)) {
             return $period;
         }
 
-        // Backward compatibility: map legacy values to weekly.
-        if (in_array($period, ['current_week', 'last_week', 'last_four_weeks'], true)) {
-            return 'weekly';
+        // Old PPMF KPI reports use these presets.
+        if (in_array($period, ['current_week', 'last_week', 'last_four_weeks', 'custom'], true)) {
+            return $period;
         }
 
-        return 'weekly';
+        return 'last_week';
     }
 
     private function applyMetricPeriodFilter($query, array $filters)
     {
         $period = $this->normalizePeriod($filters);
 
-        $query->where('period_type', $period);
-
-        // When date range is provided, match the selected snapshot window.
-        if (! empty($filters['date_from']) && ! empty($filters['date_to'])) {
-            $query->whereDate('date_from', $filters['date_from'])
-                ->whereDate('date_to', $filters['date_to']);
+        if ($period === 'custom') {
+            // Custom date uses weekly snapshots constrained by exact window when provided.
+            $query->where('period_type', 'weekly');
+            if (! empty($filters['date_from']) && ! empty($filters['date_to'])) {
+                $query->whereDate('date_from', $filters['date_from'])
+                    ->whereDate('date_to', $filters['date_to']);
+            }
+            return $query;
         }
+
+        $query->where('period_type', $period);
 
         return $query;
     }
 
     public function getProvincialKpiMetrics(array $filters)
     {
-        $perPage = $this->normalizePerPage($filters['per_page'] ?? 10);
+        // Provincial KPI Wise Data default should be compact for management view.
+        // Project is local; safest default here is 5 categories per page.
+        $perPage = $this->normalizePerPage($filters['per_page'] ?? 5);
 
         $categoriesQuery = KpiCategory::query()
             ->where('is_active', true)
@@ -1047,27 +1053,20 @@ class KpiReportService
 
     public function getDistrictWiseKpiMetricCards(array $filters)
     {
-        $period = $this->normalizePeriod($filters);
-
         $query = KpiMetricValue::query()
             ->where('is_active', true)
             ->where('area_level', 'province')
-            ->where('period_type', $period)
             ->when(! empty($filters['kpi_category_id']), function ($q) use ($filters) {
                 $q->where('kpi_category_id', $filters['kpi_category_id']);
             });
 
-        if (! empty($filters['date_from']) && ! empty($filters['date_to'])) {
-            $query->whereDate('date_from', $filters['date_from'])
-                ->whereDate('date_to', $filters['date_to']);
-        }
+        $this->applyMetricPeriodFilter($query, $filters);
 
         return $query->orderBy('sort_order')->orderBy('id')->get();
     }
 
     public function getDistrictWiseKpiScore(array $filters): array
     {
-        $period = $this->normalizePeriod($filters);
         $perPage = $this->normalizePerPage($filters['per_page'] ?? 10);
 
         $metricCards = $this->getDistrictWiseKpiMetricCards($filters);
@@ -1077,7 +1076,6 @@ class KpiReportService
         $valuesQuery = KpiMetricValue::query()
             ->where('is_active', true)
             ->where('area_level', 'district')
-            ->where('period_type', $period)
             ->when(! empty($filters['kpi_category_id']), function ($q) use ($filters) {
                 $q->where('kpi_category_id', $filters['kpi_category_id']);
             })
@@ -1098,10 +1096,7 @@ class KpiReportService
             })
             ->with(['district:id,name']);
 
-        if (! empty($filters['date_from']) && ! empty($filters['date_to'])) {
-            $valuesQuery->whereDate('date_from', $filters['date_from'])
-                ->whereDate('date_to', $filters['date_to']);
-        }
+        $this->applyMetricPeriodFilter($valuesQuery, $filters);
 
         $values = $valuesQuery
             ->orderBy('district_id')

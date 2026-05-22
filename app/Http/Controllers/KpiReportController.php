@@ -107,25 +107,58 @@ class KpiReportController extends Controller
     public function reportingStatus(Request $request)
     {
         $filters = $request->only([
+            'period_type',
+            'week_no',
+            'month',
+            'year',
             'district_id',
-            'tehsil_id',
             'kpi_category_id',
-            'date_from',
-            'date_to',
-            'status',
-            'search',
             'per_page',
         ]);
 
+        // Default: weekly + latest completed Thu->Wed week (old PPMF behavior).
+        if (empty($filters['period_type'])) {
+            $filters['period_type'] = 'weekly';
+        }
+
+        $scorecardService = app(\App\Services\ScorecardService::class);
+        if (($filters['period_type'] ?? '') === 'weekly' && empty($filters['week_no'])) {
+            $default = $scorecardService->getLatestCompletedPpmfWeekFilters();
+            $filters['week_no'] = $default['week_no'] ?? null;
+            $filters['year'] = $default['year'] ?? null;
+            $filters['month'] = $default['month'] ?? null;
+        }
+
+        // Derive date window from selected period so reporting status remains management-friendly.
+        $range = $this->kpiReportService->resolveGraphicalDateRange($filters);
+        if (! empty($range['date_from']) && ! empty($range['date_to'])) {
+            $filters['date_from'] = $range['date_from'];
+            $filters['date_to'] = $range['date_to'];
+            $filters['period_label'] = $range['label'] ?? null;
+        }
+
         $reportingStatus = $this->kpiReportService->getKpiReportingStatus($filters);
         $filterData = $this->kpiReportService->getFilterData();
+        $graphFilters = $this->kpiReportService->getGraphicalFilters();
+
+        // Week options (Thu->Wed) for selected year/month.
+        $weekOptions = [];
+        if (($filters['period_type'] ?? '') === 'weekly') {
+            $y = ! empty($filters['year']) ? (int) $filters['year'] : (int) now()->format('Y');
+            $m = ! empty($filters['month']) ? (int) $filters['month'] : (int) now()->format('n');
+            $weekOptions = $scorecardService->getWeekRanges($y, $m);
+            ksort($weekOptions);
+        }
 
         return view('kpi.reporting-status', [
             'reportingStatus' => $reportingStatus,
             'districts' => $filterData['districts'],
-            'tehsils' => $filterData['tehsils'],
             'kpiCategories' => $filterData['kpiCategories'],
             'filters' => $filters,
+            'periodOptions' => $graphFilters['periodOptions'],
+            'months' => $graphFilters['months'],
+            'years' => $graphFilters['years'],
+            'weekOptions' => $weekOptions,
         ]);
     }
 

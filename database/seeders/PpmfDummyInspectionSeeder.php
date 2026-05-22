@@ -7,6 +7,7 @@ use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
+use App\Services\ScorecardService;
 
 class PpmfDummyInspectionSeeder extends Seeder
 {
@@ -69,6 +70,17 @@ class PpmfDummyInspectionSeeder extends Seeder
         $recordIndex = 1;
         $now         = Carbon::now();
 
+        // Use old PPMF Thu->Wed week window for "last_week/current_week" distribution,
+        // so graphical report week filters (Thu->Wed) actually match seeded inspections.
+        $scorecard = app(ScorecardService::class);
+        $lastCompleted = $scorecard->getLatestCompletedPpmfWeekFilters();
+        $lastWeekRange = ! empty($lastCompleted['week_no']) ? $scorecard->getWeekDateRange((string) $lastCompleted['week_no']) : null;
+        $lastWeekStart = $lastWeekRange['start'] ?? $now->copy()->subWeek()->startOfDay();
+        $lastWeekEnd = $lastWeekRange['end'] ?? $lastWeekStart->copy()->addDays(6)->endOfDay();
+
+        $currentWeekStart = $lastWeekStart->copy()->addWeek();
+        $currentWeekEnd = $lastWeekEnd->copy()->addWeek();
+
         // Keep seed volume reasonable (hundreds, not thousands):
         // - Use all districts
         // - For each district, seed a rotating subset of KPI categories (8)
@@ -105,14 +117,9 @@ class PpmfDummyInspectionSeeder extends Seeder
                     // Weighted: 45% last_week, 25% current_week, 30% older (up to 120 days).
                     $roll = rand(1, 100);
                     if ($roll <= 45) {
-                        $inspectionDate = $now->copy()
-                            ->subWeek()
-                            ->startOfWeek()
-                            ->addDays(rand(0, 6));
+                        $inspectionDate = Carbon::createFromTimestamp(rand($lastWeekStart->timestamp, $lastWeekEnd->timestamp));
                     } elseif ($roll <= 70) {
-                        $inspectionDate = $now->copy()
-                            ->startOfWeek()
-                            ->addDays(rand(0, 6));
+                        $inspectionDate = Carbon::createFromTimestamp(rand($currentWeekStart->timestamp, $currentWeekEnd->timestamp));
                     } else {
                         $inspectionDate = $now->copy()
                             ->subDays(rand(0, 120));

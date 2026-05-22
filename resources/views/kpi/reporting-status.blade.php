@@ -8,7 +8,7 @@
     <div>
         <h1 class="page-title">KPI Reporting Status</h1>
         <p class="page-subtitle">
-            Monitor district, tehsil and category-wise KPI reporting progress across Punjab.
+            Monitor district-wise KPI submission progress for the selected reporting period.
         </p>
     </div>
 
@@ -25,58 +25,7 @@
     </div>
 </div>
 
-{{-- Summary Cards --}}
-<div class="row g-3 mb-4">
-
-    <div class="col-xl-3 col-lg-4 col-md-6">
-        <div class="kpi-status-card">
-            <div class="kpi-status-icon bg-soft-primary">
-                <i class="bi bi-clipboard-data"></i>
-            </div>
-            <div>
-                <span>Total Records</span>
-                <strong>{{ number_format($summary['total_records'] ?? 0) }}</strong>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-xl-3 col-lg-4 col-md-6">
-        <div class="kpi-status-card">
-            <div class="kpi-status-icon bg-soft-success">
-                <i class="bi bi-check-circle"></i>
-            </div>
-            <div>
-                <span>Reported</span>
-                <strong>{{ number_format($summary['reported'] ?? 0) }}</strong>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-xl-3 col-lg-4 col-md-6">
-        <div class="kpi-status-card">
-            <div class="kpi-status-icon bg-soft-warning">
-                <i class="bi bi-hourglass-split"></i>
-            </div>
-            <div>
-                <span>Pending</span>
-                <strong>{{ number_format($summary['pending'] ?? 0) }}</strong>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-xl-3 col-lg-4 col-md-6">
-        <div class="kpi-status-card">
-            <div class="kpi-status-icon bg-soft-info">
-                <i class="bi bi-percent"></i>
-            </div>
-            <div>
-                <span>Reporting Rate</span>
-                <strong>{{ $summary['reporting_rate'] ?? 0 }}%</strong>
-            </div>
-        </div>
-    </div>
-
-</div>
+{{-- Old PPMF-style: no large summary cards here --}}
 
 {{-- Filters --}}
 <div class="card-ppmf mb-4">
@@ -90,6 +39,49 @@
     <div class="card-ppmf-body">
         <form method="GET" action="{{ route('kpi.reporting-status') }}">
             <div class="row g-3 align-items-end">
+                <div class="col-xl-3 col-lg-4 col-md-6">
+                    <label class="form-label">Period Type</label>
+                    <select name="period_type" class="form-select">
+                        @foreach (($periodOptions ?? []) as $value => $label)
+                            <option value="{{ $value }}" {{ ($filters['period_type'] ?? 'weekly') === $value ? 'selected' : '' }}>
+                                {{ $label }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+
+                <div class="col-xl-3 col-lg-4 col-md-6">
+                    <label class="form-label">Week</label>
+                    <select name="week_no" class="form-select" {{ ($filters['period_type'] ?? 'weekly') === 'weekly' ? '' : 'disabled' }}>
+                        <option value="">Select Week</option>
+                        @foreach(($weekOptions ?? []) as $weekNo => $label)
+                            <option value="{{ $weekNo }}" {{ (string) ($filters['week_no'] ?? '') === (string) $weekNo ? 'selected' : '' }}>
+                                {{ $label }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+
+                <div class="col-xl-3 col-lg-4 col-md-6">
+                    <label class="form-label">Month</label>
+                    <select name="month" class="form-select" {{ ($filters['period_type'] ?? 'weekly') === 'yearly' ? 'disabled' : '' }}>
+                        <option value="">Select Month</option>
+                        @foreach(($months ?? []) as $m)
+                            <option value="{{ $m['value'] }}" {{ (int) ($filters['month'] ?? 0) === (int) $m['value'] ? 'selected' : '' }}>
+                                {{ $m['label'] }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+
+                <div class="col-xl-3 col-lg-4 col-md-6">
+                    <label class="form-label">Year</label>
+                    <select name="year" class="form-select">
+                        @foreach(($years ?? []) as $y)
+                            <option value="{{ $y }}" {{ (int) ($filters['year'] ?? 0) === (int) $y ? 'selected' : '' }}>{{ $y }}</option>
+                        @endforeach
+                    </select>
+                </div>
 
                 <div class="col-xl-3 col-lg-4 col-md-6">
                     <label class="form-label">District</label>
@@ -131,39 +123,6 @@
                 </div>
 
                 <div class="col-xl-3 col-lg-4 col-md-6">
-                    <label class="form-label">Status</label>
-                    <select name="status" class="form-select">
-                        <option value="">All Status</option>
-                        @foreach (['reported', 'pending', 'submitted', 'approved', 'rejected'] as $status)
-                            <option value="{{ $status }}"
-                                {{ ($filters['status'] ?? '') === $status ? 'selected' : '' }}>
-                                {{ ucfirst(str_replace('_', ' ', $status)) }}
-                            </option>
-                        @endforeach
-                    </select>
-                </div>
-
-                <div class="col-xl-3 col-lg-4 col-md-6">
-                    <label class="form-label">From Date</label>
-                    <input
-                        type="date"
-                        name="date_from"
-                        value="{{ $filters['date_from'] ?? '' }}"
-                        class="form-control"
-                    >
-                </div>
-
-                <div class="col-xl-3 col-lg-4 col-md-6">
-                    <label class="form-label">To Date</label>
-                    <input
-                        type="date"
-                        name="date_to"
-                        value="{{ $filters['date_to'] ?? '' }}"
-                        class="form-control"
-                    >
-                </div>
-
-                <div class="col-xl-3 col-lg-4 col-md-6">
                     <label class="form-label">Per Page</label>
                     @php
                         $currentPerPage = (int) ($filters['per_page'] ?? request('per_page', 10));
@@ -175,17 +134,6 @@
                             </option>
                         @endforeach
                     </select>
-                </div>
-
-                <div class="col-xl-3 col-lg-4 col-md-6">
-                    <label class="form-label">Search</label>
-                    <input
-                        type="text"
-                        name="search"
-                        value="{{ $filters['search'] ?? '' }}"
-                        class="form-control"
-                        placeholder="Search district/category"
-                    >
                 </div>
 
                 <div class="col-xl-3 col-lg-4 col-md-6">
@@ -215,122 +163,101 @@
                 <i class="bi bi-list-check"></i>
                 KPI Reporting Status
             </div>
-
-            <p class="card-subtitle mb-0">
-                Total records:
-                {{ method_exists($reportingStatus, 'total') ? number_format($reportingStatus->total()) : number_format($reportingStatus->count()) }}
-            </p>
         </div>
     </div>
 
     <div class="card-ppmf-body p-0">
+        @php
+            $reportingPeriod = $filters['period_label'] ?? ($filters['period_type'] ?? 'weekly');
+            $totalDistricts = $summary['total_districts'] ?? (method_exists($districts, 'count') ? $districts->count() : null);
+            $defaultExpected = $summary['expected_count'] ?? 27;
+        @endphp
+
+        <div class="report-info-strip">
+            <div class="report-info-item">
+                <span class="report-info-label">Reporting Period</span>
+                <span class="report-info-value">{{ $reportingPeriod }}</span>
+            </div>
+            <div class="report-info-item">
+                <span class="report-info-label">Expected KPIs</span>
+                <span class="report-info-value">{{ number_format((int) $defaultExpected) }}</span>
+            </div>
+            @if($totalDistricts !== null)
+                <div class="report-info-item">
+                    <span class="report-info-label">Total Districts</span>
+                    <span class="report-info-value">{{ number_format((int) $totalDistricts) }}</span>
+                </div>
+            @endif
+        </div>
+
+        <div class="helper-strip">
+            <div class="helper-text">
+                KPI Submission shows how many required KPI reports have been submitted by each district.
+            </div>
+            <div class="helper-guide">
+                <span><span class="guide-dot complete"></span> Complete = all KPIs submitted</span>
+                <span><span class="guide-dot partial"></span> Partial = some KPIs submitted</span>
+                <span><span class="guide-dot pending"></span> Pending = no KPI submitted</span>
+            </div>
+        </div>
+
         <div class="table-responsive">
             <table class="table-ppmf">
                 <thead>
                     <tr>
-                        <th style="width: 70px;">Sr.</th>
-                        <th>KPI Category</th>
                         <th>District</th>
-                        <th>Tehsil</th>
-                        <th>Total Inspections</th>
-                        <th>Reported</th>
-                        <th>Pending</th>
-                        <th>Reporting %</th>
-                        <th>Status</th>
-                        <th>Last Updated</th>
+                        <th style="width: 180px;">Reporting Status</th>
+                        <th style="width: 140px; text-align:center;">KPI Submission</th>
                     </tr>
                 </thead>
 
                 <tbody>
                     @forelse ($reportingStatus as $index => $row)
                         @php
-                            $total = $row->total_inspections ?? $row->total_records ?? 0;
-                            $reported = $row->reported_count ?? $row->reported ?? $row->approved_count ?? 0;
-                            $pending = $row->pending_count ?? $row->pending ?? max($total - $reported, 0);
-                            $rate = $total > 0 ? round(($reported / $total) * 100, 2) : 0;
+                            $totalExpected = $row->expected_count
+                                ?? $row->required_count
+                                ?? ($summary['expected_count'] ?? null)
+                                ?? 27;
 
-                            $statusText = $row->status ?? ($rate >= 100 ? 'reported' : ($rate > 0 ? 'partial' : 'pending'));
+                            $submitted = $row->submitted_count
+                                ?? $row->reported_count
+                                ?? $row->reported
+                                ?? $row->approved_count
+                                ?? $row->total_records
+                                ?? 0;
+
+                            if ($totalExpected > 0 && $submitted >= $totalExpected) {
+                                $status = 'Complete';
+                                $statusClass = 'complete';
+                            } elseif ($submitted > 0) {
+                                $status = 'Partial';
+                                $statusClass = 'partial';
+                            } else {
+                                $status = 'Not Submitted';
+                                $statusClass = 'not-submitted';
+                            }
                         @endphp
 
                         <tr>
-                            <td>
-                                {{ method_exists($reportingStatus, 'firstItem') ? $reportingStatus->firstItem() + $index : $index + 1 }}
-                            </td>
-
-                            <td>
-                                <div class="fw-bold">
-                                    {{ $row->kpiCategory->name ?? $row->kpi_category_name ?? 'N/A' }}
-                                </div>
-                            </td>
-
-                            <td>
+                            <td class="district-name-cell">
                                 {{ $row->district->name ?? $row->district_name ?? 'N/A' }}
                             </td>
 
                             <td>
-                                {{ $row->tehsil->name ?? $row->tehsil_name ?? 'All Tehsils' }}
-                            </td>
-
-                            <td>
-                                <strong>{{ number_format($total) }}</strong>
-                            </td>
-
-                            <td>
-                                <span class="text-success fw-bold">
-                                    {{ number_format($reported) }}
+                                <span class="reporting-status-badge {{ $statusClass }}">
+                                    {{ $status }}
                                 </span>
                             </td>
 
-                            <td>
-                                <span class="text-warning fw-bold">
-                                    {{ number_format($pending) }}
+                            <td style="text-align:center;">
+                                <span class="submitted-count {{ $statusClass }}">
+                                    {{ number_format((int) $submitted) }} / {{ number_format((int) $totalExpected) }}
                                 </span>
-                            </td>
-
-                            <td>
-                                <div class="progress-cell">
-                                    <div class="progress-text">
-                                        <strong>{{ $rate }}%</strong>
-                                    </div>
-
-                                    <div class="progress progress-ppmf">
-                                        <div
-                                            class="progress-bar"
-                                            style="width: {{ min($rate, 100) }}%;"
-                                            role="progressbar"
-                                            aria-valuenow="{{ $rate }}"
-                                            aria-valuemin="0"
-                                            aria-valuemax="100">
-                                        </div>
-                                    </div>
-                                </div>
-                            </td>
-
-                            <td>
-                                <span class="badge-ppmf
-                                    @if($statusText === 'reported' || $statusText === 'approved') achieved
-                                    @elseif($statusText === 'partial' || $statusText === 'submitted') info
-                                    @elseif($statusText === 'rejected') critical
-                                    @else pending
-                                    @endif
-                                ">
-                                    {{ ucfirst(str_replace('_', ' ', $statusText)) }}
-                                </span>
-                            </td>
-
-                            <td>
-                                @if(!empty($row->updated_at))
-                                    {{ \Carbon\Carbon::parse($row->updated_at)->format('d M, Y h:i A') }}
-                                @elseif(!empty($row->last_reported_at))
-                                    {{ \Carbon\Carbon::parse($row->last_reported_at)->format('d M, Y h:i A') }}
-                                @else
-                                    <span class="text-muted">N/A</span>
-                                @endif
                             </td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="10" class="text-center py-5">
+                            <td colspan="3" class="text-center py-5">
                                 <div class="manual-box-ppmf">
                                     <i class="bi bi-clipboard-x"></i>
                                     <h5>No KPI Reporting Status Found</h5>
@@ -426,6 +353,122 @@
 
 @push('styles')
 <style>
+    .report-info-strip {
+        display: flex;
+        gap: 14px;
+        flex-wrap: wrap;
+        padding: 14px 18px;
+        border-bottom: 1px solid var(--border-light);
+        background: #ffffff;
+    }
+
+    .helper-strip {
+        padding: 10px 18px 14px;
+        border-bottom: 1px solid var(--border-light);
+        background: #ffffff;
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+
+    .helper-text {
+        font-size: 12px;
+        font-weight: 700;
+        color: var(--text-secondary);
+    }
+
+    .helper-guide {
+        display: flex;
+        gap: 14px;
+        flex-wrap: wrap;
+        font-size: 12px;
+        font-weight: 800;
+        color: var(--text-secondary);
+        white-space: nowrap;
+    }
+
+    .guide-dot {
+        display: inline-block;
+        width: 10px;
+        height: 10px;
+        border-radius: 999px;
+        margin-right: 6px;
+        position: relative;
+        top: 1px;
+    }
+
+    .guide-dot.complete { background: #16a34a; }
+    .guide-dot.partial { background: #f59e0b; }
+    .guide-dot.pending { background: #ef4444; }
+
+    .report-info-item {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        min-width: 180px;
+    }
+
+    .report-info-label {
+        font-size: 11px;
+        font-weight: 800;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: .04em;
+    }
+
+    .report-info-value {
+        font-size: 13px;
+        font-weight: 900;
+        color: var(--text-primary);
+    }
+
+    .reporting-status-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 120px;
+        padding: 6px 12px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 800;
+        white-space: nowrap;
+    }
+
+    .reporting-status-badge.complete {
+        background: #dcfce7;
+        color: #166534;
+        border: 1px solid #bbf7d0;
+    }
+
+    .reporting-status-badge.partial {
+        background: #fef3c7;
+        color: #92400e;
+        border: 1px solid #fde68a;
+    }
+
+    .reporting-status-badge.not-submitted {
+        background: #fee2e2;
+        color: #991b1b;
+        border: 1px solid #fecaca;
+    }
+
+    .submitted-count {
+        font-weight: 900;
+        color: #0f172a;
+        white-space: nowrap;
+    }
+
+    .submitted-count.complete { color: #166534; }
+    .submitted-count.partial { color: #92400e; }
+    .submitted-count.not-submitted { color: #991b1b; }
+
+    .district-name-cell {
+        font-weight: 900;
+        text-transform: uppercase;
+    }
+
     .kpi-status-card {
         background: #fff;
         border: 1px solid var(--border-light);
@@ -482,28 +525,6 @@
     .bg-soft-info {
         background: rgba(14, 165, 233, 0.12);
         color: #0369a1;
-    }
-
-    .progress-cell {
-        min-width: 130px;
-    }
-
-    .progress-text {
-        font-size: 12px;
-        color: var(--text-secondary);
-        margin-bottom: 5px;
-    }
-
-    .progress-ppmf {
-        height: 7px;
-        border-radius: 999px;
-        background: #e5e7eb;
-        overflow: hidden;
-    }
-
-    .progress-ppmf .progress-bar {
-        background: var(--gov-green);
-        border-radius: 999px;
     }
 
     /* Pagination (match Inspection List) */
