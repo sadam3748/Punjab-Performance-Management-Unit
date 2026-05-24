@@ -205,8 +205,10 @@ class ScorecardService
             }
 
             if (! $filters['week_no']) {
-                $week = (int) now()->isoWeek();
-                $filters['week_no'] = sprintf('%d%02d', (int) now()->year, $week);
+                // Default to the latest *completed* PPMF reporting week (Thu->Wed),
+                // not the current ISO week (which often has no data yet).
+                $runningWeekNo = $this->getCurrentRunningPpmfWeekNo();
+                $filters['week_no'] = $this->weekNoShift($runningWeekNo, -1) ?: $runningWeekNo;
             }
 
             // Persist dropdown selection: week_range now uses week_no values.

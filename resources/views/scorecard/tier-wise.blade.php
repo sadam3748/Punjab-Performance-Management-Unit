@@ -4,6 +4,7 @@
 @section('page_title', 'Chief Minister Governance Scorecard Tier Wise')
 
 @push('styles')
+<link rel="stylesheet" href="{{ asset('assets/plugins/leaflet/leaflet.css') }}"/>
 <style>
     .sc-page-card{background:#fff;border:1px solid rgba(15,23,42,.08);border-radius:20px;box-shadow:0 16px 38px rgba(15,23,42,.07);padding:22px}.sc-filter-card{background:linear-gradient(135deg,#f8fafc,#ffffff);border:1px solid rgba(148,163,184,.28);border-radius:18px;padding:18px;margin-bottom:22px}.sc-filter-card .form-label{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:#475569;margin-bottom:7px}.sc-filter-card .form-select,.sc-filter-card .form-control{height:42px;border-radius:11px;border-color:#cbd5e1;font-size:13px;font-weight:600;color:#334155;box-shadow:none}.sc-filter-card .form-select:focus,.sc-filter-card .form-control:focus{border-color:#1b6b57;box-shadow:0 0 0 3px rgba(27,107,87,.13)}.tier-tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:18px}.tier-tab{border:1px solid rgba(15,118,110,.25);border-radius:16px;background:#fff;padding:14px 16px;text-decoration:none;color:#0f766e;display:flex;align-items:center;justify-content:space-between;gap:12px;box-shadow:0 10px 24px rgba(15,23,42,.05);transition:.18s ease}.tier-tab:hover{transform:translateY(-2px);background:#ecfdf5;color:#14532d}.tier-tab.active{background:linear-gradient(135deg,#14532d,#0f766e);color:#fff;border-color:#14532d}.tier-tab strong{font-size:15px;font-weight:900}.tier-tab span{font-size:12px;font-weight:700;opacity:.82}.sc-layout{display:grid;grid-template-columns:minmax(0,1.12fr) minmax(390px,.88fr);gap:22px;align-items:start}.sc-panel{background:#fff;border:1px solid rgba(15,23,42,.08);border-radius:18px;box-shadow:0 12px 28px rgba(15,23,42,.05);overflow:hidden}.sc-panel-header{padding:16px 18px;border-bottom:1px solid rgba(148,163,184,.22);background:linear-gradient(135deg,#f8fafc,#ffffff);display:flex;align-items:flex-start;justify-content:space-between;gap:14px}.sc-panel-title{font-size:15px;font-weight:900;color:#0f172a;margin:0;text-transform:uppercase;letter-spacing:.04em}.sc-panel-subtitle{font-size:12px;color:#64748b;margin-top:4px}.sc-table{width:100%;border-collapse:separate;border-spacing:0;margin:0}.sc-table thead th{background:#174d43;color:#fff;padding:12px 12px;font-size:11px;text-transform:uppercase;letter-spacing:.06em;font-weight:900;white-space:nowrap}.sc-table tbody td{padding:12px;border-bottom:1px solid rgba(148,163,184,.18);font-size:13px;font-weight:700;color:#0f172a;vertical-align:middle}.sc-table tbody tr:hover{background:#f8fafc}.sc-rank{width:62px;text-align:center}.sc-rank-badge{width:34px;height:34px;border-radius:12px;background:#ecfdf5;color:#166534;display:inline-flex;align-items:center;justify-content:center;font-weight:900}.sc-district-name{font-weight:900;color:#0f172a;text-transform:uppercase}.sc-muted{font-size:12px;color:#64748b;font-weight:600}.sc-grade-badge{display:inline-flex;align-items:center;justify-content:center;min-width:52px;height:30px;border-radius:999px;padding:0 10px;color:#fff;font-size:12px;font-weight:900}.grade-critical{background:#dc2626}.grade-average{background:#f59e0b;color:#111827}.grade-good{background:#2563eb}.grade-excellent{background:#16a34a}.sc-progress{height:8px;background:#e2e8f0;border-radius:999px;overflow:hidden;min-width:105px}.sc-progress span{display:block;height:100%;border-radius:999px}.bar-critical{background:#dc2626}.bar-average{background:#f59e0b}.bar-good{background:#2563eb}.bar-excellent{background:#16a34a}.sc-map-panel{position:sticky;top:88px}.sc-google-map-wrap{height:430px;border-radius:18px;overflow:hidden;border:1px solid rgba(15,23,42,.12);background:#e2e8f0;position:relative}.sc-google-map-wrap iframe{width:100%;height:100%;border:0;display:block}.sc-map-label{position:absolute;left:14px;top:14px;background:rgba(15,23,42,.82);color:#fff;border-radius:999px;padding:8px 12px;font-size:12px;font-weight:800;backdrop-filter:blur(6px)}.sc-map-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.sc-map-actions a{border:1px solid #cbd5e1;background:#fff;color:#0f766e;border-radius:999px;padding:8px 12px;font-size:12px;font-weight:800;text-decoration:none}.sc-map-actions a:hover{background:#ecfdf5;border-color:#99f6e4;color:#14532d}.sc-district-map-list{max-height:315px;overflow:auto;padding:14px}.sc-district-map-item{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid rgba(148,163,184,.18)}.sc-district-map-item:last-child{border-bottom:0}.sc-map-pin{width:12px;height:12px;border-radius:50%;box-shadow:0 0 0 4px rgba(15,23,42,.06);flex:0 0 auto}.pin-critical{background:#dc2626}.pin-average{background:#f59e0b}.pin-good{background:#2563eb}.pin-excellent{background:#16a34a}.sc-pagination-wrap{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:14px 18px;background:#f8fafc;border-top:1px solid rgba(148,163,184,.22)}.sc-pagination-wrap .pagination{margin:0;gap:5px;flex-wrap:wrap}.sc-pagination-wrap .page-link{border-radius:10px!important;min-width:36px;height:36px;display:inline-flex;align-items:center;justify-content:center;color:#0f766e;font-weight:800;border-color:#cbd5e1;box-shadow:none}.sc-pagination-wrap .page-item.active .page-link{background:#0f766e;border-color:#0f766e;color:#fff}.sc-empty{padding:28px;text-align:center;color:#64748b;font-weight:700;background:#f8fafc}.sc-legend{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px;color:#334155;font-size:12px;font-weight:800}.sc-legend span{display:inline-flex;align-items:center;gap:7px}.sc-legend i{width:11px;height:11px;border-radius:50%;display:inline-block}
     .sc-perf-card{display:flex;align-items:center;gap:12px;border:1px solid rgba(148,163,184,.25);border-radius:16px;background:#fff;padding:12px 14px;box-shadow:0 10px 24px rgba(15,23,42,.04);transition:.15s ease;min-height:72px}
@@ -20,6 +21,55 @@
     .sc-perf-sub{font-size:12px;color:#64748b;font-weight:700;line-height:1.2}
     @media(max-width:1199px){.sc-layout{grid-template-columns:1fr}.sc-map-panel{position:relative;top:auto}.sc-google-map-wrap{height:390px}}
     @media(max-width:767px){.sc-page-card{padding:14px}.tier-tabs{grid-template-columns:1fr}.sc-panel-header{display:block}.sc-google-map-wrap{height:320px}.sc-table{min-width:760px}.sc-pagination-wrap{align-items:flex-start}.sc-pagination-wrap .page-link{min-width:34px;height:34px;font-size:12px}}
+
+    /* Leaflet map (Punjab GeoJSON only) */
+    #ppmfTierLeafletMap{height:430px;background:#edf2ee;position:relative;z-index:1;border-radius:0}
+    .leaflet-tile-pane{display:none!important}
+    .leaflet-control-attribution{display:none!important}
+    .leaflet-control-zoom a{background:#fff;border-color:#e2e8f0;color:#0f766e;font-weight:900}
+    .leaflet-control-zoom a:hover{background:#ecfdf5}
+
+    /* District labels (zoom-adaptive) */
+    .ppmf-label{background:transparent!important;border:none!important;box-shadow:none!important;
+        font-family:inherit;font-weight:800;color:#1e293b;text-align:center;white-space:nowrap;
+        pointer-events:none;line-height:1.1;
+        text-shadow:0 0 3px #fff,0 0 3px #fff,0 0 3px #fff,0 0 5px #fff}
+    .ppmf-label.district-lbl{font-size:9px;letter-spacing:.03em}
+    .ppmf-label .lbl-box{display:inline-flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;padding:2px 5px;border-radius:8px;border:1px solid rgba(148,163,184,.35);background:rgba(255,255,255,.72);backdrop-filter:blur(3px)}
+    .ppmf-label .lbl-name{font-weight:950}
+    .ppmf-label .lbl-sub{font-size:8px;font-weight:800;opacity:.85;text-transform:none;letter-spacing:0}
+    .ppmf-label .lbl-box.lfb-excellent{background:rgba(220,252,231,.78);border-color:rgba(22,163,74,.30);color:#14532d}
+    .ppmf-label .lbl-box.lfb-good{background:rgba(219,234,254,.80);border-color:rgba(37,99,235,.30);color:#1e40af}
+    .ppmf-label .lbl-box.lfb-average{background:rgba(254,249,195,.82);border-color:rgba(245,158,11,.33);color:#854d0e}
+    .ppmf-label .lbl-box.lfb-critical{background:rgba(254,226,226,.82);border-color:rgba(220,38,38,.33);color:#7f1d1d}
+    .ppmf-label .lbl-box.lfb-unreported{background:rgba(241,245,249,.86);border-color:rgba(100,116,139,.28);color:#475569}
+    .leaflet-popup-content-wrapper{border-radius:12px!important;padding:0!important;overflow:hidden;box-shadow:0 8px 28px rgba(0,0,0,.16)!important}
+    .leaflet-popup-content{margin:0!important;min-width:190px}
+    .leaflet-popup-tip-container{display:none}
+    .lf-head{background:#134e4a;padding:11px 14px}
+    .lf-head h4{color:#fff;font-size:13px;font-weight:900;margin:0 0 1px}
+    .lf-head span{color:rgba(255,255,255,.55);font-size:11px}
+    .lf-body{padding:10px 14px}
+    .lf-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;font-size:12.5px}
+    .lf-lbl{color:#64748b;font-weight:600}.lf-val{font-weight:900;color:#0f172a}
+    .lf-badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:800}
+    .lfb-excellent{background:#dcfce7;color:#14532d}.lfb-good{background:#dbeafe;color:#1e40af}
+    .lfb-average{background:#fef9c3;color:#854d0e}.lfb-critical{background:#fee2e2;color:#7f1d1d}.lfb-unreported{background:#f1f5f9;color:#64748b}
+    .lf-link{display:block;margin-top:8px;padding:7px 10px;background:#f0fdfa;border-radius:7px;text-align:center;font-size:12px;font-weight:800;color:#0f766e;text-decoration:none}
+    .lf-link:hover{background:#ccfbf1}
+    .map-status-bar{display:flex;align-items:center;justify-content:space-between;padding:8px 14px;background:#f8fafc;border-bottom:1px solid rgba(148,163,184,.15);font-size:11.5px;color:#64748b;font-weight:600}
+    .map-view-toggle{display:flex;background:#f1f5f9;border:1px solid #e2e8f0;border-radius:10px;overflow:hidden}
+    .map-view-btn{height:32px;padding:0 14px;border:none;background:none;font-size:12px;font-weight:800;color:#64748b;cursor:pointer;font-family:inherit;transition:all .15s}
+    .map-view-btn.active{background:#0f766e;color:#fff}
+    .map-view-btn:hover:not(.active){background:#e6f7f5;color:#0f766e}
+    .map-loading-overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;z-index:20;background:#edf2ee}
+    .map-spinner{width:26px;height:26px;border:3px solid #e2e8f0;border-top-color:#0f766e;border-radius:50%;animation:mapspin .7s linear infinite}
+    @keyframes mapspin{to{transform:rotate(360deg)}}
+    .map-legend-bar{display:flex;flex-wrap:wrap;gap:10px;padding:10px 14px;border-top:1px solid rgba(148,163,184,.18);background:#fafcfb}
+    .map-leg-item{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:700;color:#334155}
+    .map-leg-dot{width:12px;height:12px;border-radius:3px;display:inline-block;flex-shrink:0}
+    @media(max-width:1199px){#ppmfTierLeafletMap{height:390px}}
+    @media(max-width:767px){#ppmfTierLeafletMap{height:320px}}
 </style>
 @endpush
 
@@ -31,7 +81,7 @@
     $selectedWeekRange = $filters['week_range'] ?? '';
     $selectedMonth = $filters['month'] ?? now()->format('m');
     $selectedYear = $filters['year'] ?? now()->format('Y');
-    $selectedAreaType = $filters['area_type'] ?? 'district';
+    $selectedAreaType = 'district';
     $selectedKpiCategoryId = $filters['kpi_category_id'] ?? '';
     $selectedCalculationType = $filters['calculation_type'] ?? 'general';
     if ($selectedCalculationType === 'negative_marking') { $selectedCalculationType = 'special_branch_negative'; }
@@ -46,9 +96,19 @@
     $monthOptions = ['01'=>'January','02'=>'February','03'=>'March','04'=>'April','05'=>'May','06'=>'June','07'=>'July','08'=>'August','09'=>'September','10'=>'October','11'=>'November','12'=>'December'];
     $yearOptions = range((int) now()->format('Y'), (int) now()->format('Y') - 5);
     $queryBase = request()->except(['tier','page']);
-    $mapQuery = 'Punjab Pakistan districts Tier ' . $selectedTier;
-    $googleMapEmbedUrl = 'https://maps.google.com/maps?q=' . rawurlencode('Punjab Pakistan districts') . '&t=m&z=7&output=embed';
-    $googleMapOpenUrl = 'https://www.google.com/maps/search/?api=1&query=' . rawurlencode('Punjab Pakistan districts');
+
+    // Leaflet map data (keys MUST match GeoJSON district names)
+    $districtScores = $districtScores ?? [];
+    $districtMapIds = $districtMapIds ?? [];
+
+    $tierMapScores = collect($districtScores)->mapWithKeys(function ($score, $name) {
+        $nm = strtoupper((string) $name);
+        return [$nm => (float) $score];
+    })->all();
+    $tierMapDistrictIds = collect($districtMapIds)->mapWithKeys(function ($id, $name) {
+        $nm = strtoupper((string) $name);
+        return [$nm => $id];
+    })->all();
 
     $perfHref = function (string $key) use ($tierRoute, $selectedPerformance) {
         $query = request()->query();
@@ -72,7 +132,7 @@
 <div class="page-title-bar mb-4">
     <div>
         <h2 class="page-title mb-1">Chief Minister Governance Scorecard Tier Wise</h2>
-        <p class="page-subtitle mb-0">Tier-wise district ranking with Google map view and performance colour coding.</p>
+        <p class="page-subtitle mb-0">Tier-wise district ranking with Leaflet + GeoJSON map and performance colour coding.</p>
     </div>
     <div class="d-flex flex-wrap gap-2"><a href="{{ $mainRoute }}" class="btn btn-gov btn-gov-outline"><i class="bi bi-table"></i> District Wise</a><button type="button" class="btn btn-gov btn-gov-outline" onclick="window.print()"><i class="bi bi-printer"></i> Print</button></div>
 </div>
@@ -94,7 +154,6 @@
                 <div class="col-12 col-md-6 col-lg-3"><label class="form-label">Month</label><select name="month" class="form-select">@foreach($monthOptions as $value=>$label)<option value="{{ $value }}" @selected((string)$selectedMonth===(string)$value)>{{ $label }}</option>@endforeach</select></div>
                 <div class="col-12 col-md-6 col-lg-3"><label class="form-label">Year</label><select name="year" class="form-select">@foreach($yearOptions as $year)<option value="{{ $year }}" @selected((string)$selectedYear===(string)$year)>{{ $year }}</option>@endforeach</select></div>
 
-                <div class="col-12 col-md-6 col-lg-3"><label class="form-label">Area Type</label><select name="area_type" class="form-select"><option value="district" @selected($selectedAreaType==='district')>District</option><option value="division" @selected($selectedAreaType==='division')>Division</option></select></div>
                 <div class="col-12 col-md-6 col-lg-3"><label class="form-label">Calculation Type</label><select name="calculation_type" class="form-select"><option value="general" @selected($selectedCalculationType==='general')>General</option><option value="sixty_forty" @selected($selectedCalculationType==='sixty_forty')>Sixty Forty Ratio</option><option value="special_branch_negative" @selected($selectedCalculationType==='special_branch_negative')>Special Branch Negative Marking</option><option value="victims_negative" @selected($selectedCalculationType==='victims_negative')>Victims Negative Marking</option></select></div>
                 <div class="col-12 col-md-6 col-lg-3">
                     <label class="form-label">KPI Category</label>
@@ -120,105 +179,268 @@
         </form>
     </div>
 
-    <div id="tierScorecardDynamic">
-        @include('scorecard.partials.tier-results', [
-            'tierSummary' => $tierSummary ?? [],
-            'tierRanking' => $tierRanking ?? null,
-            'filters' => $filters ?? [],
-        ])
-
-        @if(false)
-    <div class="mb-3">
-        <div class="row g-2">
-            @foreach($perfCards as $card)
-                <div class="col-6 col-md-3 col-xl-3">
-                    <a href="{{ $perfHref($card['key']) }}" class="sc-perf-card {{ $selectedPerformance===$card['key'] ? 'active' : '' }} text-decoration-none">
-                        <span class="sc-perf-ico {{ $card['class'] }}"><i class="bi {{ $card['icon'] }}"></i></span>
-                        <span class="d-block">
-                            <span class="sc-perf-title d-block">{{ $card['title'] }}</span>
-                            <span class="sc-perf-count d-block">{{ number_format($card['count']) }}</span>
-                            <span class="sc-perf-sub d-block">{{ $card['range'] }}</span>
-                        </span>
-                    </a>
-                </div>
-            @endforeach
+    <div class="sc-layout" id="tierResultsLayout">
+        <div id="tierScorecardDynamic">
+            @include('scorecard.partials.tier-results', [
+                'tierSummary' => $tierSummary ?? [],
+                'tierRanking' => $tierRanking ?? null,
+                'filters' => $filters ?? [],
+            ])
         </div>
-    </div>
 
-    <div class="sc-layout">
-        <div class="sc-panel">
-            <div class="sc-panel-header">
-                <div>
-                    <h5 class="sc-panel-title">Tier {{ $selectedTier }} District Ranking</h5>
-                    <div class="sc-panel-subtitle">Showing districts under selected tier with score grade and performance.</div>
-                </div>
-                <div class="d-flex flex-column align-items-end gap-2">
-                    <div class="text-end sc-muted">
-                        <strong>{{ $tierRanking->total() ?? $tierRankingItems->count() }}</strong><br>Total records
+        <div class="sc-map-panel" id="tierMapContainer">
+            <div class="sc-panel">
+                <div class="sc-panel-header">
+                    <div>
+                        <h5 class="sc-panel-title">Punjab Districts — Tier {{ $selectedTier }}</h5>
+                        <div class="sc-panel-subtitle">Leaflet + GeoJSON · coloured by KPI score</div>
                     </div>
-                    <form method="GET" action="{{ $tierRoute }}" class="d-flex align-items-center gap-2">
-                        <input type="hidden" name="tier" value="{{ $selectedTier }}">
-                        @foreach(request()->except(['per_page','page','tier']) as $key => $value)
-                            @if(is_array($value))
-                                @foreach($value as $v)
-                                    <input type="hidden" name="{{ $key }}[]" value="{{ $v }}">
-                                @endforeach
-                            @else
-                                <input type="hidden" name="{{ $key }}" value="{{ $value }}">
-                            @endif
-                        @endforeach
-                        <span class="sc-muted mb-0">Per page</span>
-                        <select name="per_page" class="form-select form-select-sm" style="width:96px" onchange="this.form.submit()">
-                            @foreach($perPageOptions as $size)
-                                <option value="{{ $size }}" @selected((int)$selectedPerPage===(int)$size)>{{ $size }}</option>
-                            @endforeach
-                        </select>
-                    </form>
+                </div>
+
+                <div class="map-status-bar">
+                    <span id="tierMapStatusText">Loading Punjab boundary data…</span>
+                    <button onclick="ppmfTierMap.fitAll()" style="background:none;border:none;cursor:pointer;color:#0f766e;font-size:11.5px;font-weight:700;padding:0">
+                        <i class="bi bi-fullscreen"></i> Fit Punjab
+                    </button>
+                </div>
+
+                <div style="position:relative">
+                    <div id="ppmfTierLeafletMap">
+                        <div class="map-loading-overlay" id="tierMapLoader">
+                            <div class="map-spinner"></div>
+                            <span style="font-size:12px;color:#475569;font-weight:700">Loading Punjab map…</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="map-legend-bar">
+                    <span class="map-leg-item"><span class="map-leg-dot" style="background:#16a34a"></span>Excellent ≥90%</span>
+                    <span class="map-leg-item"><span class="map-leg-dot" style="background:#2563eb"></span>Good 70–89%</span>
+                    <span class="map-leg-item"><span class="map-leg-dot" style="background:#f59e0b"></span>Average 50–69%</span>
+                    <span class="map-leg-item"><span class="map-leg-dot" style="background:#dc2626"></span>Critical &lt;50%</span>
+                    <span class="map-leg-item"><span class="map-leg-dot" style="background:#94a3b8"></span>Unreported</span>
                 </div>
             </div>
-            @if($tierRankingItems->count())
-                <div class="table-responsive">
-                    <table class="sc-table"><thead><tr><th class="sc-rank">Rank</th><th>District</th><th>Score Grade</th><th>Performance</th></tr></thead><tbody>
-                    @foreach($tierRankingItems as $row)
-                        @php $score=(float)($row->score_percentage ?? 0); $meta=$scoreMeta($score); $districtName=optional($row->district ?? null)->name ?? 'N/A'; $rank=$pageOffset+$loop->iteration; @endphp
-                        <tr><td class="sc-rank"><span class="sc-rank-badge">{{ $rank }}</span></td><td><a class="sc-district-name text-decoration-none" target="_blank" href="{{ route('scorecard.district-detail', array_merge(['district' => $row->district_id], request()->query())) }}">{{ $districtName }} <i class="bi bi-box-arrow-up-right ms-1" style="font-size:12px"></i></a><div class="sc-muted">Tier {{ $selectedTier }} District</div></td><td><span class="sc-grade-badge grade-{{ $meta['class'] }}">{{ $meta['grade'] }}</span> <strong>{{ number_format($score,2) }}%</strong></td><td><div class="d-flex align-items-center gap-2"><div class="sc-progress"><span class="bar-{{ $meta['class'] }}" style="width: {{ min(100, max(0, $score)) }}%"></span></div><strong>{{ $meta['label'] }}</strong></div></td></tr>
-                    @endforeach
-                    </tbody></table>
-                </div>
-                @if(method_exists($tierRanking ?? null, 'hasPages') && $tierRanking->hasPages())
-                    <div class="sc-pagination-wrap">
-                        <div class="sc-muted">Showing {{ $tierRanking->firstItem() }} to {{ $tierRanking->lastItem() }} of {{ $tierRanking->total() }}</div>
-                        {{ $tierRanking->appends(request()->query())->links('pagination::bootstrap-5') }}
-                    </div>
-                @endif
-            @else
-                <div class="sc-empty"><i class="bi bi-info-circle d-block fs-4 mb-2"></i>No tier-wise scorecard data found for selected filters.</div>
-            @endif
         </div>
 
-        <div class="sc-map-panel">
-            <div class="sc-panel mb-3"><div class="sc-panel-header"><div><h5 class="sc-panel-title">Punjab Google Map View</h5><div class="sc-panel-subtitle">Google Maps embed focused on Punjab; district links open exact map search.</div></div></div><div class="p-3"><div class="sc-google-map-wrap"><iframe loading="lazy" allowfullscreen src="{{ $googleMapEmbedUrl }}"></iframe><div class="sc-map-label"><i class="bi bi-geo-alt-fill"></i> Punjab · Tier {{ $selectedTier }}</div></div><div class="sc-map-actions"><a href="{{ $googleMapOpenUrl }}" target="_blank"><i class="bi bi-box-arrow-up-right"></i> Open Punjab in Google Maps</a></div></div></div>
-            {{-- Tier District Map Links section removed (requested) --}}
-            {{--
-            <div class="sc-panel"><div class="sc-panel-header"><div><h5 class="sc-panel-title">Tier {{ $selectedTier }} District Map Links</h5><div class="sc-panel-subtitle">Districts visible on this page.</div></div></div><div class="sc-district-map-list">
-                @forelse($tierRankingItems as $row)
-                    @php $score=(float)($row->score_percentage ?? 0); $meta=$scoreMeta($score); $districtName=optional($row->district ?? null)->name ?? 'N/A'; $districtMapUrl='https://www.google.com/maps/search/?api=1&query=' . rawurlencode($districtName . ' Punjab Pakistan'); @endphp
-                    <a href="{{ $districtMapUrl }}" target="_blank" class="sc-district-map-item text-decoration-none"><span class="d-flex align-items-center gap-2"><span class="sc-map-pin pin-{{ $meta['class'] }}"></span><span><strong class="text-dark">{{ $districtName }}</strong><div class="sc-muted">{{ $meta['label'] }} · {{ number_format($score,2) }}%</div></span></span><i class="bi bi-arrow-up-right text-secondary"></i></a>
-                @empty
-                    <div class="sc-empty">No districts available.</div>
-                @endforelse
-            </div></div>
-            --}}
-        </div>
-    </div>
-
-
-    </div>
-        @endif
 </div>
 @endsection
 
 @push('scripts')
+<script src="{{ asset('assets/plugins/leaflet/leaflet.js') }}"></script>
+<script>
+    const ppmfTierMap = (function () {
+        let SCORES = @json($tierMapScores);
+        let DIST_IDS = @json($tierMapDistrictIds);
+
+        let leafletMap, distLayer, labelGroup;
+        let districtLabelMarkers = [];
+        const layersByName = {}; // UPPERCASE district name -> layer
+
+        function normalizeUpperKeyMap(obj) {
+            const out = {};
+            if (!obj) return out;
+            Object.keys(obj).forEach(function (k) {
+                out[String(k).toUpperCase()] = obj[k];
+            });
+            return out;
+        }
+
+        function scoreColor(s) {
+            if (s === undefined || s === null) return '#94a3b8';
+            if (s >= 90) return '#16a34a';
+            if (s >= 70) return '#2563eb';
+            if (s >= 50) return '#f59e0b';
+            return '#dc2626';
+        }
+
+        function gradeStr(s) {
+            if (s === undefined || s === null) return { txt: 'Unreported', cls: 'lfb-unreported' };
+            if (s >= 90) return { txt: 'A+ Excellent', cls: 'lfb-excellent' };
+            if (s >= 80) return { txt: 'A Good', cls: 'lfb-good' };
+            if (s >= 70) return { txt: 'B Good', cls: 'lfb-good' };
+            if (s >= 60) return { txt: 'C Average', cls: 'lfb-average' };
+            if (s >= 50) return { txt: 'D Average', cls: 'lfb-average' };
+            return { txt: 'E Critical', cls: 'lfb-critical' };
+        }
+
+        function detailUrl(did) {
+            if (!did) return '#';
+            @if(Route::has('scorecard.district-detail'))
+            var base = '{{ route("scorecard.district-detail", ["district"=>"__ID__"]) }}'.replace('__ID__', did);
+            @else
+            var base = '#';
+            @endif
+            var q = @json(request()->query());
+            var qs = Object.keys(q).length ? '&' + new URLSearchParams(q).toString() : '';
+            return base + qs;
+        }
+
+        function openInNewTab(url) {
+            if (!url || url === '#') return;
+            window.open(url, '_blank', 'noopener');
+        }
+
+        function rebuildPopup(layer) {
+            if (!layer || !layer.feature || !layer.feature.properties) return;
+            var name = layer.feature.properties.name || '';
+            var div = layer.feature.properties.division || '';
+            var nm = String(name).toUpperCase();
+            var sc = SCORES[nm];
+            var gr = gradeStr(sc);
+            var did = DIST_IDS[nm];
+
+            layer.bindPopup(
+                '<div class="lf-head"><h4>' + name + '</h4><span>' + div + ' Division</span></div>' +
+                '<div class="lf-body">' +
+                '<div class="lf-row"><span class="lf-lbl">Score</span><span class="lf-val">' + (sc !== undefined && sc !== null ? Number(sc).toFixed(2) + '%' : 'Unreported') + '</span></div>' +
+                '<div class="lf-row"><span class="lf-lbl">Grade</span><span class="lf-badge ' + gr.cls + '">' + gr.txt + '</span></div>' +
+                (did ? '<a class="lf-link" href="' + detailUrl(did) + '">View District Scorecard →</a>' : '') +
+                '<div style="margin-top:8px;font-size:11px;color:#64748b;font-weight:700;text-align:center">Tip: click district to open detail in new tab</div>' +
+                '</div>',
+                { maxWidth: 220 }
+            );
+        }
+
+        function districtLabelIcon(meta, mode) {
+            var cls = meta && meta.cls ? meta.cls : 'lfb-unreported';
+            var name = meta && meta.name ? meta.name : '';
+            var div = meta && meta.div ? meta.div : '';
+
+            if (mode === 'name') {
+                return L.divIcon({
+                    className: 'ppmf-label district-lbl',
+                    html: '<div class="lbl-box ' + cls + '"><div class="lbl-name">' + name + '</div></div>',
+                    iconSize: [104, 19],
+                    iconAnchor: [52, 10]
+                });
+            }
+
+            return L.divIcon({
+                className: 'ppmf-label district-lbl',
+                html: '<div class="lbl-box ' + cls + '"><div class="lbl-name">' + name + '</div><div class="lbl-sub">' + div + '</div></div>',
+                iconSize: [122, 26],
+                iconAnchor: [61, 13]
+            });
+        }
+
+        function updateDistrictLabels() {
+            if (!leafletMap || !labelGroup) return;
+            if (!districtLabelMarkers || !districtLabelMarkers.length) return;
+
+            var z = leafletMap.getZoom();
+            var mode = (z >= 9.5) ? 'full' : 'name';
+
+            labelGroup.clearLayers();
+            districtLabelMarkers.forEach(function (m) {
+                if (!m || !m._ppmfLbl) return;
+                m.setIcon(districtLabelIcon(m._ppmfLbl, mode));
+                m.addTo(labelGroup);
+            });
+        }
+
+        function init() {
+            if (!document.getElementById('ppmfTierLeafletMap')) return;
+
+            leafletMap = L.map('ppmfTierLeafletMap', {
+                zoomControl: true,
+                scrollWheelZoom: true,
+                zoomSnap: 0.25,
+                minZoom: 6.5,
+                maxZoom: 13,
+                center: [30.5, 71.5],
+                zoom: 8
+            });
+
+            labelGroup = L.layerGroup().addTo(leafletMap);
+            leafletMap.on('zoomend', updateDistrictLabels);
+
+            fetch('{{ asset("assets/data/punjab_districts.geojson") }}')
+                .then(r => r.json())
+                .then(function (geo) {
+                    distLayer = L.geoJSON(geo, {
+                        style: function (f) {
+                            var nm = (f.properties.name || '').toUpperCase();
+                            return { fillColor: scoreColor(SCORES[nm]), weight: 1.5, color: '#fff', fillOpacity: .85 };
+                        },
+                        onEachFeature: function (f, layer) {
+                            var name = f.properties.name || '';
+                            var nm = String(name).toUpperCase();
+                            layersByName[nm] = layer;
+                            rebuildPopup(layer);
+
+                            layer.on({
+                                mouseover: function (e) { e.target.setStyle({ weight: 3, color: '#134e4a', fillOpacity: .95 }); e.target.bringToFront(); e.target.openPopup(); },
+                                mouseout: function (e) { distLayer.resetStyle(e.target); e.target.closePopup(); },
+                                click: function () {
+                                    var did = DIST_IDS[nm];
+                                    if (did) openInNewTab(detailUrl(did));
+                                }
+                            });
+                        }
+                    });
+
+                    distLayer.addTo(leafletMap);
+                    document.getElementById('tierMapLoader').style.display = 'none';
+                    document.getElementById('tierMapStatusText').textContent = 'Punjab districts · coloured by KPI score';
+                    fitAll();
+
+                    districtLabelMarkers = [];
+                    distLayer.eachLayer(function (layer) {
+                        var name = layer.feature?.properties?.name || '';
+                        var div = layer.feature?.properties?.division || '';
+                        var nm = String(name).toUpperCase();
+                        var sc = SCORES[nm];
+                        var gr = gradeStr(sc);
+                        var c = layer.getBounds ? layer.getBounds().getCenter() : null;
+                        if (!c) return;
+                        var m = L.marker(c, { interactive: false });
+                        m._ppmfLbl = { name: name, div: div, cls: gr.cls };
+                        districtLabelMarkers.push(m);
+                    });
+                    updateDistrictLabels();
+                })
+                .catch(function () {
+                    const loader = document.getElementById('tierMapLoader');
+                    if (loader) loader.innerHTML = '<div style="text-align:center;padding:20px"><i class="bi bi-exclamation-triangle fs-2 text-warning"></i><p style="font-size:12px;color:#64748b;margin-top:8px;font-weight:600">GeoJSON file not found: <code>public/assets/data/punjab_districts.geojson</code></p></div>';
+                });
+        }
+
+        function fitAll() {
+            if (!leafletMap) return;
+            if (distLayer) leafletMap.fitBounds(distLayer.getBounds(), { padding: [20, 20], maxZoom: 11.5 });
+        }
+
+        function setData(payload) {
+            if (!payload) return;
+            SCORES = normalizeUpperKeyMap(payload.scores || payload.SCORES || {});
+            DIST_IDS = normalizeUpperKeyMap(payload.ids || payload.DIST_IDS || {});
+
+            if (distLayer) {
+                distLayer.eachLayer(function (layer) {
+                    var name = layer.feature?.properties?.name || '';
+                    var nm = String(name).toUpperCase();
+                    layer.setStyle({ fillColor: scoreColor(SCORES[nm]), weight: 1.5, color: '#fff', fillOpacity: .85 });
+                    rebuildPopup(layer);
+                });
+            }
+
+            if (districtLabelMarkers && districtLabelMarkers.length) {
+                districtLabelMarkers.forEach(function (m) {
+                    if (!m || !m._ppmfLbl) return;
+                    var nm = String(m._ppmfLbl.name || '').toUpperCase();
+                    var gr = gradeStr(SCORES[nm]);
+                    m._ppmfLbl.cls = gr.cls;
+                });
+                updateDistrictLabels();
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', init);
+        return { setData, fitAll };
+    })();
+    window.ppmfTierMap = ppmfTierMap;
+</script>
 <script>
     (function () {
         const dataUrl = @json(route('scorecard.tier-wise.data'));
@@ -285,6 +507,10 @@
                     if (json.filters.week_range && weekSelect) {
                         weekSelect.value = String(json.filters.week_range);
                     }
+                }
+
+                if (json.map && window.ppmfTierMap && typeof window.ppmfTierMap.setData === 'function') {
+                    window.ppmfTierMap.setData(json.map);
                 }
 
                 pushQuery(queryString);

@@ -170,12 +170,18 @@ class ScorecardController extends Controller
 
         // Tier-wise page should open Tier 1 by default and keep selected tier in all filters.
         $filters['tier'] = $filters['tier'] ?? '1';
+        // Tier-wise is district-only (no division-wise toggle in UI).
+        $filters['area_type'] = 'district';
 
         $filterData = $this->scorecardService->getFilterData();
+
+        $districtMapMeta = $this->scorecardService->getDistrictMapMeta($filters);
 
         return view('scorecard.tier-wise', [
             'tierSummary'   => $this->scorecardService->getTierSummary($filters),
             'tierRanking'   => $this->scorecardService->getTierDistrictRanking($filters),
+            'districtScores' => $districtMapMeta['scores'],
+            'districtMapIds' => $districtMapMeta['ids'],
 
             'divisions'     => $filterData['divisions'],
             'districts'     => $filterData['districts'],
@@ -218,9 +224,12 @@ class ScorecardController extends Controller
             : $this->scorecardService->getLatestCompletedPpmfWeekFilters();
 
         $filters['tier'] = $filters['tier'] ?? '1';
+        // Tier-wise is district-only (no division-wise toggle in UI).
+        $filters['area_type'] = 'district';
 
         $tierSummary = $this->scorecardService->getTierSummary($filters);
         $tierRanking = $this->scorecardService->getTierDistrictRanking($filters);
+        $districtMapMeta = $this->scorecardService->getDistrictMapMeta($filters);
 
         $weekOptions = $this->scorecardService->getWeekRanges(
             (int) ($filters['year'] ?? now()->year),
@@ -230,6 +239,10 @@ class ScorecardController extends Controller
         return response()->json([
             'status' => 'success',
             'filters' => $filters,
+            'map' => [
+                'scores' => $districtMapMeta['scores'],
+                'ids' => $districtMapMeta['ids'],
+            ],
             'html' => [
                 'results' => view('scorecard.partials.tier-results', compact('tierSummary', 'tierRanking', 'filters'))->render(),
                 'week_options' => view('scorecard.partials.week-options', ['weekOptions' => $weekOptions, 'selectedWeekRange' => (string) ($filters['week_range'] ?? '')])->render(),
