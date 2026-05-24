@@ -41,7 +41,7 @@ class GeoTaggingController extends Controller
 
         $filterData = $this->geoTaggingService->getFilterData();
 
-        return view('geo-taggings.list', [
+        return view('geo_taggings.list', [
             'geoTaggings'     => $geoTaggings,
             'districts'       => $filterData['districts'],
             'tehsils'         => $filterData['tehsils'],
@@ -99,7 +99,7 @@ class GeoTaggingController extends Controller
 
         $filterData = $this->geoTaggingService->getFilterData();
 
-        return view('geo-taggings.map', [
+        return view('geo_taggings.map', [
             'mapRecords'      => $mapRecords,
             'districts'       => $filterData['districts'],
             'tehsils'         => $filterData['tehsils'],

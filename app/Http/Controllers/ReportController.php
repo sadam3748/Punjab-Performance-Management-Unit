@@ -79,6 +79,7 @@ class ReportController extends Controller
         return view('reports.district-sfn-victim-tier', [
             'reportData'    => $reportData,
             'districts'     => $filterData['districts'],
+            'tehsils'       => $filterData['tehsils'],
             'kpiCategories' => $filterData['kpiCategories'],
             'filters'       => $filters,
         ]);
@@ -99,6 +100,7 @@ class ReportController extends Controller
         return view('reports.district-sfn-comparison', [
             'reportData'    => $reportData,
             'districts'     => $filterData['districts'],
+            'tehsils'       => $filterData['tehsils'],
             'kpiCategories' => $filterData['kpiCategories'],
             'filters'       => $filters,
         ]);
@@ -219,6 +221,7 @@ class ReportController extends Controller
         return view('reports.district-week-rank-changelog', [
             'reportData'    => $reportData,
             'districts'     => $filterData['districts'],
+            'tehsils'       => $filterData['tehsils'],
             'kpiCategories' => $filterData['kpiCategories'],
             'filters'       => $filters,
         ]);
@@ -239,6 +242,7 @@ class ReportController extends Controller
         return view('reports.district-wise-kpi-score', [
             'reportData'    => $reportData,
             'districts'     => $filterData['districts'],
+            'tehsils'       => $filterData['tehsils'],
             'kpiCategories' => $filterData['kpiCategories'],
             'filters'       => $filters,
         ]);

@@ -110,7 +110,27 @@
                 </div>
             </div>
         </div>
-        {{-- Current Week card removed (requested) --}}
+        <div class="col-xl-3 col-lg-4 col-md-6">
+            <div class="stat-card-ppmf">
+                <div class="stat-icon-ppmf warning"><i class="bi bi-buildings"></i></div>
+                <div>
+                    <span>Districts Reported</span>
+                    <strong>{{ number_format($reportedDistricts) }} / {{ number_format($totalDistricts) }}</strong>
+                    <small>Current week reporting</small>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-lg-4 col-md-6">
+            <div class="stat-card-ppmf">
+                <div class="stat-icon-ppmf info"><i class="bi bi-arrow-left-right"></i></div>
+                <div>
+                    <span>Improved / Declined</span>
+                    <strong>{{ number_format($improvedCount) }} / {{ number_format($declinedCount) }}</strong>
+                    <small>Vs previous week</small>
+                </div>
+            </div>
+        </div>
 
         @if(false)
         <div class="col-md-6 col-xl-3">

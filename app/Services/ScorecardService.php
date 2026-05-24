@@ -606,6 +606,84 @@ class ScorecardService
         return $paginator;
     }
 
+    public function getDistrictScoresForMap(array $filters): array
+    {
+        $filters = $this->normalizeFilters($filters);
+
+        $districtsQuery = District::query()
+            ->where('is_active', true);
+
+        $districtsQuery = $this->applyDistrictFilters($districtsQuery, $filters);
+        $districtsQuery = $this->applyUserScope($districtsQuery);
+
+        $agg = $this->buildDistrictWeightedScoreAggQuery($filters);
+        $scoreAgg = $agg['query'];
+
+        $districtsQuery->leftJoinSub($scoreAgg, 'score_agg', function ($join) {
+            $join->on('districts.id', '=', 'score_agg.district_id');
+        });
+
+        $districtsQuery->addSelect([
+            'districts.name',
+            DB::raw('COALESCE(score_agg.score_percentage, 0) as score_percentage'),
+            DB::raw('COALESCE(score_agg.reported_kpis, 0) as reported_kpis'),
+        ]);
+
+        $districtsQuery = $this->applyPerformanceFilter(
+            $districtsQuery,
+            $filters,
+            'COALESCE(score_agg.score_percentage, 0)',
+            'COALESCE(score_agg.reported_kpis, 0) = 0'
+        );
+
+        return $districtsQuery
+            ->orderBy('districts.name')
+            ->get()
+            ->mapWithKeys(fn ($row) => [(string) $row->name => round((float) ($row->score_percentage ?? 0), 2)])
+            ->all();
+    }
+
+    public function getDistrictMapMeta(array $filters): array
+    {
+        $filters = $this->normalizeFilters($filters);
+
+        $districtsQuery = District::query()
+            ->where('is_active', true);
+
+        $districtsQuery = $this->applyDistrictFilters($districtsQuery, $filters);
+        $districtsQuery = $this->applyUserScope($districtsQuery);
+
+        $agg = $this->buildDistrictWeightedScoreAggQuery($filters);
+        $scoreAgg = $agg['query'];
+
+        $districtsQuery->leftJoinSub($scoreAgg, 'score_agg', function ($join) {
+            $join->on('districts.id', '=', 'score_agg.district_id');
+        });
+
+        $districtsQuery->addSelect([
+            'districts.id',
+            'districts.name',
+            DB::raw('COALESCE(score_agg.score_percentage, 0) as score_percentage'),
+            DB::raw('COALESCE(score_agg.reported_kpis, 0) as reported_kpis'),
+        ]);
+
+        $districtsQuery = $this->applyPerformanceFilter(
+            $districtsQuery,
+            $filters,
+            'COALESCE(score_agg.score_percentage, 0)',
+            'COALESCE(score_agg.reported_kpis, 0) = 0'
+        );
+
+        $rows = $districtsQuery
+            ->orderBy('districts.name')
+            ->get();
+
+        return [
+            'scores' => $rows->mapWithKeys(fn ($row) => [(string) $row->name => round((float) ($row->score_percentage ?? 0), 2)])->all(),
+            'ids' => $rows->mapWithKeys(fn ($row) => [(string) $row->name => (int) $row->id])->all(),
+        ];
+    }
+
     public function getDivisionRanking(array $filters)
     {
         $filters = $this->normalizeFilters($filters);

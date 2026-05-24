@@ -51,7 +51,7 @@ class PetrolPumpController extends Controller
         $records       = $this->petrolPumpService->getRecords($filters);
         $filterData    = $this->petrolPumpService->getFilterData();
 
-        return view('petrol.dashboard', [
+        return view('petrol_pump.dashboard', [
             'summary'       => $summary,
             'statusChart'   => $statusChart,
             'districtChart' => $districtChart,

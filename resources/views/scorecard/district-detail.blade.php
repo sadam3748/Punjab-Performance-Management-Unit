@@ -132,7 +132,18 @@
         </div>
     </div>
 
-    {{-- Reported KPIs card removed (requested) --}}
+    <div class="col-xl-3 col-lg-4 col-md-6">
+        <div class="stat-card-ppmf">
+            <div class="stat-icon-ppmf warning">
+                <i class="bi bi-list-check"></i>
+            </div>
+            <div>
+                <span>Reported KPIs</span>
+                <strong>{{ number_format($reported) }} / {{ number_format($totalKpis) }}</strong>
+                <small>Coverage for selected week</small>
+            </div>
+        </div>
+    </div>
 </div>
 
 	@if(false)

@@ -53,12 +53,17 @@ class ScorecardController extends Controller
         $summary = $areaType === 'division'
             ? $this->scorecardService->getDivisionSummary($filters)
             : $this->scorecardService->getScorecardSummary($filters);
+        $districtMapMeta = $this->scorecardService->getDistrictMapMeta($filters);
+        $districtScores = $districtMapMeta['scores'];
+        $districtMapIds = $districtMapMeta['ids'];
 
         return view('scorecard.index', [
             'summary'         => $summary,
             'districtRanking' => $this->scorecardService->getDistrictRanking($filters),
             'divisionRanking' => $divisionRanking,
             'categoryRanking' => $this->scorecardService->getCategoryRanking($filters),
+            'districtScores'  => $districtScores,
+            'districtMapIds'  => $districtMapIds,
 
             'divisions'       => $filterData['divisions'],
             'districts'       => $filterData['districts'],
@@ -115,11 +120,18 @@ class ScorecardController extends Controller
             (int) ($filters['month'] ?? now()->month)
         );
 
+        $districtMapMeta = $this->scorecardService->getDistrictMapMeta($filters);
+
         return response()->json([
             'status' => 'success',
             'filters' => $filters,
+            'map' => [
+                'scores' => $districtMapMeta['scores'],
+                'ids' => $districtMapMeta['ids'],
+            ],
             'html' => [
-                'results' => view('scorecard.partials.scorecard-results', compact('summary', 'districtRanking', 'divisionRanking', 'categoryRanking', 'filters'))->render(),
+                'status_cards' => view('scorecard.partials.index-status-cards', compact('summary', 'filters'))->render(),
+                'table_panel' => view('scorecard.partials.index-table-panel', compact('districtRanking', 'filters'))->render(),
                 'week_options' => view('scorecard.partials.week-options', ['weekOptions' => $weekOptions, 'selectedWeekRange' => (string) ($filters['week_range'] ?? '')])->render(),
             ],
         ]);
