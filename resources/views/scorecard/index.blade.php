@@ -17,15 +17,15 @@
     .sc-panel-title{font-size:15px;font-weight:900;color:#0f172a;margin:0;text-transform:uppercase;letter-spacing:.04em}
     .sc-panel-subtitle{font-size:12px;color:#64748b;margin-top:4px}
     .sc-table{width:100%;border-collapse:separate;border-spacing:0;margin:0}
-    .sc-table thead th{background:#174d43;color:#fff;padding:12px;font-size:11px;text-transform:uppercase;letter-spacing:.06em;font-weight:900;white-space:nowrap}
+    .sc-table thead th{background:linear-gradient(180deg,var(--gov-green-dark) 0%,var(--gov-green) 100%);color:#fff;padding:12px;font-size:11px;text-transform:uppercase;letter-spacing:.06em;font-weight:900;white-space:nowrap;border-bottom:2px solid var(--gold)}
     .sc-table tbody td{padding:12px;border-bottom:1px solid rgba(148,163,184,.18);font-size:13px;font-weight:700;color:#0f172a;vertical-align:middle}
     .sc-table tbody tr{cursor:pointer;transition:background .12s}
     .sc-table tbody tr:hover{background:#f0fdf9}
-    .sc-table tbody tr.map-highlighted{background:#ecfdf5!important;box-shadow:inset 4px 0 0 #0f766e}
+    .sc-table tbody tr.map-highlighted{background:#ecfdf5!important;box-shadow:inset 4px 0 0 var(--gov-green)}
     .sc-rank{width:58px;text-align:center}
     .sc-rank-badge{width:34px;height:34px;border-radius:12px;background:#ecfdf5;color:#166534;display:inline-flex;align-items:center;justify-content:center;font-weight:900}
     .sc-district-name{font-weight:900;color:#0f172a;text-transform:uppercase;text-decoration:none}
-    .sc-district-name:hover{color:#0f766e}
+    .sc-district-name:hover{color:var(--gov-green)}
     .sc-muted{font-size:12px;color:#64748b;font-weight:600}
     .sc-grade-badge{display:inline-flex;align-items:center;justify-content:center;min-width:44px;height:26px;border-radius:999px;padding:0 8px;color:#fff;font-size:11px;font-weight:900}
     .grade-critical{background:#dc2626}.grade-average{background:#f59e0b;color:#111827}.grade-good{background:#2563eb}.grade-excellent{background:#16a34a}
@@ -35,14 +35,14 @@
     .sc-map-panel{position:sticky;top:88px}
     .sc-pagination-wrap{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:14px 18px;background:#f8fafc;border-top:1px solid rgba(148,163,184,.22)}
     .sc-pagination-wrap .pagination{margin:0;gap:5px;flex-wrap:wrap}
-    .sc-pagination-wrap .page-link{border-radius:10px!important;min-width:36px;height:36px;display:inline-flex;align-items:center;justify-content:center;color:#0f766e;font-weight:800;border-color:#cbd5e1;box-shadow:none}
-    .sc-pagination-wrap .page-item.active .page-link{background:#0f766e;border-color:#0f766e;color:#fff}
+    .sc-pagination-wrap .page-link{border-radius:10px!important;min-width:36px;height:36px;display:inline-flex;align-items:center;justify-content:center;color:var(--gov-green);font-weight:900;border-color:#cbd5e1;box-shadow:none}
+    .sc-pagination-wrap .page-item.active .page-link{background:var(--gov-green);border-color:var(--gov-green);color:#fff}
     .sc-empty{padding:28px;text-align:center;color:#64748b;font-weight:700;background:#f8fafc}
 
     /* Status cards (match Tier Wise) */
     .sc-perf-card{display:flex;align-items:center;gap:12px;border:1px solid rgba(148,163,184,.25);border-radius:16px;background:#fff;padding:12px 14px;box-shadow:0 10px 24px rgba(15,23,42,.04);transition:.15s ease;min-height:72px}
     .sc-perf-card:hover{transform:translateY(-1px);border-color:rgba(15,118,110,.35);background:#f8fafc}
-    .sc-perf-card.active{border-color:#0f766e;box-shadow:0 12px 26px rgba(15,118,110,.14)}
+    .sc-perf-card.active{border-color:var(--gov-green);box-shadow:0 12px 26px rgba(0,107,63,.14)}
     .sc-perf-ico{width:36px;height:36px;border-radius:14px;display:inline-flex;align-items:center;justify-content:center;color:#fff;font-size:16px;flex:0 0 auto}
     .sc-perf-ico.excellent{background:#16a34a}
     .sc-perf-ico.good{background:#2563eb}
@@ -58,7 +58,7 @@
     #ppmfLeafletMap{height:490px;background:#edf2ee;position:relative;z-index:1;border-radius:0}
     .leaflet-tile-pane{display:none!important}
     .leaflet-control-attribution{display:none!important}
-    .leaflet-control-zoom a{background:#fff;border-color:#e2e8f0;color:#0f766e;font-weight:900}
+    .leaflet-control-zoom a{background:#fff;border-color:#e2e8f0;color:var(--gov-green);font-weight:950}
     .leaflet-control-zoom a:hover{background:#ecfdf5}
 
     /* District / Division name labels */
@@ -81,7 +81,7 @@
     .leaflet-popup-content-wrapper{border-radius:12px!important;padding:0!important;overflow:hidden;box-shadow:0 8px 28px rgba(0,0,0,.16)!important}
     .leaflet-popup-content{margin:0!important;min-width:190px}
     .leaflet-popup-tip-container{display:none}
-    .lf-head{background:#134e4a;padding:11px 14px}
+    .lf-head{background:linear-gradient(180deg,var(--gov-green-dark) 0%,var(--gov-green) 100%);padding:11px 14px;border-bottom:2px solid var(--gold)}
     .lf-head h4{color:#fff;font-size:13px;font-weight:900;margin:0 0 1px}
     .lf-head span{color:rgba(255,255,255,.55);font-size:11px}
     .lf-body{padding:10px 14px}
@@ -90,15 +90,17 @@
     .lf-badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:800}
     .lfb-excellent{background:#dcfce7;color:#14532d}.lfb-good{background:#dbeafe;color:#1e40af}
     .lfb-average{background:#fef9c3;color:#854d0e}.lfb-critical{background:#fee2e2;color:#7f1d1d}.lfb-unreported{background:#f1f5f9;color:#64748b}
-    .lf-link{display:block;margin-top:8px;padding:7px 10px;background:#f0fdfa;border-radius:7px;text-align:center;font-size:12px;font-weight:800;color:#0f766e;text-decoration:none}
-    .lf-link:hover{background:#ccfbf1}
+    .lf-link{display:block;margin-top:8px;padding:7px 10px;background:var(--gov-green-light);border-radius:7px;text-align:center;font-size:12px;font-weight:900;color:var(--gov-green);text-decoration:none;border:1px solid rgba(0,107,63,.20)}
+    .lf-link:hover{background:#dff2e7;border-color:rgba(0,107,63,.32);color:var(--gov-green-dark)}
 
     /* Map panel chrome */
     .map-view-toggle{display:flex;background:#f1f5f9;border:1px solid #e2e8f0;border-radius:8px;overflow:hidden}
-    .map-view-btn{height:30px;padding:0 13px;border:none;background:none;font-size:12px;font-weight:700;color:#64748b;cursor:pointer;font-family:inherit;transition:all .15s}
-    .map-view-btn.active{background:#0f766e;color:#fff}
-    .map-view-btn:hover:not(.active){background:#e6f7f5;color:#0f766e}
-    .map-spinner{width:26px;height:26px;border:3px solid #e2e8f0;border-top-color:#0f766e;border-radius:50%;animation:mapspin .7s linear infinite}
+    .map-view-btn{height:30px;padding:0 13px;border:none;background:none;font-size:12px;font-weight:900;color:#64748b;cursor:pointer;font-family:inherit;transition:all .15s}
+    .map-view-btn.active{background:var(--gov-green);color:#fff}
+    .map-view-btn:hover:not(.active){background:var(--gov-green-light);color:var(--gov-green)}
+    .map-spinner{width:26px;height:26px;border:3px solid #e2e8f0;border-top-color:var(--gov-green);border-radius:50%;animation:mapspin .7s linear infinite}
+    .map-fit-btn{background:none;border:none;cursor:pointer;color:var(--gov-green);font-size:11.5px;font-weight:900;padding:0}
+    .map-fit-btn:hover{color:var(--gov-green-dark)}
     @keyframes mapspin{to{transform:rotate(360deg)}}
     .map-loading-overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;z-index:20;background:#edf2ee}
     .map-legend-bar{display:flex;flex-wrap:wrap;gap:10px;padding:10px 14px;border-top:1px solid rgba(148,163,184,.18);background:#fafcfb}
@@ -420,7 +422,7 @@
                 {{-- Status bar --}}
                 <div class="map-status-bar">
                     <span id="mapStatusText">Loading Punjab boundary data…</span>
-                    <button onclick="ppmfMap.fitAll()" style="background:none;border:none;cursor:pointer;color:#0f766e;font-size:11.5px;font-weight:700;padding:0">
+                    <button onclick="ppmfMap.fitAll()" class="map-fit-btn">
                         <i class="bi bi-fullscreen"></i> Fit Punjab
                     </button>
                 </div>

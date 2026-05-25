@@ -452,13 +452,14 @@
 
     .baseline-detail-table thead th {
         padding: 13px 16px;
-        background: linear-gradient(135deg, #14532d, #166534);
+        background: linear-gradient(180deg, var(--gov-green-dark) 0%, var(--gov-green) 100%);
         color: #fff;
         font-size: 12px;
         font-weight: 900;
         text-transform: uppercase;
         letter-spacing: .03em;
         white-space: nowrap;
+        border-bottom: 2px solid var(--gold);
     }
 
     .baseline-detail-table tbody td {

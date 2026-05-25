@@ -227,7 +227,7 @@
         <div class="content-card h-100">
             <div class="card-header-row">
                 <div>
-                    <h5 class="card-title">Inspection Status</h5>
+                    <h5 class="card-title"><i class="bi bi-pie-chart"></i> Inspection Status</h5>
                     <p class="card-subtitle">Status-wise inspection breakdown</p>
                 </div>
             </div>
@@ -242,7 +242,7 @@
         <div class="content-card h-100">
             <div class="card-header-row">
                 <div>
-                    <h5 class="card-title">KPI Category Wise</h5>
+                    <h5 class="card-title"><i class="bi bi-bar-chart"></i> KPI Category Wise</h5>
                     <p class="card-subtitle">Top KPI categories by inspections</p>
                 </div>
             </div>
@@ -257,7 +257,7 @@
         <div class="content-card h-100">
             <div class="card-header-row">
                 <div>
-                    <h5 class="card-title">District Wise</h5>
+                    <h5 class="card-title"><i class="bi bi-geo-alt"></i> District Wise</h5>
                     <p class="card-subtitle">Top districts by inspection count</p>
                 </div>
             </div>
@@ -277,35 +277,55 @@
         <div class="content-card h-100">
             <div class="card-header-row">
                 <div>
-                    <h5 class="card-title">Geo Tagging Summary</h5>
+                    <h5 class="card-title"><i class="bi bi-geo-alt"></i> Geo Tagging Summary</h5>
                     <p class="card-subtitle">Verification and submission overview</p>
                 </div>
             </div>
 
-            <div class="mini-summary-list">
-                <div class="mini-summary-item">
-                    <span>Total Geo Taggings</span>
-                    <strong>{{ number_format($geoTaggingSummary['total_geo_taggings'] ?? 0) }}</strong>
+            <div class="dash-metric-grid">
+                <div class="dash-metric-card" style="--accent: var(--gov-green);">
+                    <div class="dash-metric-icon"><i class="bi bi-pin-map"></i></div>
+                    <div>
+                        <span class="dash-metric-label">Total Geo Taggings</span>
+                        <span class="dash-metric-value">{{ number_format($geoTaggingSummary['total_geo_taggings'] ?? 0) }}</span>
+                        <span class="dash-metric-sub">All submitted coordinates</span>
+                    </div>
                 </div>
 
-                <div class="mini-summary-item">
-                    <span>Verified</span>
-                    <strong>{{ number_format($geoTaggingSummary['verified'] ?? 0) }}</strong>
+                <div class="dash-metric-card" style="--accent: rgba(37, 99, 235, .95);">
+                    <div class="dash-metric-icon"><i class="bi bi-patch-check"></i></div>
+                    <div>
+                        <span class="dash-metric-label">Verified</span>
+                        <span class="dash-metric-value">{{ number_format($geoTaggingSummary['verified'] ?? 0) }}</span>
+                        <span class="dash-metric-sub">Approved/verified records</span>
+                    </div>
                 </div>
 
-                <div class="mini-summary-item">
-                    <span>Submitted</span>
-                    <strong>{{ number_format($geoTaggingSummary['submitted'] ?? 0) }}</strong>
+                <div class="dash-metric-card" style="--accent: rgba(245, 158, 11, .95);">
+                    <div class="dash-metric-icon"><i class="bi bi-inbox-arrow-down"></i></div>
+                    <div>
+                        <span class="dash-metric-label">Submitted</span>
+                        <span class="dash-metric-value">{{ number_format($geoTaggingSummary['submitted'] ?? 0) }}</span>
+                        <span class="dash-metric-sub">Awaiting verification</span>
+                    </div>
                 </div>
 
-                <div class="mini-summary-item">
-                    <span>Rejected</span>
-                    <strong>{{ number_format($geoTaggingSummary['rejected'] ?? 0) }}</strong>
+                <div class="dash-metric-card" style="--accent: rgba(220, 38, 38, .95);">
+                    <div class="dash-metric-icon"><i class="bi bi-x-octagon"></i></div>
+                    <div>
+                        <span class="dash-metric-label">Rejected</span>
+                        <span class="dash-metric-value">{{ number_format($geoTaggingSummary['rejected'] ?? 0) }}</span>
+                        <span class="dash-metric-sub">Rejected / invalid</span>
+                    </div>
                 </div>
 
-                <div class="mini-summary-item">
-                    <span>Verified Rate</span>
-                    <strong>{{ $geoTaggingSummary['verified_rate'] ?? 0 }}%</strong>
+                <div class="dash-metric-card" style="--accent: var(--gold); grid-column: 1 / -1;">
+                    <div class="dash-metric-icon"><i class="bi bi-percent"></i></div>
+                    <div>
+                        <span class="dash-metric-label">Verified Rate</span>
+                        <span class="dash-metric-value">{{ $geoTaggingSummary['verified_rate'] ?? 0 }}%</span>
+                        <span class="dash-metric-sub">Verified ÷ total</span>
+                    </div>
                 </div>
             </div>
         </div>
@@ -315,30 +335,46 @@
         <div class="content-card h-100">
             <div class="card-header-row">
                 <div>
-                    <h5 class="card-title">Baseline Asset Summary</h5>
+                    <h5 class="card-title"><i class="bi bi-database"></i> Baseline Asset Summary</h5>
                     <p class="card-subtitle">Functional and non-functional assets</p>
                 </div>
             </div>
 
-            <div class="mini-summary-list">
-                <div class="mini-summary-item">
-                    <span>District Baseline Records</span>
-                    <strong>{{ number_format($baselineSummary['district_baseline_records'] ?? 0) }}</strong>
+            <div class="dash-metric-grid">
+                <div class="dash-metric-card" style="--accent: var(--gov-green);">
+                    <div class="dash-metric-icon"><i class="bi bi-list-check"></i></div>
+                    <div>
+                        <span class="dash-metric-label">District Baseline Records</span>
+                        <span class="dash-metric-value">{{ number_format($baselineSummary['district_baseline_records'] ?? 0) }}</span>
+                        <span class="dash-metric-sub">District profiles</span>
+                    </div>
                 </div>
 
-                <div class="mini-summary-item">
-                    <span>Total Baseline Assets</span>
-                    <strong>{{ number_format($baselineSummary['baseline_assets'] ?? 0) }}</strong>
+                <div class="dash-metric-card" style="--accent: rgba(37, 99, 235, .95);">
+                    <div class="dash-metric-icon"><i class="bi bi-boxes"></i></div>
+                    <div>
+                        <span class="dash-metric-label">Total Baseline Assets</span>
+                        <span class="dash-metric-value">{{ number_format($baselineSummary['baseline_assets'] ?? 0) }}</span>
+                        <span class="dash-metric-sub">All assets</span>
+                    </div>
                 </div>
 
-                <div class="mini-summary-item">
-                    <span>Functional Assets</span>
-                    <strong>{{ number_format($baselineSummary['functional_assets'] ?? 0) }}</strong>
+                <div class="dash-metric-card" style="--accent: rgba(22, 163, 74, .95);">
+                    <div class="dash-metric-icon"><i class="bi bi-check-circle"></i></div>
+                    <div>
+                        <span class="dash-metric-label">Functional Assets</span>
+                        <span class="dash-metric-value">{{ number_format($baselineSummary['functional_assets'] ?? 0) }}</span>
+                        <span class="dash-metric-sub">Functional</span>
+                    </div>
                 </div>
 
-                <div class="mini-summary-item">
-                    <span>Non-Functional Assets</span>
-                    <strong>{{ number_format($baselineSummary['non_functional_assets'] ?? 0) }}</strong>
+                <div class="dash-metric-card" style="--accent: rgba(220, 38, 38, .95);">
+                    <div class="dash-metric-icon"><i class="bi bi-x-circle"></i></div>
+                    <div>
+                        <span class="dash-metric-label">Non-Functional Assets</span>
+                        <span class="dash-metric-value">{{ number_format($baselineSummary['non_functional_assets'] ?? 0) }}</span>
+                        <span class="dash-metric-sub">Non-functional</span>
+                    </div>
                 </div>
             </div>
         </div>
@@ -347,54 +383,65 @@
 </div>
 
 {{-- Recent Inspections --}}
-<div class="content-card">
-    <div class="card-header-row">
+<div class="card-ppmf dash-card">
+    <div class="card-ppmf-header dash-card-header">
         <div>
-            <h5 class="card-title">Recent Inspections</h5>
-            <p class="card-subtitle">Latest submitted inspection records</p>
+            <div class="card-ppmf-title">
+                <i class="bi bi-list-check"></i>
+                Recent Inspections
+            </div>
+            <p class="dash-card-subtitle">Latest submitted inspection records</p>
         </div>
 
-        <a href="{{ route('inspections.list') }}" class="btn-gov btn-gov-outline btn-gov-sm">
-            View All
-        </a>
+        <div class="card-ppmf-actions">
+            <a href="{{ route('inspections.list') }}" class="btn-gov btn-gov-outline btn-gov-sm">
+                View All
+            </a>
+        </div>
     </div>
 
-    <div class="table-responsive">
-        <table class="table ppmf-table align-middle">
+    <div class="card-ppmf-body p-0">
+        <div class="table-responsive">
+            <table class="table inspection-table inspection-table-compact align-middle mb-0">
             <thead>
                 <tr>
-                    <th>Sr.</th>
+                    <th>Sr. No.</th>
                     <th>Inspection Type</th>
-                    <th>Title</th>
+                    <th>Primary Detail</th>
+                    <th>Secondary Detail / Address</th>
                     <th>District</th>
-                    <th>Tehsil</th>
                     <th>Performed By</th>
                     <th>Date & Time</th>
-                    <th>Status</th>
+                    <th>Evidence / Actions</th>
+                    <th class="text-center">Action</th>
                 </tr>
             </thead>
 
             <tbody>
                 @forelse ($recentInspections as $index => $inspection)
                     <tr>
-                        <td>{{ $index + 1 }}</td>
-
                         <td>
-                            {{ $inspection->kpiCategory->name ?? 'N/A' }}
+                            {{ $index + 1 }}
                         </td>
 
                         <td>
-                            <div class="fw-semibold">
-                                {{ $inspection->main_title ?? 'N/A' }}
+                            <div class="inspection-type-cell">
+                                <span class="inspection-type-icon">
+                                    <i class="bi bi-clipboard-check"></i>
+                                </span>
+                                <span>{{ $inspection->kpiCategory->name ?? 'N/A' }}</span>
                             </div>
-                            <small class="text-muted">
-                                {{ $inspection->main_address ?? '' }}
-                            </small>
+                        </td>
+
+                        <td>
+                            <div class="inspection-title">{{ $inspection->main_title ?? 'N/A' }}</div>
+                        </td>
+
+                        <td>
+                            <div class="inspection-address">{{ $inspection->main_address ?? 'N/A' }}</div>
                         </td>
 
                         <td>{{ $inspection->district->name ?? 'N/A' }}</td>
-
-                        <td>{{ $inspection->tehsil->name ?? 'N/A' }}</td>
 
                         <td>
                             {{ $inspection->performer->username ?? $inspection->performer->name ?? 'N/A' }}
@@ -409,14 +456,18 @@
                         </td>
 
                         <td>
-                            <span class="status-badge status-{{ $inspection->status }}">
-                                {{ ucfirst(str_replace('_', ' ', $inspection->status ?? 'N/A')) }}
-                            </span>
+                            <span class="text-muted fw-semibold">&mdash;</span>
+                        </td>
+
+                        <td class="text-center">
+                            <a href="{{ route('inspections.show', $inspection->id) }}" class="btn-gov btn-gov-outline btn-gov-sm" target="_blank" rel="noopener">
+                                <i class="bi bi-eye"></i> View
+                            </a>
                         </td>
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="8" class="text-center text-muted py-4">
+                        <td colspan="10" class="text-center text-muted py-4">
                             No inspection records found.
                         </td>
                     </tr>
@@ -424,6 +475,7 @@
             </tbody>
         </table>
     </div>
+</div>
 </div>
 
 @endsection
@@ -441,31 +493,88 @@
             return;
         }
 
+        const container = canvas.parentElement;
+        const hasData = Array.isArray(labels) && labels.length > 0 && Array.isArray(data) && data.some(v => Number(v) > 0);
+        if (!hasData) {
+            if (container) {
+                container.innerHTML = '<div class="chart-empty-state"><i class="bi bi-info-circle"></i><div>No chart data available.</div></div>';
+            }
+            return;
+        }
+
+        const css = getComputedStyle(document.documentElement);
+        const GOV = (css.getPropertyValue('--gov-green') || '#006b3f').trim();
+        const GOV_DARK = (css.getPropertyValue('--gov-green-dark') || '#064d31').trim();
+        const GOLD = (css.getPropertyValue('--gold') || '#d6a21e').trim();
+
+        const baseDataset = {
+            label: 'Total',
+            data: data,
+            borderSkipped: false,
+        };
+
+        const dataset = (type === 'doughnut')
+            ? {
+                ...baseDataset,
+                backgroundColor: [
+                    GOV,
+                    GOLD,
+                    'rgba(37, 99, 235, .85)',
+                    'rgba(220, 38, 38, .85)',
+                    'rgba(245, 158, 11, .88)',
+                    'rgba(100, 116, 139, .70)',
+                ],
+                borderColor: '#ffffff',
+                borderWidth: 2,
+                hoverOffset: 6,
+            }
+            : {
+                ...baseDataset,
+                backgroundColor: 'rgba(0, 107, 63, 0.68)',
+                hoverBackgroundColor: 'rgba(0, 107, 63, 0.85)',
+                borderWidth: 0,
+                borderRadius: 10,
+                maxBarThickness: 44,
+            };
+
         new Chart(canvas, {
             type: type,
             data: {
                 labels: labels,
-                datasets: [{
-                    label: 'Total',
-                    data: data,
-                    borderWidth: 1
-                }]
+                datasets: [dataset]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: {
                     legend: {
-                        display: type === 'doughnut'
+                        display: type === 'doughnut',
+                        position: 'bottom',
+                        labels: {
+                            boxWidth: 10,
+                            boxHeight: 10,
+                            usePointStyle: true,
+                            pointStyle: 'circle',
+                            color: '#334155',
+                            font: { size: 11, weight: '700' },
+                        }
                     }
                 },
+                cutout: type === 'doughnut' ? '72%' : undefined,
                 scales: type === 'doughnut' ? {} : {
                     y: {
                         beginAtZero: true,
                         ticks: {
-                            precision: 0
+                            precision: 0,
+                            color: '#475569',
+                            font: { size: 11, weight: '700' },
                         }
-                    }
+                    },
+                    x: {
+                        ticks: { color: '#334155', font: { size: 11, weight: '700' } },
+                        grid: { display: false }
+                    },
+                    grid: { color: 'rgba(148,163,184,.18)' }
                 }
             }
         });
@@ -473,22 +582,33 @@
 
     createBasicChart(
         'inspectionStatusChart',
-        statusChartData.map(item => item.status ? item.status.replace('_', ' ').toUpperCase() : 'N/A'),
+        statusChartData.map(item => {
+            const s = item.status ?? item.key ?? item.name ?? '';
+            return s ? String(s).replace(/_/g, ' ').toUpperCase() : 'N/A';
+        }),
         statusChartData.map(item => Number(item.total ?? 0)),
         'doughnut'
     );
 
     createBasicChart(
         'categoryWiseChart',
-        categoryChartData.map(item => item.kpi_category?.name ?? item.kpiCategory?.name ?? 'N/A'),
-        categoryChartData.map(item => Number(item.total ?? 0)),
+        categoryChartData
+            .slice(0, 10)
+            .map(item => item.kpi_category?.name ?? item.kpiCategory?.name ?? item.category_name ?? item.name ?? 'N/A'),
+        categoryChartData
+            .slice(0, 10)
+            .map(item => Number(item.total ?? item.count ?? 0)),
         'bar'
     );
 
     createBasicChart(
         'districtWiseChart',
-        districtChartData.map(item => item.district?.name ?? 'N/A'),
-        districtChartData.map(item => Number(item.total ?? 0)),
+        districtChartData
+            .slice(0, 10)
+            .map(item => item.district?.name ?? item.district_name ?? item.name ?? 'N/A'),
+        districtChartData
+            .slice(0, 10)
+            .map(item => Number(item.total ?? item.count ?? 0)),
         'bar'
     );
 </script>

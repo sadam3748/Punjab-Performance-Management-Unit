@@ -425,14 +425,15 @@
     }
 
     .inspection-table thead th {
-        background: linear-gradient(180deg, #14532d, #166534);
+        background: linear-gradient(180deg, var(--gov-green-dark) 0%, var(--gov-green) 100%);
         color: #ffffff;
         font-size: 11.5px;
-        font-weight: 900;
+        font-weight: 700;
         text-transform: uppercase;
-        letter-spacing: 0.055em;
-        padding: 13px 14px;
+        letter-spacing: .4px;
+        padding: 10px 14px;
         border: 0;
+        border-bottom: 2px solid var(--gold);
         white-space: nowrap;
         vertical-align: middle;
     }

@@ -800,7 +800,7 @@
         position: sticky;
         top: 0;
         z-index: 1;
-        background: linear-gradient(135deg, #14532d, #166534);
+        background: linear-gradient(180deg, var(--gov-green-dark) 0%, var(--gov-green) 100%);
         color: #ffffff;
         padding: 13px 14px;
         font-size: 12px;
@@ -808,6 +808,7 @@
         text-transform: uppercase;
         letter-spacing: 0.045em;
         border: 0;
+        border-bottom: 2px solid var(--gold);
         white-space: nowrap;
     }
 

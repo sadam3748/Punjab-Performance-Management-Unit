@@ -412,13 +412,13 @@
     }
 
     .gr-table thead th{
-        background:#166534;
+        background:linear-gradient(180deg, var(--gov-green-dark) 0%, var(--gov-green) 100%);
         color:#ffffff;
         font-size:10.5px;
         font-weight:900;
         text-transform:uppercase;
         letter-spacing:.035em;
-        border-bottom:1px solid #14532d;
+        border-bottom:2px solid var(--gold);
         padding:10px 8px;
         white-space:normal;
         line-height:1.2;

@@ -155,7 +155,7 @@
     }
 
     .kpi-score-table thead th {
-        background: var(--gov-green);
+        background: linear-gradient(180deg, var(--gov-green-dark) 0%, var(--gov-green) 100%);
         color: #fff;
         font-size: 13px;
         font-weight: 700;
@@ -166,11 +166,12 @@
         line-height: 1.35;
         padding: 14px 12px;
         white-space: normal;
+        border-bottom: 2px solid var(--gold);
     }
 
     .kpi-score-table thead th.sticky-sr,
     .kpi-score-table thead th.sticky-district {
-        background: var(--gov-green);
+        background: linear-gradient(180deg, var(--gov-green-dark) 0%, var(--gov-green) 100%);
         z-index: 5;
     }
 

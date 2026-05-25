@@ -6,11 +6,14 @@
 .filter-card,
 .content-card {
   background: var(--card-bg, #fff);
-  border: 1px solid var(--border-light, #e5e7eb);
-  border-radius: var(--radius-lg, 16px);
-  padding: 18px;
-  box-shadow: var(--shadow-sm, 0 4px 14px rgba(15, 23, 42, 0.05));
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 22px;
+  box-shadow: 0 14px 34px rgba(15, 23, 42, 0.07);
+  overflow: hidden;
 }
+
+.filter-card { padding: 18px; }
+.content-card { padding: 0; }
 
 .page-header {
   display: flex;
@@ -100,18 +103,37 @@
 }
 
 .card-header-row {
+  padding: 18px 20px;
+  border-bottom: 1px solid rgba(207, 230, 216, .85);
+  background: linear-gradient(135deg, rgba(6, 77, 49, 0.06), rgba(248, 250, 252, 0.95));
   display: flex;
   justify-content: space-between;
-  gap: 14px;
+  gap: 16px;
   align-items: flex-start;
-  margin-bottom: 16px;
+  margin-bottom: 0;
 }
 
 .card-title {
   font-size: 16px;
-  font-weight: 800;
+  font-weight: 900;
   color: var(--text-primary, #111827);
   margin-bottom: 2px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.card-title i {
+  width: 34px;
+  height: 34px;
+  border-radius: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--gov-green-light, #e8f5ee);
+  color: var(--gov-green-dark, #064d31);
+  border: 1px solid rgba(0,107,63,.18);
+  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.08);
+  flex-shrink: 0;
 }
 
 .card-subtitle {
@@ -122,7 +144,9 @@
 
 .chart-container {
   position: relative;
-  height: 280px;
+  height: 300px;
+  padding: 12px 12px 16px;
+  background: linear-gradient(180deg, #ffffff, #f8fafc);
 }
 
 .mini-summary-list {
@@ -153,10 +177,11 @@
 }
 
 .ppmf-table thead th {
-  background: var(--gov-green, #1b6b46);
+  background: linear-gradient(180deg, var(--gov-green-dark, #064d31) 0%, var(--gov-green, #006b3f) 100%);
   color: #fff;
   font-size: 12px;
   white-space: nowrap;
+  border-bottom: 2px solid var(--gold, #d6a21e);
 }
 
 .ppmf-table tbody td {

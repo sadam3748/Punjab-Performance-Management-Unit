@@ -7,13 +7,14 @@
 
 /* ── CSS Variables ───────────────────────────────────────── */
 :root {
-  --gov-green:        #0a5c36;
-  --gov-green-dark:   #073d24;
-  --gov-green-mid:    #0d7a47;
+  /* Punjab Government green theme */
+  --gov-green:        #006b3f;
+  --gov-green-dark:   #064d31;
+  --gov-green-mid:    #004d2d;
   --gov-green-light:  #e8f5ee;
   --teal:             #0e8c6a;
   --teal-light:       #e6f7f3;
-  --gold:             #c9952a;
+  --gold:             #d6a21e;
   --gold-light:       #fdf6e3;
   --danger:           #d9363e;
   --danger-light:     #fdecea;
@@ -21,10 +22,10 @@
   --warning-light:    #fff4e5;
   --info:             #1a6fa8;
   --info-light:       #e8f4fc;
-  --bg:               #f0f2f5;
+  --bg:               #f6fbf8;
   --surface:          #ffffff;
-  --border:           #e2e8f0;
-  --border-light:     #f1f5f9;
+  --border:           #cfe6d8;
+  --border-light:     #eef6f1;
   --text-primary:     #0f1b2d;
   --text-secondary:   #4a5568;
   --text-muted:       #8896a5;
@@ -52,6 +53,47 @@ body {
   color: var(--text-primary);
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
+}
+
+/* ── Logo helpers ───────────────────────────────────────────── */
+.portal-logo {
+  display: inline-block;
+  object-fit: contain;
+  image-rendering: auto;
+}
+.login-logo { height: 84px; width: auto; }
+.header-logo { height: 30px; width: auto; }
+.sidebar-logo { height: 28px; width: auto; }
+.footer-logo { height: 18px; width: auto; opacity: .95; }
+
+/* Official header brand (logo + identity) */
+.header-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  text-decoration: none;
+  color: inherit;
+}
+.header-brand .brand-text { line-height: 1.1; min-width: 0; }
+.header-brand .brand-title {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--gov-green-dark);
+  letter-spacing: .2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.header-brand .brand-sub {
+  font-size: 11px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+@media (max-width: 992px) {
+  .header-brand .brand-sub { display: none; }
 }
 
 /* ── Sidebar ─────────────────────────────────────────────── */
@@ -89,6 +131,12 @@ body {
   font-size: 18px;
   color: #fff;
   flex-shrink: 0;
+}
+.sidebar-brand-icon img {
+  max-width: 30px;
+  max-height: 30px;
+  object-fit: contain;
+  display: block;
 }
 .sidebar-brand-text { line-height: 1.2; }
 .sidebar-brand-title {
@@ -143,7 +191,21 @@ body {
   position: relative;
   white-space: nowrap;
 }
-.nav-link i { font-size: 16px; flex-shrink: 0; width: 20px; text-align: center; }
+.nav-link i {
+  font-size: 16px;
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  border-radius: 8px;
+}
+.nav-link.active i {
+  background: rgba(214, 162, 30, .16);
+  box-shadow: 0 0 0 1.5px var(--gold);
+}
 .nav-link:hover {
   color: #fff;
   background: rgba(255,255,255,.10);
@@ -152,7 +214,7 @@ body {
   color: #fff;
   background: rgba(255,255,255,.18);
   font-weight: 600;
-  box-shadow: inset 3px 0 0 rgba(255,255,255,.6);
+  box-shadow: inset 4px 0 0 var(--gold);
 }
 .nav-link .badge-pill {
   margin-left: auto;
@@ -557,6 +619,172 @@ body {
 .card-ppmf-actions { display: flex; gap: 6px; }
 .card-ppmf-body { padding: 20px; }
 
+/* ── Dashboard cards (match Baseline report look) ─────────────── */
+.dash-card {
+  border-radius: 22px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  box-shadow: 0 14px 34px rgba(15, 23, 42, 0.07);
+}
+.dash-card-header {
+  padding: 18px 20px;
+  border-bottom: 1px solid rgba(207, 230, 216, .85);
+  background: linear-gradient(135deg, rgba(6, 77, 49, 0.06), rgba(248, 250, 252, 0.95));
+}
+.dash-card-header .card-ppmf-title {
+  font-size: 16px;
+  font-weight: 900;
+}
+.dash-card-header .card-ppmf-title i {
+  color: var(--gov-green);
+}
+.dash-card-subtitle {
+  margin: 4px 0 0;
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* Dashboard content cards (charts/sections) */
+.content-card {
+  background: #ffffff;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 22px;
+  box-shadow: 0 14px 34px rgba(15, 23, 42, 0.07);
+  overflow: hidden;
+}
+.card-header-row {
+  padding: 18px 20px;
+  border-bottom: 1px solid rgba(207, 230, 216, .85);
+  background: linear-gradient(135deg, rgba(6, 77, 49, 0.06), rgba(248, 250, 252, 0.95));
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+.card-title {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 16px;
+  font-weight: 900;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.card-title i {
+  width: 34px;
+  height: 34px;
+  border-radius: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--gov-green-light);
+  color: var(--gov-green-dark);
+  border: 1px solid rgba(0,107,63,.18);
+  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.08);
+  flex-shrink: 0;
+}
+.card-subtitle {
+  margin: 4px 0 0;
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.chart-container {
+  height: 300px;
+  padding: 12px 12px 16px;
+  background: linear-gradient(180deg, #ffffff, #f8fafc);
+}
+.chart-empty-state {
+  height: 100%;
+  border: 1px dashed rgba(148,163,184,.45);
+  border-radius: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: var(--text-muted);
+  font-weight: 800;
+  background: rgba(246, 251, 248, .65);
+  text-align: center;
+  padding: 18px;
+}
+.chart-empty-state i {
+  color: var(--gold);
+  font-size: 20px;
+}
+@media (max-width: 991px) {
+  .chart-container { height: 260px; }
+}
+
+/* Dashboard metric grids (for Geo Tagging / Baseline summaries) */
+.dash-metric-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  padding: 18px 20px;
+}
+@media (max-width: 575px) {
+  .dash-metric-grid { grid-template-columns: 1fr; }
+}
+.dash-metric-card {
+  background: #fff;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 20px;
+  padding: 16px;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.06);
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  min-height: 92px;
+  position: relative;
+  overflow: hidden;
+  border-left: 5px solid var(--accent, var(--gov-green));
+}
+.dash-metric-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 4px;
+  background: var(--accent, var(--gov-green));
+}
+.dash-metric-icon {
+  width: 46px;
+  height: 46px;
+  border-radius: 16px;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  background: var(--accent, var(--gov-green));
+  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.12);
+  flex: 0 0 auto;
+  font-size: 20px;
+}
+.dash-metric-label {
+  display: block;
+  color: var(--text-muted);
+  font-size: 11.5px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: .055em;
+}
+.dash-metric-value {
+  display: block;
+  margin-top: 3px;
+  color: var(--text-primary);
+  font-size: 26px;
+  font-weight: 950;
+  line-height: 1;
+  letter-spacing: -.04em;
+}
+.dash-metric-sub {
+  display: block;
+  margin-top: 6px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 700;
+}
+
 /* ── Tables ──────────────────────────────────────────────── */
 .table-ppmf {
   width: 100%;
@@ -564,7 +792,7 @@ body {
   font-size: 13px;
 }
 .table-ppmf thead tr {
-  background: var(--gov-green);
+  background: linear-gradient(180deg, var(--gov-green-dark) 0%, var(--gov-green) 100%);
 }
 .table-ppmf thead th {
   padding: 10px 14px;
@@ -573,7 +801,7 @@ body {
   letter-spacing: .4px;
   color: #ffffff;
   text-transform: uppercase;
-  border-bottom: 1px solid rgba(255,255,255,.12);
+  border-bottom: 2px solid var(--gold);
   white-space: nowrap;
 }
 .table-ppmf tbody tr {
@@ -588,17 +816,122 @@ body {
 }
 .table-ppmf tbody tr:last-child { border-bottom: none; }
 
+/* Bootstrap tables without explicit `table-ppmf` should still look consistent */
+.table:not(.table-ppmf) {
+  font-size: 13px;
+}
+.ppmf-table {
+  font-size: 13px;
+}
+.table:not(.table-ppmf) thead th {
+  background: linear-gradient(180deg, var(--gov-green-dark) 0%, var(--gov-green) 100%);
+  color: #fff;
+  font-weight: 700;
+  font-size: 11.5px;
+  letter-spacing: .4px;
+  text-transform: uppercase;
+  border-bottom: 2px solid var(--gold);
+  vertical-align: middle;
+  padding: 10px 14px;
+  white-space: nowrap;
+}
+.ppmf-table thead th {
+  background: linear-gradient(180deg, var(--gov-green-dark) 0%, var(--gov-green) 100%);
+  color: #fff;
+  font-weight: 700;
+  font-size: 11.5px;
+  letter-spacing: .4px;
+  text-transform: uppercase;
+  border-bottom: 2px solid var(--gold);
+  vertical-align: middle;
+  padding: 10px 14px;
+  white-space: nowrap;
+}
+.table:not(.table-ppmf) tbody td {
+  border-color: var(--border-light);
+  vertical-align: middle;
+}
+.table:not(.table-ppmf) tbody tr:hover {
+  background: var(--gov-green-light);
+}
+.ppmf-table tbody td {
+  border-color: var(--border-light);
+  vertical-align: middle;
+}
+.ppmf-table tbody tr:hover {
+  background: var(--gov-green-light);
+}
+
 /* Apply the same header look to module-specific tables without changing markup */
 .inspection-table thead tr,
 .sc-table thead tr,
 .sd-table thead tr {
-  background: var(--gov-green);
+  background: linear-gradient(180deg, var(--gov-green-dark) 0%, var(--gov-green) 100%);
 }
 .inspection-table thead th,
 .sc-table thead th,
 .sd-table thead th {
   color: #ffffff;
-  border-bottom: 1px solid rgba(255,255,255,.12);
+  border-bottom: 2px solid var(--gold);
+}
+
+/* Shared inspection table look (Dashboard uses this without pagination) */
+.inspection-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 13px;
+}
+.inspection-table tbody td {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border-light);
+  vertical-align: middle;
+}
+.inspection-table tbody tr:hover {
+  background: var(--gov-green-light);
+}
+.inspection-table-compact {
+  min-width: 0;
+}
+.inspection-type-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+.inspection-type-icon {
+  width: 30px;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 11px;
+  color: var(--gov-green-dark);
+  background: var(--gov-green-light);
+  border: 1px solid rgba(0,107,63,.18);
+  flex-shrink: 0;
+}
+
+/* Reusable inspection text styles (Dashboard + List) */
+.inspection-title {
+  font-weight: 900;
+  color: var(--text-primary);
+  margin-bottom: 3px;
+}
+.inspection-address {
+  font-size: 12.5px;
+  color: var(--text-secondary);
+  line-height: 1.45;
+}
+
+/* Generic chart wrapper used on Dashboard */
+.chart-container {
+  height: 280px;
+  padding: 12px 12px 14px;
+}
+@media (max-width: 991px) {
+  .chart-container { height: 240px; }
 }
 
 /* rank badge */
@@ -634,6 +967,71 @@ body {
 .badge-ppmf.critical  { background: var(--danger-light);     color: var(--danger); }
 .badge-ppmf.info      { background: var(--info-light);       color: var(--info); }
 .badge-ppmf.neutral   { background: var(--bg);               color: var(--text-secondary); }
+
+/* semantic variants (keep naming consistent across the portal) */
+.badge-ppmf.excellent,
+.badge-ppmf.approved,
+.badge-ppmf.success,
+.badge-ppmf.achieved {
+  background: var(--gov-green-light);
+  color: var(--gov-green);
+}
+.badge-ppmf.good,
+.badge-ppmf.reviewed,
+.badge-ppmf.info {
+  background: var(--info-light);
+  color: var(--info);
+}
+.badge-ppmf.average,
+.badge-ppmf.pending,
+.badge-ppmf.warning {
+  background: var(--warning-light);
+  color: var(--warning);
+}
+.badge-ppmf.rejected,
+.badge-ppmf.low,
+.badge-ppmf.critical,
+.badge-ppmf.danger {
+  background: var(--danger-light);
+  color: var(--danger);
+}
+.badge-ppmf.same,
+.badge-ppmf.neutral {
+  background: #eef2f7;
+  color: #4b5563;
+}
+
+/* ── Pagination (global) ─────────────────────────────────────── */
+.pagination {
+  gap: 6px;
+}
+.page-link {
+  border: 1px solid var(--border);
+  color: var(--gov-green-dark);
+  padding: 7px 12px;
+  border-radius: 10px;
+  background: #fff;
+  transition: var(--transition);
+}
+.page-link:hover {
+  background: var(--gov-green-light);
+  border-color: rgba(0, 107, 63, .25);
+  color: var(--gov-green);
+}
+.page-link:focus {
+  box-shadow: 0 0 0 3px rgba(0, 107, 63, .15);
+}
+.page-item.active .page-link {
+  background: var(--gov-green);
+  border-color: var(--gov-green);
+  color: #fff;
+}
+.page-item.disabled .page-link {
+  color: var(--text-muted);
+  background: #fff;
+  border-color: var(--border);
+  opacity: .75;
+}
 
 /* ── Progress ────────────────────────────────────────────── */
 .progress-ppmf {
@@ -844,19 +1242,22 @@ body {
 .login-footer-text { font-size: 11.5px; color: var(--text-muted); text-align: center; margin-top: 24px; }
 
 /* ── Footer ──────────────────────────────────────────────── */
-.ppmf-footer {
-  background: var(--surface);
+.ppmf-footer,
+.footer-ppmf {
+  background: #fff;
   border-top: 1px solid var(--border);
-  padding: 14px 24px;
+  padding: 10px 24px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  font-size: 11.5px;
+  font-size: 12px;
   color: var(--text-muted);
   flex-shrink: 0;
 }
-.ppmf-footer a { color: var(--gov-green); text-decoration: none; }
-.ppmf-footer a:hover { text-decoration: underline; }
+.ppmf-footer a,
+.footer-ppmf a { color: var(--gov-green); text-decoration: none; }
+.ppmf-footer a:hover,
+.footer-ppmf a:hover { text-decoration: underline; }
 
 /* ── Responsive ──────────────────────────────────────────── */
 @media (max-width: 1024px) {
@@ -2335,8 +2736,9 @@ body {
 }
 
 .table-report-head th {
-    background: #226f73 !important;
+    background: linear-gradient(180deg, var(--gov-green-dark) 0%, var(--gov-green) 100%) !important;
     color: #fff !important;
     text-align: center;
     vertical-align: middle;
+    border-bottom: 2px solid var(--gold) !important;
 }

@@ -5,15 +5,24 @@
     <i class="bi bi-list"></i>
   </button>
 
+  {{-- Portal identity --}}
+  <a href="{{ route('dashboard') }}" class="header-brand" title="PPMF Portal">
+    <img src="{{ asset('images/pmru-logo.png') }}" alt="PMRU Wing Logo" class="portal-logo header-logo">
+    <div class="brand-text">
+      <div class="brand-title">Punjab Performance Management Framework</div>
+      <div class="brand-sub">S&amp;GAD Department | PMRU Wing | Government of the Punjab</div>
+    </div>
+  </a>
+
   {{-- Breadcrumb --}}
-  <nav class="header-breadcrumb">
+  {{-- <nav class="header-breadcrumb">
     <i class="bi bi-house-door" style="font-size:13px;"></i>
     @yield('breadcrumb_parent', '')
     @hasSection('breadcrumb_parent')
       <i class="bi bi-chevron-right" style="font-size:10px;"></i>
     @endif
     <span class="bc-current">@yield('page_title', 'Dashboard')</span>
-  </nav>
+  </nav> --}}
 
   <div class="header-spacer"></div>
 

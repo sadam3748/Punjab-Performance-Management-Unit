@@ -12,6 +12,16 @@
     $mapRecords = collect($mapRecords ?? []);
 
     $totalRecords = $mapRecords->count();
+    $todayRecords = $mapRecords
+        ->filter(function ($record) {
+            if (empty($record->inspection_datetime)) return false;
+            try {
+                return Carbon::parse($record->inspection_datetime)->isToday();
+            } catch (\Throwable $e) {
+                return false;
+            }
+        })
+        ->count();
 
     $displayDetailLabels = [
         'name_of_street' => 'Name of Street',
@@ -142,16 +152,18 @@
 
 <div class="ppmf-map-summary-strip mb-4">
     <div class="ppmf-map-summary-item is-total">
-        <span>Total Records</span>
-        <strong>{{ number_format($totalRecords) }}</strong>
+        <div class="ppmf-map-summary-ico"><i class="bi bi-clipboard-check"></i></div>
+        <div>
+            <span>Total Inspections</span>
+            <strong>{{ number_format($totalRecords) }}</strong>
+        </div>
     </div>
-    <div class="ppmf-map-summary-item is-mapped">
-        <span>Mapped Pins</span>
-        <strong>{{ number_format($mapPoints->count()) }}</strong>
-    </div>
-    <div class="ppmf-map-summary-item is-category">
-        <span>KPI Categories</span>
-        <strong>{{ number_format($categoryLegend->count()) }}</strong>
+    <div class="ppmf-map-summary-item is-today">
+        <div class="ppmf-map-summary-ico"><i class="bi bi-calendar-check"></i></div>
+        <div>
+            <span>Today Inspections</span>
+            <strong>{{ number_format($todayRecords) }}</strong>
+        </div>
     </div>
 </div>
 
@@ -310,7 +322,32 @@
 @push('styles')
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
 <style>
-    .ppmf-map-titlebar{border-bottom:1px solid rgba(15,23,42,.06);margin-bottom:18px}.ppmf-eyebrow{display:inline-flex;align-items:center;gap:7px;padding:6px 10px;border-radius:999px;background:rgba(20,184,166,.10);color:#0f766e;font-size:11px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;margin-bottom:9px}.card-subtitle{color:#64748b;font-size:12.5px;font-weight:600}.ppmf-map-summary-strip{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.ppmf-map-summary-item{padding:16px 18px;border-radius:18px;background:linear-gradient(180deg,#fff,#f8fafc);border:1px solid rgba(15,23,42,.08);box-shadow:0 12px 26px rgba(15,23,42,.05);border-left:5px solid #0f766e}.ppmf-map-summary-item.is-total{border-left-color:#2563eb}.ppmf-map-summary-item.is-mapped{border-left-color:#0f766e}.ppmf-map-summary-item.is-category{border-left-color:#7c3aed}.ppmf-map-summary-item span{display:block;font-size:11px;font-weight:900;color:#64748b;letter-spacing:.07em;text-transform:uppercase}.ppmf-map-summary-item strong{display:block;margin-top:3px;font-size:24px;line-height:1;font-weight:900;color:#0f172a}.ppmf-filter-panel,.ppmf-map-card,.ppmf-chart-card{border-radius:20px;overflow:hidden;box-shadow:0 14px 30px rgba(15,23,42,.06)}.ppmf-filter-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding:18px 20px 14px;border-bottom:1px solid rgba(226,232,240,.9);background:linear-gradient(180deg,#fff,#f8fafc)}.ppmf-filter-head p{color:#64748b;font-size:12.5px;font-weight:600}.ppmf-filter-reset{display:inline-flex;align-items:center;gap:7px;padding:9px 12px;border-radius:12px;color:#0f766e;background:rgba(15,118,110,.08);font-size:12px;font-weight:900;text-decoration:none;white-space:nowrap}.ppmf-map-filter-grid{display:grid;grid-template-columns:1fr 1fr 1.55fr 1fr 1fr 120px;gap:14px;align-items:end;padding-top:18px}.ppmf-filter-field label{display:block;margin-bottom:7px;color:#334155;font-size:12px;font-weight:900}.ppmf-control{min-height:42px;border-radius:12px;border-color:#cbd5e1;color:#334155;font-size:13px;font-weight:700;box-shadow:none!important}.ppmf-control:focus{border-color:#0f766e;box-shadow:0 0 0 .18rem rgba(15,118,110,.12)!important}.ppmf-map-card-header,.ppmf-chart-card-header{align-items:center}.ppmf-chart-total-badge{display:inline-flex;align-items:center;gap:10px;padding:9px 13px;border-radius:14px;background:linear-gradient(135deg,#ecfdf5,#f8fafc);border:1px solid #cde8dd;color:#0f766e;white-space:nowrap}.ppmf-chart-total-badge span{font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.06em;color:#64748b}.ppmf-chart-total-badge strong{font-size:20px;line-height:1;font-weight:950;color:#0f766e}.ppmf-map-tool-btn{border:1px solid #cbd5e1;background:#fff;color:#0f766e;border-radius:12px;padding:8px 12px;font-size:12px;font-weight:900}.ppmf-live-map-wrap{position:relative;min-height:650px;border-radius:18px;overflow:hidden;border:1px solid #dbe3ea;background:#e2e8f0}.ppmf-live-map{width:100%;height:650px;min-height:650px;z-index:1}.leaflet-container{background:#e8f2ef}.ppmf-map-empty-state{position:absolute;inset:0;z-index:2;display:grid;place-content:center;text-align:center;padding:32px;background:linear-gradient(135deg,rgba(15,23,42,.78),rgba(15,118,110,.72));color:#fff}.ppmf-map-empty-state i{font-size:52px;margin-bottom:12px}.ppmf-map-empty-state h5{font-weight:900;margin-bottom:6px}.ppmf-map-empty-state p{margin:0;opacity:.88}.leaflet-popup-content-wrapper{border-radius:16px;box-shadow:0 18px 42px rgba(15,23,42,.22);overflow:hidden}.leaflet-popup-content{margin:0}.ppmf-map-popup{min-width:280px;max-width:340px;overflow:hidden}.ppmf-map-popup-head{display:flex;gap:10px;align-items:center;padding:13px 14px;color:#fff}.ppmf-map-popup-icon{width:34px;height:34px;border-radius:12px;background:rgba(255,255,255,.18);display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}.ppmf-map-popup-head h6{margin:0;font-size:13.5px;font-weight:900;color:#fff}.ppmf-map-popup-head span{display:block;margin-top:2px;font-size:11px;font-weight:700;opacity:.88}.ppmf-map-popup-body{padding:12px 14px}.ppmf-map-popup-body p{margin:0 0 7px;color:#475569;font-size:12px;font-weight:600}.ppmf-map-popup-body strong{color:#0f172a}.ppmf-map-popup-actions{display:flex;gap:8px;margin-top:10px}.ppmf-popup-link{display:inline-flex;align-items:center;gap:5px;padding:7px 9px;border-radius:10px;background:#ecfdf5;color:#0f766e;font-size:12px;font-weight:900;text-decoration:none}.ppmf-pin{width:32px;height:32px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);display:flex;align-items:center;justify-content:center;border:3px solid #fff;box-shadow:0 8px 18px rgba(15,23,42,.32);position:relative}.ppmf-pin:after{content:'';position:absolute;inset:6px;border-radius:50%;background:rgba(255,255,255,.18)}.ppmf-pin i{color:#fff;font-size:17px;transform:rotate(45deg);position:relative;z-index:2}.ppmf-kpi-pin-legend{display:flex;align-items:center;justify-content:flex-start;flex-wrap:wrap;gap:10px;margin-top:14px;padding:13px;border-radius:15px;background:#f8fafc;border:1px solid #e2e8f0}.ppmf-kpi-legend-item{display:inline-flex;align-items:center;gap:8px;padding:7px 10px;border-radius:999px;background:#fff;border:1px solid #e2e8f0;color:#334155;font-size:12px;font-weight:800}.ppmf-kpi-legend-icon{width:24px;height:24px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;background:#0f766e;color:#fff;font-size:12px}.ppmf-district-label-marker span{display:inline-flex;align-items:center;justify-content:center;padding:3px 8px;border-radius:999px;background:rgba(255,255,255,.92);border:1px solid rgba(15,118,110,.25);color:#0f172a;font-size:11px;font-weight:900;box-shadow:0 4px 10px rgba(15,23,42,.12);white-space:nowrap}.ppmf-chart-wrap{height:390px;position:relative;padding:8px 6px 0;background:linear-gradient(180deg,#ffffff,#f8fafc);border-radius:16px}.ppmf-chart-empty{height:240px;display:flex;align-items:center;justify-content:center;gap:10px;border:1px dashed #cbd5e1;border-radius:18px;color:#64748b;font-weight:800;background:#f8fafc}.btn-gov-sm{padding:6px 10px;font-size:12px;border-radius:10px}@media(max-width:1399px){.ppmf-map-filter-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}@media(max-width:991px){.ppmf-map-summary-strip,.ppmf-map-filter-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.ppmf-live-map-wrap,.ppmf-live-map{min-height:520px;height:520px}.ppmf-chart-wrap{height:330px}}@media(max-width:575px){.ppmf-map-summary-strip,.ppmf-map-filter-grid{grid-template-columns:1fr}.ppmf-filter-head,.ppmf-map-card-header,.ppmf-chart-card-header{flex-direction:column;align-items:stretch}.ppmf-live-map-wrap,.ppmf-live-map{min-height:420px;height:420px}.ppmf-chart-wrap{height:300px}}
+    .ppmf-map-titlebar{border-bottom:1px solid rgba(15,23,42,.06);margin-bottom:18px}.ppmf-eyebrow{display:inline-flex;align-items:center;gap:7px;padding:6px 10px;border-radius:999px;background:rgba(0,107,63,.10);color:var(--gov-green);font-size:11px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;margin-bottom:9px}.card-subtitle{color:#64748b;font-size:12.5px;font-weight:600}.ppmf-map-summary-strip{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.ppmf-map-summary-item{padding:16px 18px;border-radius:18px;background:linear-gradient(180deg,#fff,#f8fafc);border:1px solid rgba(15,23,42,.08);box-shadow:0 12px 26px rgba(15,23,42,.05);display:flex;align-items:center;gap:14px}.ppmf-map-summary-item.is-total{border-left:5px solid var(--gov-green)}.ppmf-map-summary-item.is-today{border-left:5px solid var(--gold)}.ppmf-map-summary-ico{width:44px;height:44px;border-radius:16px;display:grid;place-items:center;color:#fff;font-size:20px;flex:0 0 auto;box-shadow:0 10px 22px rgba(15,23,42,.12)}.ppmf-map-summary-item.is-total .ppmf-map-summary-ico{background:linear-gradient(135deg,var(--gov-green-dark),var(--gov-green))}.ppmf-map-summary-item.is-today .ppmf-map-summary-ico{background:linear-gradient(135deg,#8a5a00,var(--gold))}.ppmf-map-summary-item span{display:block;font-size:11px;font-weight:900;color:#64748b;letter-spacing:.07em;text-transform:uppercase}.ppmf-map-summary-item strong{display:block;margin-top:3px;font-size:26px;line-height:1;font-weight:950;color:#0f172a}.ppmf-filter-panel,.ppmf-map-card,.ppmf-chart-card{border-radius:20px;overflow:hidden;box-shadow:0 14px 30px rgba(15,23,42,.06)}.ppmf-filter-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding:18px 20px 14px;border-bottom:1px solid rgba(226,232,240,.9);background:linear-gradient(180deg,#fff,#f8fafc)}.ppmf-filter-head p{color:#64748b;font-size:12.5px;font-weight:600}.ppmf-filter-reset{display:inline-flex;align-items:center;gap:7px;padding:9px 12px;border-radius:12px;color:var(--gov-green);background:rgba(0,107,63,.08);font-size:12px;font-weight:900;text-decoration:none;white-space:nowrap}.ppmf-map-filter-grid{display:grid;grid-template-columns:1fr 1fr 1.55fr 1fr 1fr 120px;gap:14px;align-items:end;padding-top:18px}.ppmf-filter-field label{display:block;margin-bottom:7px;color:#334155;font-size:12px;font-weight:900}.ppmf-control{min-height:42px;border-radius:12px;border-color:#cbd5e1;color:#334155;font-size:13px;font-weight:700;box-shadow:none!important}.ppmf-control:focus{border-color:var(--gov-green);box-shadow:0 0 0 .18rem rgba(0,107,63,.12)!important}.ppmf-map-card-header,.ppmf-chart-card-header{align-items:center}.ppmf-chart-total-badge{display:inline-flex;align-items:center;gap:10px;padding:9px 13px;border-radius:14px;background:linear-gradient(135deg,#ecfdf5,#f8fafc);border:1px solid #cde8dd;color:var(--gov-green);white-space:nowrap}.ppmf-chart-total-badge span{font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.06em;color:#64748b}.ppmf-chart-total-badge strong{font-size:20px;line-height:1;font-weight:950;color:var(--gov-green)}.ppmf-map-tool-btn{border:1px solid #cbd5e1;background:#fff;color:var(--gov-green);border-radius:12px;padding:8px 12px;font-size:12px;font-weight:900}.ppmf-live-map-wrap{position:relative;min-height:650px;border-radius:18px;overflow:hidden;border:1px solid #dbe3ea;background:linear-gradient(180deg,#ffffff,#f6fbf8)}.ppmf-live-map{width:100%;height:650px;min-height:650px;z-index:1}.leaflet-container{background:#f6fbf8}.ppmf-map-empty-state{position:absolute;inset:0;z-index:2;display:grid;place-content:center;text-align:center;padding:32px;background:linear-gradient(135deg,rgba(6,77,49,.86),rgba(0,107,63,.72));color:#fff}.ppmf-map-empty-state i{font-size:52px;margin-bottom:12px}.ppmf-map-empty-state h5{font-weight:900;margin-bottom:6px}.ppmf-map-empty-state p{margin:0;opacity:.88}.leaflet-popup-content-wrapper{border-radius:16px;box-shadow:0 18px 42px rgba(15,23,42,.22);overflow:hidden}.leaflet-popup-content{margin:0}.ppmf-map-popup{min-width:280px;max-width:340px;overflow:hidden}.ppmf-map-popup-head{display:flex;gap:10px;align-items:center;padding:13px 14px;color:#fff}.ppmf-map-popup-icon{width:34px;height:34px;border-radius:12px;background:rgba(255,255,255,.18);display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}.ppmf-map-popup-head h6{margin:0;font-size:13.5px;font-weight:900;color:#fff}.ppmf-map-popup-head span{display:block;margin-top:2px;font-size:11px;font-weight:700;opacity:.88}.ppmf-map-popup-body{padding:12px 14px}.ppmf-map-popup-body p{margin:0 0 7px;color:#475569;font-size:12px;font-weight:600}.ppmf-map-popup-body strong{color:#0f172a}.ppmf-map-popup-actions{display:flex;gap:8px;margin-top:10px}.ppmf-popup-link{display:inline-flex;align-items:center;gap:5px;padding:7px 9px;border-radius:10px;background:#ecfdf5;color:#0f766e;font-size:12px;font-weight:900;text-decoration:none}.ppmf-pin{width:32px;height:32px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);display:flex;align-items:center;justify-content:center;border:3px solid #fff;box-shadow:0 8px 18px rgba(15,23,42,.32);position:relative}.ppmf-pin:after{content:'';position:absolute;inset:6px;border-radius:50%;background:rgba(255,255,255,.18)}.ppmf-pin i{color:#fff;font-size:17px;transform:rotate(45deg);position:relative;z-index:2}.ppmf-kpi-pin-legend{display:flex;align-items:center;justify-content:flex-start;flex-wrap:wrap;gap:10px;margin-top:14px;padding:13px;border-radius:15px;background:#f8fafc;border:1px solid #e2e8f0}.ppmf-kpi-legend-item{display:inline-flex;align-items:center;gap:8px;padding:7px 10px;border-radius:999px;background:#fff;border:1px solid #e2e8f0;color:#334155;font-size:12px;font-weight:800}.ppmf-kpi-legend-icon{width:24px;height:24px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;background:#0f766e;color:#fff;font-size:12px}.ppmf-district-label-marker span{display:inline-flex;align-items:center;justify-content:center;padding:3px 8px;border-radius:999px;background:rgba(255,255,255,.92);border:1px solid rgba(0,107,63,.25);color:#0f172a;font-size:11px;font-weight:900;box-shadow:0 4px 10px rgba(15,23,42,.12);white-space:nowrap}.ppmf-chart-wrap{height:390px;position:relative;padding:8px 6px 0;background:linear-gradient(180deg,#ffffff,#f8fafc);border-radius:16px}.ppmf-chart-empty{height:240px;display:flex;align-items:center;justify-content:center;gap:10px;border:1px dashed #cbd5e1;border-radius:18px;color:#64748b;font-weight:800;background:#f8fafc}.btn-gov-sm{padding:6px 10px;font-size:12px;border-radius:10px}@media(max-width:1399px){.ppmf-map-filter-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}@media(max-width:991px){.ppmf-map-summary-strip,.ppmf-map-filter-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.ppmf-live-map-wrap,.ppmf-live-map{min-height:520px;height:520px}.ppmf-chart-wrap{height:330px}}@media(max-width:575px){.ppmf-map-summary-strip,.ppmf-map-filter-grid{grid-template-columns:1fr}.ppmf-filter-head,.ppmf-map-card-header,.ppmf-chart-card-header{flex-direction:column;align-items:stretch}.ppmf-live-map-wrap,.ppmf-live-map{min-height:420px;height:420px}.ppmf-chart-wrap{height:300px}}
+
+    /* Keep inspection map focused on Punjab only (bounded view) */
+    #inspectionLeafletMap .leaflet-control-attribution { display: none !important; }
+    #inspectionLeafletMap .leaflet-control-zoom a { background:#fff;border-color:rgba(0,107,63,.18);color:var(--gov-green);font-weight:950 }
+    #inspectionLeafletMap .leaflet-control-zoom a:hover { background:var(--gov-green-light); }
+
+    /* Cleaner, smaller professional pin */
+    .ppmf-pin{
+        width:28px;height:28px;border:2px solid #fff;
+        box-shadow:0 8px 16px rgba(15,23,42,.26);
+    }
+    .ppmf-pin:after{ inset:5px; opacity:.16; }
+    .ppmf-pin i{ font-size:15px; }
+
+    /* Popup header in official theme; KPI color stays on icon */
+    .ppmf-map-popup-head{
+        background:linear-gradient(135deg,var(--gov-green-dark),var(--gov-green));
+        border-bottom:2px solid var(--gold);
+    }
+    .ppmf-popup-link{
+        background:var(--gov-green-light);
+        color:var(--gov-green);
+        border:1px solid rgba(0,107,63,.18);
+    }
+    .ppmf-popup-link:hover{ background:#dff2e7;border-color:rgba(0,107,63,.30);color:var(--gov-green-dark); }
 </style>
 @endpush
 
@@ -407,16 +444,44 @@
             const map = L.map('inspectionLeafletMap', {
                 scrollWheelZoom: false,
                 zoomControl: true,
-                maxBounds: punjabBounds.pad(0.12),
-                maxBoundsViscosity: 0.85,
-                minZoom: 6,
+                maxBounds: punjabBounds.pad(0.05),
+                maxBoundsViscosity: 0.95,
+                minZoom: 7,
                 maxZoom: 16,
+                worldCopyJump: false,
+                preferCanvas: true,
             }).setView(punjabCenter, 7);
 
+            // Basemap tiles (light, professional) for a complete map view.
             L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
                 maxZoom: 19,
-                attribution: '&copy; OpenStreetMap contributors &copy; CARTO'
+                attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+                noWrap: true,
+                bounds: punjabBounds.pad(0.07),
             }).addTo(map);
+
+            // Punjab boundary overlay (optional) for a clearer official view.
+            map.createPane('ppmfBoundaryPane');
+            map.getPane('ppmfBoundaryPane').style.zIndex = 240;
+            map.createPane('ppmfPinPane');
+            map.getPane('ppmfPinPane').style.zIndex = 420;
+
+            fetch('{{ asset("assets/data/punjab_districts.geojson") }}')
+                .then(r => r.json())
+                .then(function (geo) {
+                    L.geoJSON(geo, {
+                        pane: 'ppmfBoundaryPane',
+                        style: function () {
+                            return {
+                                color: 'rgba(0, 107, 63, 0.55)',
+                                weight: 1.6,
+                                fillColor: 'rgba(0, 107, 63, 0.10)',
+                                fillOpacity: 0.10,
+                            };
+                        }
+                    }).addTo(map);
+                })
+                .catch(function () { /* ignore if GeoJSON missing */ });
 
             const markerGroup = L.featureGroup().addTo(map);
             const seenCoordinates = {};
@@ -426,9 +491,9 @@
                 return L.divIcon({
                     className: 'ppmf-kpi-marker',
                     html: `<div class="ppmf-pin" style="background:${style.color}"><i class="bi ${style.icon}"></i></div>`,
-                    iconSize: [34, 42],
-                    iconAnchor: [17, 42],
-                    popupAnchor: [0, -42]
+                    iconSize: [30, 38],
+                    iconAnchor: [15, 38],
+                    popupAnchor: [0, -38]
                 });
             }
 
@@ -441,8 +506,8 @@
 
                 return `
                     <div class="ppmf-map-popup">
-                        <div class="ppmf-map-popup-head" style="background:linear-gradient(135deg, ${style.color}, #0f766e)">
-                            <span class="ppmf-map-popup-icon"><i class="bi ${style.icon}"></i></span>
+                        <div class="ppmf-map-popup-head">
+                            <span class="ppmf-map-popup-icon" style="background:${style.color}"><i class="bi ${style.icon}"></i></span>
                             <div>
                                 <h6>Inspection Type: ${escapeHtml(point.kpi_name || 'Inspection')}</h6>
                                 <span>Date & Time: ${escapeHtml(point.date || 'N/A')}</span>
@@ -464,7 +529,7 @@
                 if (!point.lat || !point.lng) return;
                 const latLng = adjustedLatLng(point, index, seenCoordinates);
 
-                L.marker(latLng, { icon: getKpiMarkerIcon(point) })
+                L.marker(latLng, { icon: getKpiMarkerIcon(point), pane: 'ppmfPinPane', riseOnHover: true })
                     .bindPopup(popupHtml(point), { maxWidth: 360 })
                     .addTo(markerGroup);
             });
@@ -524,13 +589,10 @@
                     datasets: [{
                         label: 'No. of Inspections',
                         data: districtChartRows.map(row => row.count),
-                        backgroundColor: districtChartRows.map((row, index) => [
-                            '#0f766e', '#2563eb', '#16a34a', '#f59e0b', '#dc2626',
-                            '#7c3aed', '#0891b2', '#ea580c', '#65a30d', '#be123c'
-                        ][index % 10]),
-                        borderColor: 'rgba(15,23,42,.10)',
-                        borderWidth: 1,
-                        borderRadius: 9,
+                        backgroundColor: 'rgba(0, 107, 63, 0.68)',
+                        hoverBackgroundColor: 'rgba(0, 107, 63, 0.85)',
+                        borderWidth: 0,
+                        borderRadius: 8,
                         borderSkipped: false,
                         maxBarThickness: 36,
                     }]
@@ -556,7 +618,7 @@
                             beginAtZero: true,
                             title: { display: true, text: 'No. of Inspections', color: '#334155', font: { size: 12, weight: '800' } },
                             ticks: { color: '#475569', precision: 0, font: { size: 11, weight: '700' } },
-                            grid: { color: 'rgba(148,163,184,.22)' }
+                            grid: { color: 'rgba(148,163,184,.18)' }
                         }
                     }
                 }

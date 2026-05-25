@@ -11,8 +11,11 @@
     .login-logo-row {
         display: flex;
         align-items: center;
-        gap: 12px;
-        margin-bottom: 8px;
+        justify-content: center;
+        flex-direction: column;
+        text-align: center;
+        gap: 10px;
+        margin-bottom: 14px;
     }
 
     .login-logo-icon {
@@ -187,13 +190,15 @@
 
             <div class="login-form-logo">
                 <div class="login-logo-row">
-                    <div class="login-logo-icon">
-                        <i class="bi bi-activity"></i>
-                    </div>
+                    <img
+                        src="{{ asset('images/pmru-logo.png') }}"
+                        alt="PMRU Wing Logo"
+                        class="portal-logo login-logo"
+                    >
 
                     <div>
-                        <h1>PPMF Portal</h1>
-                        <p>Secure sign in to continue</p>
+                        <h1>Punjab Performance Management Framework</h1>
+                        <p>S&amp;GAD Department | PMRU Wing | Government of the Punjab</p>
                     </div>
                 </div>
             </div>

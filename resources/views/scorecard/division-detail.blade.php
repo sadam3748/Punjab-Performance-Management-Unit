@@ -11,7 +11,7 @@
     .sc-panel-title{font-size:15px;font-weight:900;color:#0f172a;margin:0;text-transform:uppercase;letter-spacing:.04em}
     .sc-panel-subtitle{font-size:12px;color:#64748b;margin-top:4px}
     .sc-table{width:100%;border-collapse:separate;border-spacing:0;margin:0}
-    .sc-table thead th{background:#174d43;color:#fff;padding:12px 12px;font-size:11px;text-transform:uppercase;letter-spacing:.06em;font-weight:900;white-space:nowrap}
+    .sc-table thead th{background:linear-gradient(180deg,var(--gov-green-dark) 0%,var(--gov-green) 100%);color:#fff;padding:12px 12px;font-size:11px;text-transform:uppercase;letter-spacing:.06em;font-weight:900;white-space:nowrap;border-bottom:2px solid var(--gold)}
     .sc-table tbody td{padding:12px;border-bottom:1px solid rgba(148,163,184,.18);font-size:13px;font-weight:700;color:#0f172a;vertical-align:middle}
     .sc-table tbody tr:hover{background:#f8fafc}
     .sc-rank{width:62px;text-align:center}
@@ -30,12 +30,13 @@
     @media(min-width:576px){.ppmf-metric-grid{grid-template-columns:repeat(2,minmax(0,1fr));}}
     @media(min-width:992px){.ppmf-metric-grid{grid-template-columns:repeat(3,minmax(0,1fr));}}
     @media(min-width:1200px){.ppmf-metric-grid{grid-template-columns:repeat(4,minmax(0,1fr));}}
-    .ppmf-metric-card{position:relative;background:#fff;border:1px solid rgba(148,163,184,.25);border-radius:16px;padding:12px 14px 11px;min-height:98px;overflow:hidden;box-shadow:0 10px 24px rgba(15,23,42,.05)}
-    .ppmf-metric-card::before{content:"";position:absolute;inset:0 0 auto 0;height:3px;background:var(--accent,#0f766e)}
-    .ppmf-metric-icon{width:28px;height:28px;border-radius:10px;display:grid;place-items:center;background:var(--accent-soft,#e0f7ef);color:var(--accent,#0f766e);font-size:14px;margin-bottom:8px}
-    .ppmf-metric-value{margin:0;font-size:20px;font-weight:950;color:#0f172a;letter-spacing:-.04em;line-height:1}
-    .ppmf-metric-title{margin:6px 0 0;color:#31584a;font-size:11px;font-weight:900;line-height:1.2;text-transform:uppercase;letter-spacing:.06em}
-    .ppmf-metric-sub{margin-top:6px;font-size:12px;font-weight:750;color:#64748b}
+    .ppmf-metric-card{position:relative;background:#fff;border:1px solid rgba(15,23,42,.08);border-radius:22px;padding:18px;min-height:112px;overflow:hidden;box-shadow:0 12px 30px rgba(15,23,42,.07)}
+    .ppmf-metric-card::before{content:"";position:absolute;inset:0 0 auto 0;height:4px;background:var(--accent,#0f766e)}
+    .ppmf-metric-icon{width:48px;height:48px;border-radius:16px;display:grid;place-items:center;background:var(--accent,#0f766e);color:#fff;font-size:22px;box-shadow:0 10px 22px rgba(15,23,42,.12);margin-bottom:0;flex:0 0 auto}
+    .ppmf-metric-value{margin:0;font-size:28px;font-weight:950;color:#0f172a;letter-spacing:-.04em;line-height:1}
+    .ppmf-metric-title{margin:3px 0 0;color:#64748b;font-size:12px;font-weight:900;line-height:1.2;text-transform:uppercase;letter-spacing:.055em}
+    .ppmf-metric-sub{margin-top:6px;font-size:12px;font-weight:700;color:#64748b}
+    .ppmf-metric-card .d-flex{gap:14px}
 </style>
 @endpush
 

@@ -3,7 +3,7 @@
   {{-- Brand --}}
   <a href="{{ route('dashboard') }}" class="sidebar-brand">
     <div class="sidebar-brand-icon">
-      <i class="bi bi-activity"></i>
+      <img src="{{ asset('images/pmru-logo.png') }}" alt="PMRU Wing Logo" class="portal-logo sidebar-logo">
     </div>
     <div class="sidebar-brand-text">
       <div class="sidebar-brand-title">PPMF Portal</div>

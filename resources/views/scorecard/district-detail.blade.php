@@ -42,7 +42,7 @@
     .sd-grade.excellent{background:#16a34a}.sd-grade.good{background:#2563eb}.sd-grade.average{background:#f59e0b;color:#111827}.sd-grade.critical{background:#dc2626}
     .sd-table{min-width:980px;border-collapse:separate;border-spacing:0}
     .sd-table thead th{
-        background: linear-gradient(180deg, #14532d, #166534);
+        background: linear-gradient(180deg, var(--gov-green-dark) 0%, var(--gov-green) 100%);
         color:#fff;
         font-size:11.5px;
         font-weight:900;
@@ -50,6 +50,7 @@
         letter-spacing:.055em;
         padding:13px 14px;
         border:0;
+        border-bottom:2px solid var(--gold);
         white-space:nowrap;
         vertical-align:middle;
     }
@@ -68,12 +69,14 @@
     @media(min-width:992px){.ppmf-metric-grid{grid-template-columns:repeat(3,minmax(0,1fr));}}
     /* District detail has 3 metric cards; keep a 3-col row on xl to avoid empty space. */
     @media(min-width:1200px){.ppmf-metric-grid{grid-template-columns:repeat(3,minmax(0,1fr));}}
-    .ppmf-metric-card{position:relative;background:#fff;border:1px solid rgba(148,163,184,.25);border-radius:16px;padding:12px 14px 11px;min-height:98px;overflow:hidden;box-shadow:0 10px 24px rgba(15,23,42,.05)}
-    .ppmf-metric-card::before{content:"";position:absolute;inset:0 0 auto 0;height:3px;background:var(--accent,#0f766e)}
-    .ppmf-metric-icon{width:28px;height:28px;border-radius:10px;display:grid;place-items:center;background:var(--accent-soft,#e0f7ef);color:var(--accent,#0f766e);font-size:14px;margin-bottom:8px}
-    .ppmf-metric-value{margin:0;font-size:20px;font-weight:950;color:#0f172a;letter-spacing:-.04em;line-height:1}
-    .ppmf-metric-title{margin:6px 0 0;color:#31584a;font-size:11px;font-weight:900;line-height:1.2;text-transform:uppercase;letter-spacing:.06em}
-    .ppmf-metric-sub{margin-top:6px;font-size:12px;font-weight:750;color:#64748b}
+    .ppmf-metric-card{position:relative;background:#fff;border:1px solid rgba(15,23,42,.08);border-radius:22px;padding:18px;min-height:112px;overflow:hidden;box-shadow:0 12px 30px rgba(15,23,42,.07)}
+    .ppmf-metric-card::before{content:"";position:absolute;inset:0 0 auto 0;height:4px;background:var(--accent,#0f766e)}
+    .ppmf-metric-icon{width:48px;height:48px;border-radius:16px;display:grid;place-items:center;background:var(--accent,#0f766e);color:#fff;font-size:22px;box-shadow:0 10px 22px rgba(15,23,42,.12);margin-bottom:0;flex:0 0 auto}
+    .ppmf-metric-value{margin:0;font-size:28px;font-weight:950;color:#0f172a;letter-spacing:-.04em;line-height:1}
+    .ppmf-metric-title{margin:3px 0 0;color:#64748b;font-size:12px;font-weight:900;line-height:1.2;text-transform:uppercase;letter-spacing:.055em}
+    .ppmf-metric-sub{margin-top:6px;font-size:12px;font-weight:700;color:#64748b}
+    /* allow card content to align like baseline stat cards */
+    .ppmf-metric-card .d-flex{gap:14px}
 
     /* Pagination styling aligned with Inspection List */
     .inspection-pagination-bar{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:14px 18px;border-top:1px solid #e2e8f0;background:#ffffff}

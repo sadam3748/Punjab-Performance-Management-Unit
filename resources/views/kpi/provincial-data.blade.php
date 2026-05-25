@@ -152,6 +152,7 @@
         justify-content: space-between;
         align-items: flex-start;
         gap: 14px;
+        border-bottom: 2px solid var(--gold);
     }
 
     .prov-category-name {
@@ -159,6 +160,23 @@
         font-size: 16px;
         font-weight: 900;
         letter-spacing: -0.02em;
+    }
+
+    /* Yellow accent border for KPI category name */
+    .prov-category-name a {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 10px;
+        border-radius: 999px;
+        border: 1px solid rgba(214, 162, 30, 0.60);
+        border-bottom: 3px solid var(--gold);
+        background: rgba(255, 255, 255, 0.10);
+        box-shadow: 0 10px 22px rgba(15, 23, 42, 0.10);
+    }
+    .prov-category-name a:hover {
+        background: rgba(255, 255, 255, 0.14);
+        border-color: rgba(214, 162, 30, 0.75);
     }
 
     .prov-category-meta {
@@ -202,7 +220,7 @@
         position: absolute;
         inset: 0 auto 0 0;
         width: 5px;
-        background: linear-gradient(180deg, var(--ppmf-green), #d6a84f);
+        background: linear-gradient(180deg, var(--ppmf-green), var(--gold));
     }
 
     .prov-metric-iconbox {
