@@ -25,12 +25,17 @@
     .grade-excellent{background:#16a34a}
     @media(max-width:767px){.sc-page-card{padding:14px}.sc-panel-header{display:block}.sc-table{min-width:760px}}
 
-    /* Detail stat cards: tighter + more centered (page-only) */
-    .ppmf-detail-stats .stat-card-ppmf{min-height:86px;display:flex;align-items:center;justify-content:center;gap:14px}
-    .ppmf-detail-stats .stat-card-ppmf strong{font-size:24px;line-height:1.05}
-    .ppmf-detail-stats .stat-card-ppmf small{font-weight:750;font-size:12px}
-    .ppmf-detail-stats .stat-icon-ppmf{width:46px;height:46px;border-radius:14px;display:flex;align-items:center;justify-content:center}
-    .ppmf-detail-stats .stat-icon-ppmf i{font-size:18px}
+    /* Metric cards (same visual language as KPI Graphical Report) */
+    .ppmf-metric-grid{display:grid;gap:12px;align-items:stretch;margin-bottom:18px}
+    @media(min-width:576px){.ppmf-metric-grid{grid-template-columns:repeat(2,minmax(0,1fr));}}
+    @media(min-width:992px){.ppmf-metric-grid{grid-template-columns:repeat(3,minmax(0,1fr));}}
+    @media(min-width:1200px){.ppmf-metric-grid{grid-template-columns:repeat(4,minmax(0,1fr));}}
+    .ppmf-metric-card{position:relative;background:#fff;border:1px solid rgba(148,163,184,.25);border-radius:16px;padding:12px 14px 11px;min-height:98px;overflow:hidden;box-shadow:0 10px 24px rgba(15,23,42,.05)}
+    .ppmf-metric-card::before{content:"";position:absolute;inset:0 0 auto 0;height:3px;background:var(--accent,#0f766e)}
+    .ppmf-metric-icon{width:28px;height:28px;border-radius:10px;display:grid;place-items:center;background:var(--accent-soft,#e0f7ef);color:var(--accent,#0f766e);font-size:14px;margin-bottom:8px}
+    .ppmf-metric-value{margin:0;font-size:20px;font-weight:950;color:#0f172a;letter-spacing:-.04em;line-height:1}
+    .ppmf-metric-title{margin:6px 0 0;color:#31584a;font-size:11px;font-weight:900;line-height:1.2;text-transform:uppercase;letter-spacing:.06em}
+    .ppmf-metric-sub{margin-top:6px;font-size:12px;font-weight:750;color:#64748b}
 </style>
 @endpush
 
@@ -87,50 +92,35 @@
 </div>
 
 <div class="sc-page-card">
-    <div class="row g-3 mb-3 justify-content-center ppmf-detail-stats">
-        <div class="col-xl-3 col-lg-4 col-md-6">
-            <div class="stat-card-ppmf">
-                <div class="stat-icon-ppmf success">
-                    <i class="bi bi-graph-up-arrow"></i>
-                </div>
-                <div>
-                    <span>Division Score</span>
-                    <strong>{{ number_format($score,2) }}%</strong>
-                    <small>{{ $meta['label'] }} ({{ $meta['grade'] }})</small>
-                </div>
-            </div>
-        </div>
-        <div class="col-xl-3 col-lg-4 col-md-6">
-            <div class="stat-card-ppmf">
-                <div class="stat-icon-ppmf primary"><i class="bi bi-award"></i></div>
-                <div>
-                    <span>Division Rank</span>
-                    <strong>{{ $rank ? '#'.$rank : '—' }}</strong>
-                    <small>Among divisions</small>
-                </div>
-            </div>
-        </div>
-        <div class="col-xl-3 col-lg-4 col-md-6">
-            <div class="stat-card-ppmf">
-                <div class="stat-icon-ppmf warning"><i class="bi bi-buildings"></i></div>
-                <div>
-                    <span>Districts Reported</span>
-                    <strong>{{ number_format($reportedDistricts) }} / {{ number_format($totalDistricts) }}</strong>
-                    <small>Current week reporting</small>
-                </div>
-            </div>
+    <div class="ppmf-metric-grid">
+        <div class="ppmf-metric-card" style="--accent:#18b979;--accent-soft:#e0f7ef">
+            <div class="ppmf-metric-icon"><i class="bi bi-graph-up-arrow"></i></div>
+            <h3 class="ppmf-metric-value">{{ number_format($score,2) }}%</h3>
+            <div class="ppmf-metric-title">Division Score</div>
+            <div class="ppmf-metric-sub">{{ $meta['label'] }} ({{ $meta['grade'] }})</div>
         </div>
 
-        <div class="col-xl-3 col-lg-4 col-md-6">
-            <div class="stat-card-ppmf">
-                <div class="stat-icon-ppmf info"><i class="bi bi-arrow-left-right"></i></div>
-                <div>
-                    <span>Improved / Declined</span>
-                    <strong>{{ number_format($improvedCount) }} / {{ number_format($declinedCount) }}</strong>
-                    <small>Vs previous week</small>
-                </div>
-            </div>
+        <div class="ppmf-metric-card" style="--accent:#2f80ed;--accent-soft:#eff6ff">
+            <div class="ppmf-metric-icon"><i class="bi bi-award"></i></div>
+            <h3 class="ppmf-metric-value">{{ $rank ? '#'.$rank : '—' }}</h3>
+            <div class="ppmf-metric-title">Division Rank</div>
+            <div class="ppmf-metric-sub">Among divisions</div>
         </div>
+
+        <div class="ppmf-metric-card" style="--accent:#f59e0b;--accent-soft:#fffbeb">
+            <div class="ppmf-metric-icon"><i class="bi bi-buildings"></i></div>
+            <h3 class="ppmf-metric-value">{{ number_format($reportedDistricts) }} / {{ number_format($totalDistricts) }}</h3>
+            <div class="ppmf-metric-title">Districts Reported</div>
+            <div class="ppmf-metric-sub">Current week reporting</div>
+        </div>
+
+        <div class="ppmf-metric-card" style="--accent:#7c3aed;--accent-soft:#f3e8ff">
+            <div class="ppmf-metric-icon"><i class="bi bi-arrow-left-right"></i></div>
+            <h3 class="ppmf-metric-value">{{ number_format($improvedCount) }} / {{ number_format($declinedCount) }}</h3>
+            <div class="ppmf-metric-title">Improved / Declined</div>
+            <div class="ppmf-metric-sub">Vs previous week</div>
+        </div>
+    </div>
 
         @if(false)
         <div class="col-md-6 col-xl-3">

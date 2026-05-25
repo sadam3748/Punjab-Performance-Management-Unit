@@ -100,6 +100,7 @@
     // Leaflet map data (keys MUST match GeoJSON district names)
     $districtScores = $districtScores ?? [];
     $districtMapIds = $districtMapIds ?? [];
+    $districtMapRanks = $districtMapRanks ?? [];
 
     $tierMapScores = collect($districtScores)->mapWithKeys(function ($score, $name) {
         $nm = strtoupper((string) $name);
@@ -108,6 +109,10 @@
     $tierMapDistrictIds = collect($districtMapIds)->mapWithKeys(function ($id, $name) {
         $nm = strtoupper((string) $name);
         return [$nm => $id];
+    })->all();
+    $tierMapDistrictRanks = collect($districtMapRanks)->mapWithKeys(function ($rank, $name) {
+        $nm = strtoupper((string) $name);
+        return [$nm => (int) $rank];
     })->all();
 
     $perfHref = function (string $key) use ($tierRoute, $selectedPerformance) {
@@ -232,6 +237,7 @@
     const ppmfTierMap = (function () {
         let SCORES = @json($tierMapScores);
         let DIST_IDS = @json($tierMapDistrictIds);
+        let RANKS = @json($tierMapDistrictRanks);
 
         let leafletMap, distLayer, labelGroup;
         let districtLabelMarkers = [];
@@ -272,7 +278,7 @@
             var base = '#';
             @endif
             var q = @json(request()->query());
-            var qs = Object.keys(q).length ? '&' + new URLSearchParams(q).toString() : '';
+            var qs = Object.keys(q).length ? ('?' + new URLSearchParams(q).toString()) : '';
             return base + qs;
         }
 
@@ -289,10 +295,12 @@
             var sc = SCORES[nm];
             var gr = gradeStr(sc);
             var did = DIST_IDS[nm];
+            var rk = RANKS[nm];
 
             layer.bindPopup(
                 '<div class="lf-head"><h4>' + name + '</h4><span>' + div + ' Division</span></div>' +
                 '<div class="lf-body">' +
+                '<div class="lf-row"><span class="lf-lbl">Rank</span><span class="lf-val">' + (rk ? ('#' + rk) : '—') + '</span></div>' +
                 '<div class="lf-row"><span class="lf-lbl">Score</span><span class="lf-val">' + (sc !== undefined && sc !== null ? Number(sc).toFixed(2) + '%' : 'Unreported') + '</span></div>' +
                 '<div class="lf-row"><span class="lf-lbl">Grade</span><span class="lf-badge ' + gr.cls + '">' + gr.txt + '</span></div>' +
                 (did ? '<a class="lf-link" href="' + detailUrl(did) + '">View District Scorecard →</a>' : '') +
@@ -415,6 +423,7 @@
             if (!payload) return;
             SCORES = normalizeUpperKeyMap(payload.scores || payload.SCORES || {});
             DIST_IDS = normalizeUpperKeyMap(payload.ids || payload.DIST_IDS || {});
+            RANKS = normalizeUpperKeyMap(payload.ranks || payload.RANKS || {});
 
             if (distLayer) {
                 distLayer.eachLayer(function (layer) {

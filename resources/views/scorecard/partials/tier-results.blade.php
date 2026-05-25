@@ -82,7 +82,7 @@
     @if($tierRankingItems->count())
         <div class="table-responsive">
             <table class="sc-table">
-                <thead><tr><th class="sc-rank">Rank</th><th>District</th><th>Score</th><th>Performance</th><th class="text-end">Action</th></tr></thead>
+                <thead><tr><th class="sc-rank">Rank</th><th>District</th><th>Score</th><th>Performance</th></tr></thead>
                 <tbody>
                     @foreach($tierRankingItems as $row)
                         @php $score=(float)($row->score_percentage ?? 0); $meta=$scoreMeta($score); $districtName=optional($row->district ?? null)->name ?? 'N/A'; $rank=$pageOffset+$loop->iteration; @endphp
@@ -97,11 +97,6 @@
                             </td>
                             <td class="fw-bold">{{ number_format($score,2) }}%</td>
                             <td><span class="sc-grade-badge grade-{{ $meta['class'] }}">{{ $meta['grade'] }}</span> <strong>{{ $meta['label'] }}</strong></td>
-                            <td class="text-end">
-                                <a class="btn btn-sm btn-gov btn-gov-outline" target="_blank" href="{{ route('scorecard.district-detail', array_merge(['district' => $row->district_id], request()->query())) }}">
-                                    View
-                                </a>
-                            </td>
                         </tr>
                     @endforeach
                 </tbody>

@@ -19,6 +19,17 @@ class ScorecardService
         'victims_negative',
     ];
 
+    private const DISTRICT_GEOJSON_ALIASES = [
+        // New districts that are not present in the 36-district Punjab GeoJSON.
+        // Map them to the legacy polygon so they remain visible on the map.
+        'KOT ADDU' => 'MUZAFFARGARH',
+        'JAMPUR' => 'RAJANPUR',
+        'TAUNSA' => 'DERA GHAZI KHAN',
+        'TALAGANG' => 'CHAKWAL',
+        'MURREE' => 'RAWALPINDI',
+        'WAZIRABAD' => 'GUJRANWALA',
+    ];
+
     private function parseWeekNo(?string $weekNo): ?array
     {
         if (! $weekNo || strlen($weekNo) !== 6 || preg_match('/^\d{6}$/', $weekNo) !== 1) {
@@ -677,12 +688,105 @@ class ScorecardService
         );
 
         $rows = $districtsQuery
+            ->orderByDesc('score_percentage')
             ->orderBy('districts.name')
             ->get();
 
+        $scores = [];
+        $ids = [];
+        $ranks = [];
+        $rank = 0;
+        foreach ($rows as $row) {
+            $name = (string) ($row->name ?? '');
+            if ($name === '') {
+                continue;
+            }
+            $rank++;
+            $key = strtoupper(trim($name));
+            $key = self::DISTRICT_GEOJSON_ALIASES[$key] ?? $key;
+
+            $scores[$key] = round((float) ($row->score_percentage ?? 0), 2);
+            $ids[$key] = (int) ($row->id ?? 0);
+
+            if (! isset($ranks[$key])) {
+                $ranks[$key] = $rank;
+            } else {
+                $ranks[$key] = min((int) $ranks[$key], $rank);
+            }
+        }
+
         return [
-            'scores' => $rows->mapWithKeys(fn ($row) => [(string) $row->name => round((float) ($row->score_percentage ?? 0), 2)])->all(),
-            'ids' => $rows->mapWithKeys(fn ($row) => [(string) $row->name => (int) $row->id])->all(),
+            'scores' => $scores,
+            'ids' => $ids,
+            'ranks' => $ranks,
+        ];
+    }
+
+    public function getDivisionMapMeta(array $filters): array
+    {
+        $filters = $this->normalizeFilters($filters);
+
+        $divisionsQuery = Division::query()
+            ->where('is_active', true);
+        $divisionsQuery = $this->applyDivisionUserScope($divisionsQuery);
+        if (! empty($filters['division_id'])) {
+            $divisionsQuery->whereKey($filters['division_id']);
+        }
+
+        $districtAgg = $this->buildDistrictWeightedScoreAggQuery($filters);
+
+        $divisionAgg = DB::query()
+            ->from('districts')
+            ->leftJoinSub($districtAgg['query'], 'score_agg', fn ($j) => $j->on('districts.id', '=', 'score_agg.district_id'))
+            ->where('districts.is_active', true)
+            ->when(! empty($filters['division_id']), fn ($q) => $q->where('districts.division_id', (int) $filters['division_id']))
+            ->select([
+                'districts.division_id',
+                DB::raw("AVG(CASE WHEN COALESCE(score_agg.reported_kpis, 0) > 0 THEN COALESCE(score_agg.score_percentage, 0) ELSE NULL END) as score_percentage"),
+                DB::raw("SUM(CASE WHEN COALESCE(score_agg.reported_kpis, 0) > 0 THEN 1 ELSE 0 END) as reported_districts"),
+            ])
+            ->groupBy('districts.division_id');
+
+        $divisionsQuery->leftJoinSub($divisionAgg, 'div_agg', fn ($j) => $j->on('divisions.id', '=', 'div_agg.division_id'));
+        $divisionsQuery->addSelect([
+            'divisions.id',
+            'divisions.name',
+            DB::raw('COALESCE(div_agg.score_percentage, 0) as score_percentage'),
+            DB::raw('COALESCE(div_agg.reported_districts, 0) as reported_districts'),
+        ]);
+
+        $divisionsQuery = $this->applyPerformanceFilter(
+            $divisionsQuery,
+            $filters,
+            'COALESCE(div_agg.score_percentage, 0)',
+            'COALESCE(div_agg.reported_districts, 0) = 0'
+        );
+
+        $rows = $divisionsQuery
+            ->orderByDesc('score_percentage')
+            ->orderBy('divisions.name')
+            ->get();
+
+        $scores = [];
+        $ids = [];
+        $ranks = [];
+        $rank = 0;
+        foreach ($rows as $row) {
+            $name = (string) ($row->name ?? '');
+            if ($name === '') {
+                continue;
+            }
+            $rank++;
+            $key = strtoupper(trim($name));
+            $scores[$key] = round((float) ($row->score_percentage ?? 0), 2);
+            $ids[$key] = (int) ($row->id ?? 0);
+            $ranks[$key] = $rank;
+        }
+
+        return [
+            'scores' => $scores,
+            'ids' => $ids,
+            'ranks' => $ranks,
         ];
     }
 

@@ -120,6 +120,7 @@
     $selectedMonth      = $filters['month'] ?? now()->format('m');
     $selectedYear       = $filters['year'] ?? now()->format('Y');
     $selectedAreaType   = $filters['area_type'] ?? 'district';
+    $isDivision         = $selectedAreaType === 'division';
     $selectedKpiCategoryId    = $filters['kpi_category_id'] ?? '';
     $selectedCalculationType  = $filters['calculation_type'] ?? 'general';
     if ($selectedCalculationType === 'negative_marking') { $selectedCalculationType = 'special_branch_negative'; }
@@ -128,11 +129,15 @@
     $mainRoute  = Route::has('scorecard.index') ? route('scorecard.index') : url()->current();
     $tierRoute  = Route::has('scorecard.tier')  ? route('scorecard.tier')  : '#';
 
-    $districtRankingItems = method_exists($districtRanking ?? null, 'getCollection')
-        ? $districtRanking->getCollection()->values()
-        : collect($districtRanking ?? [])->values();
-    $pageOffset = method_exists($districtRanking ?? null, 'currentPage')
-        ? (($districtRanking->currentPage() - 1) * $districtRanking->perPage())
+    $tableRanking = $isDivision ? ($divisionRanking ?? null) : ($districtRanking ?? null);
+    // Keep legacy variable name used throughout the Blade below.
+    $districtRanking = $tableRanking;
+
+    $districtRankingItems = method_exists($tableRanking ?? null, 'getCollection')
+        ? $tableRanking->getCollection()->values()
+        : collect($tableRanking ?? [])->values();
+    $pageOffset = method_exists($tableRanking ?? null, 'currentPage')
+        ? (($tableRanking->currentPage() - 1) * $tableRanking->perPage())
         : 0;
 
     $scoreMeta = function ($score) {
@@ -153,6 +158,10 @@
     // Leaflet map data (keys MUST match GeoJSON district names)
     $districtScores = $districtScores ?? [];
     $districtMapIds = $districtMapIds ?? [];
+    $divisionScores = $divisionScores ?? [];
+    $divisionMapIds = $divisionMapIds ?? [];
+    $districtMapRanks = $districtMapRanks ?? [];
+    $divisionMapRanks = $divisionMapRanks ?? [];
 
     // Inject map arrays with UPPERCASE keys for JS lookups
     $mapScores = collect($districtScores)->mapWithKeys(function ($score, $name) {
@@ -163,9 +172,21 @@
         $nm = strtoupper((string) $name);
         return [$nm => $id];
     })->all();
-    $mapDivisionIds = collect($divisions ?? [])->mapWithKeys(function ($div) {
-        $nm = strtoupper((string) ($div->name ?? ''));
-        return $nm ? [$nm => (int) $div->id] : [];
+    $mapDistrictRanks = collect($districtMapRanks)->mapWithKeys(function ($rank, $name) {
+        $nm = strtoupper((string) $name);
+        return [$nm => (int) $rank];
+    })->all();
+    $mapDivisionScores = collect($divisionScores)->mapWithKeys(function ($score, $name) {
+        $nm = strtoupper((string) $name);
+        return [$nm => (float) $score];
+    })->all();
+    $mapDivisionIds = collect($divisionMapIds)->mapWithKeys(function ($id, $name) {
+        $nm = strtoupper((string) $name);
+        return $nm ? [$nm => (int) $id] : [];
+    })->all();
+    $mapDivisionRanks = collect($divisionMapRanks)->mapWithKeys(function ($rank, $name) {
+        $nm = strtoupper((string) $name);
+        return $nm ? [$nm => (int) $rank] : [];
     })->all();
 
     $perfHref = function (string $key) use ($mainRoute, $selectedPerformance) {
@@ -323,18 +344,26 @@
                                 @php
                                     $score       = (float)($row->score_percentage ?? 0);
                                     $meta        = $scoreMeta($score);
-                                    $areaName    = optional($row->district ?? null)->name ?? 'N/A';
+                                    $areaName    = $isDivision
+                                                    ? (optional($row->division ?? null)->name ?? 'N/A')
+                                                    : (optional($row->district ?? null)->name ?? 'N/A');
                                     $rank        = $pageOffset + $loop->iteration;
-                                    $detailUrl   = Route::has('scorecard.district-detail')
+                                    if ($isDivision) {
+                                        $detailUrl = Route::has('scorecard.division-detail')
+                                                    ? route('scorecard.division-detail', array_merge(['division' => $row->division_id], request()->query()))
+                                                    : '#';
+                                    } else {
+                                        $detailUrl = Route::has('scorecard.district-detail')
                                                     ? route('scorecard.district-detail', array_merge(['district' => $row->district_id], request()->query()))
                                                     : '#';
+                                    }
                                 @endphp
                                 <tr data-area="{{ strtoupper($areaName) }}"
                                     data-detail="{{ $detailUrl }}"
                                     onclick="ppmfMap.onTableClick('{{ strtoupper($areaName) }}')">
                                     <td class="sc-rank"><span class="sc-rank-badge">{{ $rank }}</span></td>
                                     <td>
-                                        <a class="sc-district-name" href="{{ $detailUrl }}" onclick="event.stopPropagation()">
+                                        <a class="sc-district-name" target="_blank" rel="noopener" href="{{ $detailUrl }}" onclick="event.stopPropagation()">
                                             {{ $areaName }}<i class="bi bi-box-arrow-up-right ms-1" style="font-size:11px"></i>
                                         </a>
                                         <div class="sc-muted">Punjab {{ $selectedAreaType === 'division' ? 'Division' : 'District' }}</div>
@@ -437,7 +466,10 @@ const ppmfMap = (function(){
     /* Scores injected from PHP — uppercase keys */
     let SCORES   = @json($mapScores);
     let DIST_IDS = @json($mapDistrictIds);
-    const DIV_IDS  = @json($mapDivisionIds);
+    let RANKS    = @json($mapDistrictRanks);
+    let DIV_IDS  = @json($mapDivisionIds);
+    let DIV_SCORES = @json($mapDivisionScores);
+    let DIV_RANKS  = @json($mapDivisionRanks);
     const AREA_TYPE = '{{ $selectedAreaType }}';
 
     /* Detail URL template */
@@ -449,7 +481,7 @@ const ppmfMap = (function(){
         var base = '#';
         @endif
         var q = @json(request()->query());
-        var qs = Object.keys(q).length ? '&'+new URLSearchParams(q).toString() : '';
+        var qs = Object.keys(q).length ? '?'+new URLSearchParams(q).toString() : '';
         return base + qs;
     }
 
@@ -461,7 +493,7 @@ const ppmfMap = (function(){
         var base = '#';
         @endif
         var q = @json(request()->query());
-        var qs = Object.keys(q).length ? '&'+new URLSearchParams(q).toString() : '';
+        var qs = Object.keys(q).length ? '?'+new URLSearchParams(q).toString() : '';
         return base + qs;
     }
 
@@ -487,14 +519,38 @@ const ppmfMap = (function(){
         var sc   = SCORES[nm];
         var gr   = gradeStr(sc);
         var did  = DIST_IDS[nm];
+        var rk   = RANKS[nm];
 
         layer.bindPopup(
             '<div class="lf-head"><h4>'+name+'</h4><span>'+div+' Division</span></div>'
             +'<div class="lf-body">'
+            +'<div class="lf-row"><span class="lf-lbl">Rank</span><span class="lf-val">'+(rk?('#'+rk):'—')+'</span></div>'
             +'<div class="lf-row"><span class="lf-lbl">Score</span><span class="lf-val">'+(sc!==undefined&&sc!==null?Number(sc).toFixed(2)+'%':'Unreported')+'</span></div>'
             +'<div class="lf-row"><span class="lf-lbl">Grade</span><span class="lf-badge '+gr.cls+'">'+gr.txt+'</span></div>'
             +(did?'<a class="lf-link" href="'+detailUrl(did)+'">View District Scorecard &rarr;</a>':'')
             +'<div style="margin-top:8px;font-size:11px;color:#64748b;font-weight:700;text-align:center">Tip: click district to open detail in new tab</div>'
+            +'</div>',
+            {maxWidth:220}
+        );
+    }
+
+    function rebuildDivisionPopup(layer){
+        if(!layer || !layer.feature || !layer.feature.properties) return;
+        var div = layer.feature.properties.name || '';
+        var nm  = String(div).toUpperCase();
+        var sc  = DIV_SCORES[nm];
+        var gr  = gradeStr(sc);
+        var divId = DIV_IDS[nm];
+        var rk  = DIV_RANKS[nm];
+
+        layer.bindPopup(
+            '<div class="lf-head"><h4>'+div+' Division</h4></div>'
+            +'<div class="lf-body">'
+            +'<div class="lf-row"><span class="lf-lbl">Rank</span><span class="lf-val">'+(rk?('#'+rk):'—')+'</span></div>'
+            +'<div class="lf-row"><span class="lf-lbl">Score</span><span class="lf-val">'+(sc!==undefined&&sc!==null?Number(sc).toFixed(2)+'%':'Unreported')+'</span></div>'
+            +'<div class="lf-row"><span class="lf-lbl">Grade</span><span class="lf-badge '+gr.cls+'">'+gr.txt+'</span></div>'
+            +(divId ? '<a class="lf-link" href="'+divisionDetailUrl(divId)+'" target="_blank" rel="noopener">View Division Scorecard &rarr;</a>' : '')
+            +'<div style="margin-top:8px;font-size:11px;color:#64748b;font-weight:700;text-align:center">Tip: click division to open detail in new tab</div>'
             +'</div>',
             {maxWidth:220}
         );
@@ -505,6 +561,10 @@ const ppmfMap = (function(){
 
         SCORES = normalizeUpperKeyMap(payload.scores || payload.score || payload.SCORES || payload);
         DIST_IDS = normalizeUpperKeyMap(payload.ids || payload.DIST_IDS || {});
+        RANKS = normalizeUpperKeyMap(payload.ranks || payload.RANKS || {});
+        DIV_SCORES = normalizeUpperKeyMap(payload.div_scores || payload.divScores || payload.DIV_SCORES || {});
+        DIV_IDS = normalizeUpperKeyMap(payload.div_ids || payload.divIds || payload.DIV_IDS || DIV_IDS);
+        DIV_RANKS = normalizeUpperKeyMap(payload.div_ranks || payload.divRanks || payload.DIV_RANKS || {});
 
         if(distLayer){
             distLayer.eachLayer(function(layer){
@@ -512,6 +572,15 @@ const ppmfMap = (function(){
                 var nm = String(name).toUpperCase();
                 layer.setStyle({fillColor:scoreColor(SCORES[nm]),weight:1.5,color:'#fff',fillOpacity:.85});
                 rebuildDistrictPopup(layer);
+            });
+        }
+
+        if(divLayer){
+            divLayer.eachLayer(function(layer){
+                var div = layer.feature?.properties?.name || '';
+                var nm = String(div).toUpperCase();
+                layer.setStyle({fillColor:scoreColor(DIV_SCORES[nm]),weight:2,color:'#fff',fillOpacity:.78});
+                rebuildDivisionPopup(layer);
             });
         }
 
@@ -748,17 +817,14 @@ const ppmfMap = (function(){
         divLayer = L.geoJSON(data,{
             style:function(f){
                 var div = f.properties.name||'';
-                return {fillColor:DIV_COL[div]||'#94a3b8',weight:2,color:'#fff',fillOpacity:.78};
+                var nm = String(div).toUpperCase();
+                return {fillColor:scoreColor(DIV_SCORES[nm]),weight:2,color:'#fff',fillOpacity:.78};
             },
             onEachFeature:function(f,layer){
                 var div = f.properties.name||'';
-                var divId = DIV_IDS[String(div).toUpperCase()];
-                layer.bindPopup(
-                    '<div class="lf-head"><h4>'+div+' Division</h4></div>'
-                    +'<div class="lf-body">'
-                    +(divId ? '<a class="lf-link" href="'+divisionDetailUrl(divId)+'" target="_blank" rel="noopener">Open Division Detail &rarr;</a>' : '')
-                    +'</div>',{maxWidth:200}
-                );
+                var nm = String(div).toUpperCase();
+                var divId = DIV_IDS[nm];
+                rebuildDivisionPopup(layer);
                 layer.on({
                     mouseover:function(e){e.target.setStyle({weight:3.5,fillOpacity:.95});e.target.bringToFront();e.target.openPopup();},
                     mouseout: function(e){divLayer.resetStyle(e.target);e.target.closePopup();},

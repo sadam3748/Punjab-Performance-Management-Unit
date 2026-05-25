@@ -54,6 +54,7 @@ class ScorecardController extends Controller
             ? $this->scorecardService->getDivisionSummary($filters)
             : $this->scorecardService->getScorecardSummary($filters);
         $districtMapMeta = $this->scorecardService->getDistrictMapMeta($filters);
+        $divisionMapMeta = $this->scorecardService->getDivisionMapMeta($filters);
         $districtScores = $districtMapMeta['scores'];
         $districtMapIds = $districtMapMeta['ids'];
 
@@ -64,6 +65,10 @@ class ScorecardController extends Controller
             'categoryRanking' => $this->scorecardService->getCategoryRanking($filters),
             'districtScores'  => $districtScores,
             'districtMapIds'  => $districtMapIds,
+            'divisionScores'  => $divisionMapMeta['scores'],
+            'divisionMapIds'  => $divisionMapMeta['ids'],
+            'districtMapRanks'=> $districtMapMeta['ranks'] ?? [],
+            'divisionMapRanks'=> $divisionMapMeta['ranks'] ?? [],
 
             'divisions'       => $filterData['divisions'],
             'districts'       => $filterData['districts'],
@@ -121,6 +126,7 @@ class ScorecardController extends Controller
         );
 
         $districtMapMeta = $this->scorecardService->getDistrictMapMeta($filters);
+        $divisionMapMeta = $this->scorecardService->getDivisionMapMeta($filters);
 
         return response()->json([
             'status' => 'success',
@@ -128,10 +134,14 @@ class ScorecardController extends Controller
             'map' => [
                 'scores' => $districtMapMeta['scores'],
                 'ids' => $districtMapMeta['ids'],
+                'div_scores' => $divisionMapMeta['scores'],
+                'div_ids' => $divisionMapMeta['ids'],
+                'ranks' => $districtMapMeta['ranks'] ?? [],
+                'div_ranks' => $divisionMapMeta['ranks'] ?? [],
             ],
             'html' => [
                 'status_cards' => view('scorecard.partials.index-status-cards', compact('summary', 'filters'))->render(),
-                'table_panel' => view('scorecard.partials.index-table-panel', compact('districtRanking', 'filters'))->render(),
+                'table_panel' => view('scorecard.partials.index-table-panel', compact('districtRanking', 'divisionRanking', 'filters'))->render(),
                 'week_options' => view('scorecard.partials.week-options', ['weekOptions' => $weekOptions, 'selectedWeekRange' => (string) ($filters['week_range'] ?? '')])->render(),
             ],
         ]);
@@ -182,6 +192,7 @@ class ScorecardController extends Controller
             'tierRanking'   => $this->scorecardService->getTierDistrictRanking($filters),
             'districtScores' => $districtMapMeta['scores'],
             'districtMapIds' => $districtMapMeta['ids'],
+            'districtMapRanks' => $districtMapMeta['ranks'] ?? [],
 
             'divisions'     => $filterData['divisions'],
             'districts'     => $filterData['districts'],
@@ -242,6 +253,7 @@ class ScorecardController extends Controller
             'map' => [
                 'scores' => $districtMapMeta['scores'],
                 'ids' => $districtMapMeta['ids'],
+                'ranks' => $districtMapMeta['ranks'] ?? [],
             ],
             'html' => [
                 'results' => view('scorecard.partials.tier-results', compact('tierSummary', 'tierRanking', 'filters'))->render(),
