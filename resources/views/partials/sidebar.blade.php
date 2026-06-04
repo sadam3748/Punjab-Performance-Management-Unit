@@ -16,7 +16,7 @@
     {{-- Overview --}}
     <div class="nav-group-label">Overview</div>
 
-    <div class="nav-item">
+    <div class="nav-item" style="display:none;">
       <a href="{{ route('dashboard') }}" class="nav-link {{ request()->routeIs('dashboard') ? 'active' : '' }}" title="Dashboard">
         <i class="bi bi-speedometer2"></i>
         <span class="nav-text">Dashboard</span>
