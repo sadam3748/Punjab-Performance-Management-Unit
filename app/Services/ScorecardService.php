@@ -5,13 +5,17 @@ use App\Models\District;
 use App\Models\DistrictKpiScore;
 use App\Models\Division;
 use App\Models\KpiCategory;
+use App\Models\KpiScoringParameter;
 use App\Models\Tehsil;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class ScorecardService
 {
+    private static bool $scorecardWeightWarningsLogged = false;
+
     private const ALLOWED_CALCULATION_TYPES = [
         'general',
         'sixty_forty',
@@ -372,6 +376,7 @@ class ScorecardService
     private function buildDistrictWeightedScoreAggQuery(array $filters): array
     {
         $filters = $this->normalizeFilters($filters);
+        $this->warnIfScorecardWeightsAreInvalid();
 
         $kpiCategories = $this->getKpiCategoriesForWeights($filters);
         $weights = $this->getKpiDisplayWeightages($kpiCategories);
@@ -428,7 +433,7 @@ class ScorecardService
             ->groupBy('d.district_id');
 
         $agg->addSelect([
-            DB::raw('CASE WHEN SUM(CASE WHEN s.is_reported = true THEN w.weightage ELSE 0 END) > 0 THEN (SUM(CASE WHEN s.is_reported = true THEN ((COALESCE(s.final_score, 0) * w.weightage) / 100) ELSE 0 END) / SUM(CASE WHEN s.is_reported = true THEN w.weightage ELSE 0 END)) * 100 ELSE 0 END as score_percentage'),
+            DB::raw('SUM(CASE WHEN s.is_reported = true THEN ((COALESCE(s.final_score, 0) * w.weightage) / 100) ELSE 0 END) as score_percentage'),
         ]);
 
         return [
@@ -1335,19 +1340,11 @@ class ScorecardService
             ]
         );
 
-        // Totals shown on detail should match main scorecard behavior:
-        // exclude missing/unreported KPIs from denominator (weight covered).
-        $scaled = [
-            'previous_2' => $covered['previous_2'] > 0 ? (($totals['previous_2'] / $covered['previous_2']) * 100) : 0,
-            'previous_1' => $covered['previous_1'] > 0 ? (($totals['previous_1'] / $covered['previous_1']) * 100) : 0,
-            'current' => $covered['current'] > 0 ? (($totals['current'] / $covered['current']) * 100) : 0,
-        ];
-
         $totals = [
-            'weightage' => 100.0,
-            'previous_2' => round($scaled['previous_2'], 2),
-            'previous_1' => round($scaled['previous_1'], 2),
-            'current' => round($scaled['current'], 2),
+            'weightage' => round($totals['weightage'], 2),
+            'previous_2' => round($totals['previous_2'], 2),
+            'previous_1' => round($totals['previous_1'], 2),
+            'current' => round($totals['current'], 2),
             'covered_weight_previous_2' => round($covered['previous_2'], 2),
             'covered_weight_previous_1' => round($covered['previous_1'], 2),
             'covered_weight_current' => round($covered['current'], 2),
@@ -1414,15 +1411,54 @@ class ScorecardService
 
         $sum = array_sum($raw);
         if ($sum <= 0) {
+            Log::warning('Active KPI scorecard weightage total is zero; using equal fallback weights.', [
+                'kpi_category_ids' => $catIds,
+            ]);
             $equal = 100 / max(1, count($catIds));
             return collect($catIds)->mapWithKeys(fn ($id) => [$id => round($equal, 2)])->all();
         }
 
-        // Normalize to 100 (guard against mis-seeded totals).
-        return collect($catIds)->mapWithKeys(function ($id) use ($raw, $sum) {
-            $w = (float) ($raw[$id] ?? 0);
-            return [$id => round(($w / $sum) * 100, 2)];
-        })->all();
+        return collect($catIds)->mapWithKeys(fn ($id) => [$id => round((float) ($raw[$id] ?? 0), 2)])->all();
+    }
+
+    private function warnIfScorecardWeightsAreInvalid(): void
+    {
+        if (self::$scorecardWeightWarningsLogged) {
+            return;
+        }
+
+        self::$scorecardWeightWarningsLogged = true;
+
+        $categories = KpiCategory::query()
+            ->where('is_active', true)
+            ->get(['id', 'name', 'scorecard_weightage']);
+
+        $categoryTotal = round((float) $categories->sum(fn ($c) => (float) ($c->scorecard_weightage ?? 0)), 2);
+        if ($categoryTotal !== 100.0) {
+            Log::warning('Active KPI category scorecard weightage total is not 100.', [
+                'active_category_total' => $categoryTotal,
+            ]);
+        }
+
+        $parameterTotals = KpiScoringParameter::query()
+            ->select('kpi_category_id', DB::raw('SUM(weightage) as parameter_total'))
+            ->where('is_active', true)
+            ->groupBy('kpi_category_id')
+            ->pluck('parameter_total', 'kpi_category_id');
+
+        foreach ($categories as $category) {
+            $categoryWeight = round((float) ($category->scorecard_weightage ?? 0), 2);
+            $parameterTotal = round((float) ($parameterTotals[$category->id] ?? 0), 2);
+
+            if ($categoryWeight !== $parameterTotal) {
+                Log::warning('Active KPI parameter total does not match category scorecard weightage.', [
+                    'kpi_category_id' => $category->id,
+                    'category' => $category->name,
+                    'category_weightage' => $categoryWeight,
+                    'parameter_total' => $parameterTotal,
+                ]);
+            }
+        }
     }
 
     private function getDistrictRankForWeek(District $district, array $filters, ?string $weekNo): ?int

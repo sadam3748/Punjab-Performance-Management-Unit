@@ -79,27 +79,38 @@ class ScorecardCalculationService
 
     public function calculateDistrictKpiFinalScore(DistrictKpiScore $score): DistrictKpiScore
     {
-        $reportedScore = (float) $score->details()->sum('score_obtained');
-        $penaltyScore = (float) $score->penalties()->sum('penalty_score');
+        $categoryWeightage = (float) ($score->kpiCategory?->scorecard_weightage ?? 0);
+        if ($categoryWeightage <= 0) {
+            $categoryWeightage = (float) $score->details()->sum('weightage');
+        }
+        $categoryWeightage = max(0.01, $categoryWeightage);
+
+        // PPT parameters now carry actual category marks, not internal 100-point weights.
+        $reportedMarks = (float) $score->details()->sum('score_obtained');
+        $penaltyMarks = (float) $score->penalties()->sum('penalty_score');
 
         $verified = (float) ($score->verified_score ?? 0);
         $calculationType = $score->calculation_type ?? 'general';
+        $verifiedMarks = $verified > $categoryWeightage
+            ? ($verified / 100) * $categoryWeightage
+            : $verified;
 
         if ($calculationType === 'sixty_forty') {
-            $final = ($reportedScore * 0.60) + ($verified * 0.40) - $penaltyScore;
+            $finalMarks = ($reportedMarks * 0.60) + ($verifiedMarks * 0.40) - $penaltyMarks;
         } else { // general, special_branch_negative, victims_negative, negative_marking
-            $final = $reportedScore - $penaltyScore;
+            $finalMarks = $reportedMarks - $penaltyMarks;
         }
 
-        $final = max(0, min(100, round($final, 2)));
-        $reportedScore = max(0, min(100, round($reportedScore, 2)));
-        $penaltyScore = max(0, round($penaltyScore, 2));
+        $finalMarks = max(0, min($categoryWeightage, round($finalMarks, 2)));
+        $reportedMarks = max(0, min($categoryWeightage, round($reportedMarks, 2)));
+        $penaltyMarks = max(0, round($penaltyMarks, 2));
+        $finalPercentage = round(($finalMarks / $categoryWeightage) * 100, 2);
 
-        $meta = $this->getGradeMeta($final);
+        $meta = $this->getGradeMeta($finalPercentage);
 
-        $score->reported_score = $reportedScore;
-        $score->penalty_score = $penaltyScore;
-        $score->final_score = $final;
+        $score->reported_score = $reportedMarks;
+        $score->penalty_score = $penaltyMarks;
+        $score->final_score = $finalPercentage;
         $score->grade = $meta['grade'];
         $score->performance_label = $meta['label'];
 
