@@ -325,11 +325,7 @@
         </div>
     </div>
 
-    @if(method_exists($reportData, 'links'))
-        <div class="card-ppmf-body border-top">
-            {{ $reportData->links() }}
-        </div>
-    @endif
+    @include('reports.partials._pagination', ['paginator' => $reportData, 'label' => 'records'])
 </div>
 
 @endsection

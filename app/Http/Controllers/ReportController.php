@@ -121,6 +121,7 @@ class ReportController extends Controller
         return view('reports.division-score', [
             'reportData'    => $reportData,
             'districts'     => $filterData['districts'],
+            'tehsils'       => $filterData['tehsils'],
             'kpiCategories' => $filterData['kpiCategories'],
             'filters'       => $filters,
         ]);
@@ -141,6 +142,7 @@ class ReportController extends Controller
         return view('reports.district-comparison', [
             'reportData'    => $reportData,
             'districts'     => $filterData['districts'],
+            'tehsils'       => $filterData['tehsils'],
             'kpiCategories' => $filterData['kpiCategories'],
             'filters'       => $filters,
         ]);
@@ -161,6 +163,7 @@ class ReportController extends Controller
         return view('reports.district-accumulative', [
             'reportData'    => $reportData,
             'districts'     => $filterData['districts'],
+            'tehsils'       => $filterData['tehsils'],
             'kpiCategories' => $filterData['kpiCategories'],
             'filters'       => $filters,
         ]);
@@ -181,6 +184,7 @@ class ReportController extends Controller
         return view('reports.division-kpi-ranking', [
             'reportData'    => $reportData,
             'districts'     => $filterData['districts'],
+            'tehsils'       => $filterData['tehsils'],
             'kpiCategories' => $filterData['kpiCategories'],
             'filters'       => $filters,
         ]);
@@ -201,6 +205,7 @@ class ReportController extends Controller
         return view('reports.district-weekly-kpi-inspection', [
             'reportData'    => $reportData,
             'districts'     => $filterData['districts'],
+            'tehsils'       => $filterData['tehsils'],
             'kpiCategories' => $filterData['kpiCategories'],
             'filters'       => $filters,
         ]);

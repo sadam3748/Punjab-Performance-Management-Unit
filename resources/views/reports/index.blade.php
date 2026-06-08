@@ -231,18 +231,6 @@
                 'icon' => 'bi bi-arrow-left-right',
                 'route' => 'reports.district-week-rank-changelog',
             ],
-            [
-                'title' => 'District SFN Victim Tier',
-                'desc' => 'District tier-wise report summary.',
-                'icon' => 'bi bi-layers',
-                'route' => 'reports.district-sfn-victim-tier',
-            ],
-            [
-                'title' => 'District SFN Comparison',
-                'desc' => 'SFN comparison report using district performance data.',
-                'icon' => 'bi bi-columns-gap',
-                'route' => 'reports.district-sfn-comparison',
-            ],
         ];
     @endphp
 

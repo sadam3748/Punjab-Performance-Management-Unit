@@ -156,7 +156,7 @@
                 Government of Punjab · S&amp;GAD / PMRU Wing<br>
                 Performance Monitoring Portal
             </p>
-
+{{--
             <div class="login-feature animate-in delay-1">
                 <i class="bi bi-speedometer2"></i>
                 <div class="login-feature-text">
@@ -179,7 +179,7 @@
                     <p>Geo Tagging & Baseline Assets</p>
                     <span>Monitor field data with district and tehsil coverage</span>
                 </div>
-            </div>
+            </div> --}}
 
         </div>
     </div>

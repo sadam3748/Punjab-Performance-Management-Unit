@@ -19,7 +19,7 @@
     .sc-table{width:100%;border-collapse:separate;border-spacing:0;margin:0}
     .sc-table thead th{background:linear-gradient(180deg,var(--gov-green-dark) 0%,var(--gov-green) 100%);color:#fff;padding:12px;font-size:11px;text-transform:uppercase;letter-spacing:.06em;font-weight:900;white-space:nowrap;border-bottom:2px solid var(--gold)}
     .sc-table tbody td{padding:12px;border-bottom:1px solid rgba(148,163,184,.18);font-size:13px;font-weight:700;color:#0f172a;vertical-align:middle}
-    .sc-table tbody tr{cursor:pointer;transition:background .12s}
+    .sc-table tbody tr{transition:background .12s}
     .sc-table tbody tr:hover{background:#f0fdf9}
     .sc-table tbody tr.map-highlighted{background:#ecfdf5!important;box-shadow:inset 4px 0 0 var(--gov-green)}
     .sc-rank{width:58px;text-align:center}
@@ -124,8 +124,6 @@
     $selectedAreaType   = $filters['area_type'] ?? 'district';
     $isDivision         = $selectedAreaType === 'division';
     $selectedKpiCategoryId    = $filters['kpi_category_id'] ?? '';
-    $selectedCalculationType  = $filters['calculation_type'] ?? 'general';
-    if ($selectedCalculationType === 'negative_marking') { $selectedCalculationType = 'special_branch_negative'; }
     $selectedPerPage    = (int)($filters['per_page'] ?? 10);
     $perPageOptions     = [10, 25, 50, 100];
     $mainRoute  = Route::has('scorecard.index') ? route('scorecard.index') : url()->current();
@@ -275,10 +273,7 @@
                 <div class="col-12 col-md-6 col-lg-4">
                     <label class="form-label">Calculation</label>
                     <select name="calculation_type" class="form-select">
-                        <option value="general"                  @selected($selectedCalculationType==='general')                 >General</option>
-                        <option value="sixty_forty"              @selected($selectedCalculationType==='sixty_forty')             >Sixty Forty</option>
-                        <option value="special_branch_negative"  @selected($selectedCalculationType==='special_branch_negative') >Special Branch</option>
-                        <option value="victims_negative"         @selected($selectedCalculationType==='victims_negative')        >Victims Negative</option>
+                        <option value="general" selected>General</option>
                     </select>
                 </div>
                 <div class="col-12 col-md-6 col-lg-4 d-flex align-items-end">
@@ -306,7 +301,7 @@
                     <h5 class="sc-panel-title" id="tablePanelTitle">
                         @if($selectedAreaType === 'division') Division @else District @endif Ranking
                     </h5>
-                    <div class="sc-panel-subtitle">Click row → highlight on map · Click name → view detail</div>
+                    <div class="sc-panel-subtitle">Click district name to view detail. Map focus changes only through direct map interaction.</div>
                 </div>
                 <div class="d-flex flex-column align-items-end gap-2">
                     <div class="text-end sc-muted">
@@ -356,13 +351,11 @@
                                                     : '#';
                                     } else {
                                         $detailUrl = Route::has('scorecard.district-detail')
-                                                    ? route('scorecard.district-detail', array_merge(['district' => $row->district_id], request()->query()))
+                                                    ? route('scorecard.district-detail', array_merge(['district' => $row->district_id, 'return_url' => route('scorecard.index', request()->query())], request()->query()))
                                                     : '#';
                                     }
                                 @endphp
-                                <tr data-area="{{ strtoupper($areaName) }}"
-                                    data-detail="{{ $detailUrl }}"
-                                    onclick="ppmfMap.onTableClick('{{ strtoupper($areaName) }}')">
+                                <tr data-area="{{ strtoupper($areaName) }}" data-detail="{{ $detailUrl }}">
                                     <td class="sc-rank"><span class="sc-rank-badge">{{ $rank }}</span></td>
                                     <td>
                                         <a class="sc-district-name" target="_blank" rel="noopener" href="{{ $detailUrl }}" onclick="event.stopPropagation()">
@@ -586,7 +579,6 @@ const ppmfMap = (function(){
             });
         }
 
-        bindTableHover();
 
         // Update label colour classes based on refreshed scores
         if(districtLabelMarkers && districtLabelMarkers.length){
@@ -640,8 +632,8 @@ const ppmfMap = (function(){
             zoomSnap: 0.25,
             minZoom: 6.5,
             maxZoom: 13,
-            /* Tight initial bounds for Punjab */
-            center:[30.5, 71.5], zoom:8
+            /* Stable Punjab overview; only explicit map actions change focus. */
+            center:[31.0, 72.5], zoom:6.75
         });
 
         /* NO tile layer at all → only our GeoJSON is visible */
@@ -676,38 +668,6 @@ const ppmfMap = (function(){
         if(sel) sel.addEventListener('change', function(){ switchView(this.value==='division'?'division':'district'); });
 
         /* Table row hover → map highlight */
-        document.querySelectorAll('#districtTable tbody tr[data-area]').forEach(function(tr){
-            tr.addEventListener('mouseenter', function(){
-                var l = layersByName[this.dataset.area];
-                if(l && distLayer && leafletMap.hasLayer(distLayer)){
-                    l.setStyle({weight:3,color:'#134e4a',fillOpacity:.95}); l.bringToFront();
-                }
-            });
-            tr.addEventListener('mouseleave', function(){
-                var l = layersByName[this.dataset.area];
-                if(l && distLayer) distLayer.resetStyle(l);
-            });
-        });
-    }
-
-    function bindTableHover(){
-        const table = document.getElementById('districtTable');
-        if(!table) return;
-        table.querySelectorAll('tbody tr[data-area]').forEach(function(tr){
-            if(tr.dataset && tr.dataset.hoverBound === '1') return;
-            if(tr.dataset) tr.dataset.hoverBound = '1';
-
-            tr.addEventListener('mouseenter', function(){
-                var l = layersByName[this.dataset.area];
-                if(l && distLayer && leafletMap.hasLayer(distLayer)){
-                    l.setStyle({weight:3,color:'#134e4a',fillOpacity:.95}); l.bringToFront();
-                }
-            });
-            tr.addEventListener('mouseleave', function(){
-                var l = layersByName[this.dataset.area];
-                if(l && distLayer) distLayer.resetStyle(l);
-            });
-        });
     }
 
     /* ── DISTRICT LAYER ────────────────────────────────── */
@@ -885,13 +845,6 @@ const ppmfMap = (function(){
     }
 
     /* ── PUBLIC: table row onclick ─────────────────────── */
-    function onTableClick(nm){
-        var l = layersByName[nm];
-        if(!l || !leafletMap.hasLayer(distLayer)) return;
-        leafletMap.fitBounds(l.getBounds(),{padding:[44,44],maxZoom:12});
-        setTimeout(function(){ l.openPopup(); },300);
-    }
-
     /* ── PUBLIC: switchView ────────────────────────────── */
     function switchView(view, skipFormSync){
         currentView = view;
@@ -907,7 +860,7 @@ const ppmfMap = (function(){
             }
             if(distLayer){ leafletMap.addLayer(distLayer); }
             if(labelGroup){ leafletMap.addLayer(labelGroup); }
-            if(distLayer) leafletMap.fitBounds(distLayer.getBounds(),{padding:[24,24],maxZoom:11.5});
+            if(distLayer && !skipFormSync) leafletMap.fitBounds(distLayer.getBounds(),{padding:[24,24],maxZoom:11.5});
             updateDistrictLabels();
             document.getElementById('mapPanelTitle').textContent = 'Punjab Districts — KPI Performance';
             document.getElementById('mapPanelSub').textContent   = '36 Districts · Click district to view scorecard';
@@ -917,7 +870,7 @@ const ppmfMap = (function(){
             if(labelGroup) leafletMap.removeLayer(labelGroup);
             if(divLayer){ leafletMap.addLayer(divLayer); }
             if(divLayer && divLayer._divLabels) leafletMap.addLayer(divLayer._divLabels);
-            if(divLayer) leafletMap.fitBounds(divLayer.getBounds(),{padding:[24,24],maxZoom:10.5});
+            if(divLayer && !skipFormSync) leafletMap.fitBounds(divLayer.getBounds(),{padding:[24,24],maxZoom:10.5});
             document.getElementById('mapPanelTitle').textContent = 'Punjab Divisions — Overview';
             document.getElementById('mapPanelSub').textContent   = '9 Divisions · Click division to view report';
             document.getElementById('mapStatusText').textContent  = '9 Punjab divisions · click to view division report';
@@ -937,7 +890,7 @@ const ppmfMap = (function(){
     }
 
     document.addEventListener('DOMContentLoaded', init);
-    return { switchView, onTableClick, fitAll, setData };
+    return { switchView, fitAll, setData };
 })();
 window.ppmfMap = ppmfMap;
 </script>

@@ -5,8 +5,8 @@ use App\Models\District;
 use App\Models\Inspection;
 use App\Models\KpiCategory;
 use App\Models\Tehsil;
-use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
 
 class InspectionService
 {
@@ -201,7 +201,7 @@ class InspectionService
 
     public function getInspectionDisplayFields(Inspection $inspection): array
     {
-        $slug = (string) ($inspection->kpiCategory?->slug ?? '');
+        $slug   = (string) ($inspection->kpiCategory?->slug ?? '');
         $detail = is_array($inspection->detail_data ?? null) ? ($inspection->detail_data ?? []) : [];
 
         $getFirst = function (array $keys) use ($detail, $inspection) {
@@ -213,29 +213,31 @@ class InspectionService
             return null;
         };
 
-        $primaryLabel = 'Primary Detail';
+        $primaryLabel   = 'Primary Detail';
         $secondaryLabel = 'Secondary Detail / Address';
 
         if (Str::contains($slug, ['water-filtration', 'filtration-plant'])) {
-            $primaryLabel = 'Filter Plant / UC';
+            $primaryLabel   = 'Filter Plant / UC';
             $secondaryLabel = 'Address';
         } elseif (Str::contains($slug, ['marriage', 'wedding', 'marriage-functions'])) {
-            $primaryLabel = 'Marriage Hall Name';
+            $primaryLabel   = 'Marriage Hall Name';
             $secondaryLabel = 'Address';
         } elseif (Str::contains($slug, ['manhole'])) {
-            $primaryLabel = 'Location / Road';
+            $primaryLabel   = 'Location / Road';
             $secondaryLabel = 'Nearby Landmark / Address';
         } elseif (Str::contains($slug, ['stray-dog', 'stray-dogs'])) {
-            $primaryLabel = 'Area / Location';
+            $primaryLabel   = 'Area / Location';
             $secondaryLabel = 'Address / Remarks';
         }
 
-        $primaryValue = $getFirst(['primary', 'name', 'title', 'location', 'site_name', 'plant_name']) ?? ($inspection->main_title ?? null);
-        $secondaryValue = $getFirst(['secondary', 'address', 'landmark', 'remarks', 'site_address']) ?? ($inspection->main_address ?? null);
+        // $primaryValue = $getFirst(['primary', 'name', 'title', 'location', 'site_name', 'plant_name']) ?? ($inspection->main_title ?? null);
+        // $secondaryValue = $getFirst(['secondary', 'address', 'landmark', 'remarks', 'site_address']) ?? ($inspection->main_address ?? null);
+        $primaryValue = $inspection->main_title ?? $getFirst(['primary_detail', 'primary', 'name', 'title', 'location', 'site_name', 'plant_name']);
 
+        $secondaryValue = $inspection->main_address ?? $getFirst(['secondary_detail', 'secondary', 'address', 'landmark', 'site_address']);
         return [
-            'primary_label' => $primaryLabel,
-            'primary_value' => $primaryValue ?: 'N/A',
+            'primary_label'   => $primaryLabel,
+            'primary_value'   => $primaryValue ?: 'N/A',
             'secondary_label' => $secondaryLabel,
             'secondary_value' => $secondaryValue ?: 'N/A',
         ];
@@ -254,7 +256,7 @@ class InspectionService
         $actionsCount = 0;
         foreach ($actions as $value) {
             if (is_array($value)) {
-                $actionsCount += count(array_filter($value, fn ($v) => $v !== null && $v !== ''));
+                $actionsCount += count(array_filter($value, fn($v) => $v !== null && $v !== ''));
                 continue;
             }
             if ($value !== null && $value !== '') {
@@ -264,8 +266,8 @@ class InspectionService
 
         return [
             'evidence_count' => $evidenceCount,
-            'actions_count' => $actionsCount,
-            'total_items' => $evidenceCount + $actionsCount,
+            'actions_count'  => $actionsCount,
+            'total_items'    => $evidenceCount + $actionsCount,
         ];
     }
 }

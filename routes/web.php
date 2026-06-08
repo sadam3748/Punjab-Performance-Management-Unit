@@ -71,6 +71,15 @@ Route::prefix('portal')->middleware('auth')->group(function () {
     Route::get('/scorecard/district/{district}', [ScorecardController::class, 'districtDetail'])
         ->name('scorecard.district-detail');
 
+    Route::get('/scorecard/district/{district}/kpi/{kpiCategory}/details', [ScorecardController::class, 'districtKpiDetails'])
+        ->name('scorecard.district.kpi-details');
+
+    Route::get('/scorecard/district/{district}/kpi/{kpiCategory}/submission', [ScorecardController::class, 'submissionForm'])
+        ->name('scorecard.submission.create');
+
+    Route::post('/scorecard/district/{district}/kpi/{kpiCategory}/submission', [ScorecardController::class, 'storeSubmission'])
+        ->name('scorecard.submission.store');
+
     Route::get('/scorecard/division/{division}', [ScorecardController::class, 'divisionDetail'])
         ->name('scorecard.division-detail');
 

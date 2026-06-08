@@ -43,6 +43,16 @@
     </div>
 </div>
 
+<div class="formula-help-card">
+    <div class="title"><i class="bi bi-info-circle me-1"></i> How this score is calculated</div>
+    <div class="text-muted small">Each district score is built from PPT-based sub-KPI marks. Open a district, then click any KPI name to view its formula-wise detail.</div>
+    <div class="formula">
+        <span>Sub-KPI Score = Actual &divide; Target &times; Weightage</span>
+        <span>KPI Score = Sum of Sub-KPI Scores</span>
+        <span>District Score = Sum of KPI Marks</span>
+    </div>
+</div>
+
 <div class="sc-panel" id="tierRankingContainer">
     <div class="sc-panel-header">
         <div>
@@ -89,7 +99,7 @@
                         <tr>
                             <td class="sc-rank"><span class="sc-rank-badge">{{ $rank }}</span></td>
                             <td>
-                                <a class="sc-district-name text-decoration-none" target="_blank" href="{{ route('scorecard.district-detail', array_merge(['district' => $row->district_id], request()->query())) }}">
+                                <a class="sc-district-name text-decoration-none" target="_blank" href="{{ route('scorecard.district-detail', array_merge(['district' => $row->district_id, 'return_url' => route('scorecard.tier', request()->query())], request()->query())) }}">
                                     {{ $districtName }}
                                     <i class="bi bi-box-arrow-up-right ms-1" style="font-size:12px"></i>
                                 </a>

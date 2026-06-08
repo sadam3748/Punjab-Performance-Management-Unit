@@ -1,14 +1,14 @@
 @extends('layouts.app')
 
-@section('title', 'District SFN Comparison')
+@section('title', 'District Performance Comparison')
 
 @section('content')
 
 <div class="page-title-bar">
     <div>
-        <h1 class="page-title">District SFN Comparison</h1>
+        <h1 class="page-title">District Performance Comparison</h1>
         <p class="page-subtitle">
-            Compare SFN district performance by tier, KPI category, inspection count and approval score.
+            Compare district performance by tier, KPI category, inspection count and approval score.
         </p>
     </div>
 
@@ -18,10 +18,6 @@
             Back to Reports
         </a>
 
-        <a href="{{ route('reports.district-sfn-victim-tier') }}" class="btn-gov btn-gov-primary">
-            <i class="bi bi-layers"></i>
-            SFN Victim Tier
-        </a>
     </div>
 </div>
 
@@ -196,7 +192,7 @@
         <div>
             <div class="card-ppmf-title">
                 <i class="bi bi-columns-gap"></i>
-                District SFN Comparison Data
+                District Performance Comparison Data
             </div>
             <p class="card-subtitle mb-0">
                 Total records:
@@ -330,8 +326,8 @@
                             <td colspan="11" class="text-center py-5">
                                 <div class="manual-box-ppmf">
                                     <i class="bi bi-columns-gap"></i>
-                                    <h5>No SFN Comparison Data Found</h5>
-                                    <p>No district SFN comparison report data is available for selected filters.</p>
+                                    <h5>No District Performance Comparison Data Found</h5>
+                                    <p>No district performance comparison data is available for selected filters.</p>
                                 </div>
                             </td>
                         </tr>
@@ -342,77 +338,7 @@
         </div>
     </div>
 
-    @if (method_exists($reportData, 'lastPage') && $reportData->lastPage() > 1)
-        @php
-            $reportData->appends(request()->query());
-
-            $currentPage = $reportData->currentPage();
-            $lastPage = $reportData->lastPage();
-            $startPage = max(1, $currentPage - 2);
-            $endPage = min($lastPage, $currentPage + 2);
-
-            if ($currentPage <= 3) {
-                $endPage = min($lastPage, 5);
-            }
-
-            if ($currentPage >= $lastPage - 2) {
-                $startPage = max(1, $lastPage - 4);
-            }
-        @endphp
-
-        <div class="inspection-pagination-bar">
-            <div class="inspection-pagination-summary-group">
-                <div class="inspection-pagination-summary">
-                    Showing {{ number_format($reportData->firstItem()) }} to {{ number_format($reportData->lastItem()) }}
-                    of {{ number_format($reportData->total()) }} records
-                </div>
-                <div class="inspection-pagination-per-page">
-                    {{ (int) ($filters['per_page'] ?? $reportData->perPage()) }} per page
-                </div>
-            </div>
-
-            <nav class="inspection-pagination-nav" aria-label="District SFN Comparison pagination">
-                <a
-                    href="{{ $reportData->previousPageUrl() ?: 'javascript:void(0)' }}"
-                    class="inspection-page-link {{ $reportData->onFirstPage() ? 'disabled' : '' }}"
-                >
-                    <i class="bi bi-chevron-left"></i>
-                    Previous
-                </a>
-
-                @if ($startPage > 1)
-                    <a href="{{ $reportData->url(1) }}" class="inspection-page-number">1</a>
-                    @if ($startPage > 2)
-                        <span class="inspection-page-dots">...</span>
-                    @endif
-                @endif
-
-                @for ($page = $startPage; $page <= $endPage; $page++)
-                    <a
-                        href="{{ $reportData->url($page) }}"
-                        class="inspection-page-number {{ $page == $currentPage ? 'active' : '' }}"
-                    >
-                        {{ $page }}
-                    </a>
-                @endfor
-
-                @if ($endPage < $lastPage)
-                    @if ($endPage < $lastPage - 1)
-                        <span class="inspection-page-dots">...</span>
-                    @endif
-                    <a href="{{ $reportData->url($lastPage) }}" class="inspection-page-number">{{ $lastPage }}</a>
-                @endif
-
-                <a
-                    href="{{ $reportData->nextPageUrl() ?: 'javascript:void(0)' }}"
-                    class="inspection-page-link {{ $reportData->hasMorePages() ? '' : 'disabled' }}"
-                >
-                    Next
-                    <i class="bi bi-chevron-right"></i>
-                </a>
-            </nav>
-        </div>
-    @endif
+    @include('reports.partials._pagination', ['paginator' => $reportData, 'label' => 'records'])
 </div>
 
 @endsection
@@ -494,107 +420,5 @@
         border-radius: 999px;
     }
 
-    .inspection-pagination-bar {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 14px;
-        padding: 14px 18px;
-        border-top: 1px solid #e2e8f0;
-        background: #ffffff;
-    }
-
-    .inspection-pagination-summary-group {
-        display: flex;
-        flex-direction: column;
-        gap: 2px;
-        min-width: 240px;
-    }
-
-    .inspection-pagination-summary {
-        color: #0f172a;
-        font-size: 12.5px;
-        font-weight: 800;
-        white-space: nowrap;
-    }
-
-    .inspection-pagination-per-page {
-        color: #64748b;
-        font-size: 12px;
-        font-weight: 800;
-        white-space: nowrap;
-    }
-
-    .inspection-pagination-nav {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        flex-wrap: wrap;
-        justify-content: flex-end;
-    }
-
-    .inspection-page-link,
-    .inspection-page-number {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        gap: 8px;
-        min-width: 44px;
-        height: 38px;
-        padding: 0 12px;
-        border-radius: 12px;
-        border: 1px solid #e2e8f0;
-        background: #ffffff;
-        color: #0f172a;
-        text-decoration: none;
-        font-size: 12.5px;
-        font-weight: 900;
-        transition: 0.16s ease;
-        white-space: nowrap;
-    }
-
-    .inspection-page-link:hover,
-    .inspection-page-number:hover {
-        border-color: #16a34a;
-        color: #14532d;
-        background: #f0fdf4;
-    }
-
-    .inspection-page-number.active {
-        background: #14532d;
-        border-color: #14532d;
-        color: #ffffff;
-    }
-
-    .inspection-page-link.disabled {
-        opacity: 0.55;
-        pointer-events: none;
-    }
-
-    .inspection-page-dots {
-        padding: 0 4px;
-        color: #64748b;
-        font-weight: 900;
-    }
-
-    @media (max-width: 991px) {
-        .inspection-pagination-bar {
-            align-items: flex-start;
-            flex-direction: column;
-        }
-
-        .inspection-pagination-summary {
-            white-space: normal;
-        }
-
-        .inspection-pagination-summary-group {
-            min-width: 0;
-        }
-
-        .inspection-pagination-nav {
-            justify-content: flex-start;
-            width: 100%;
-        }
-    }
 </style>
 @endpush

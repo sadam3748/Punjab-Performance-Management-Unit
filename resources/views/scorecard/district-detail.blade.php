@@ -11,7 +11,6 @@
     $score = (float) ($summary['score'] ?? 0);
     $reported = (int) ($summary['reported_kpis'] ?? 0);
     $totalKpis = (int) ($summary['total_kpis'] ?? 0);
-    $calcType = $summary['calculation_type'] ?? ($calculationType ?? 'general');
     $detailPerPage = (int) ($detailPerPage ?? request('detail_per_page', 10));
     $detailPerPageOptions = [10, 20, 25, 50];
 
@@ -23,7 +22,10 @@
     };
     $meta = $gradeMeta($score);
 
-    $backUrl = url()->previous() ?: (Route::has('scorecard.index') ? route('scorecard.index', $filters) : '#');
+    $returnUrl = $filters['return_url'] ?? null;
+    $backUrl = $returnUrl && str_starts_with($returnUrl, url('/'))
+        ? $returnUrl
+        : (url()->previous() ?: (Route::has('scorecard.index') ? route('scorecard.index', $filters) : '#'));
 @endphp
 
 @push('styles')
@@ -62,6 +64,12 @@
     .sd-trend.up{color:#16a34a}.sd-trend.down{color:#dc2626}.sd-trend.eq{color:#64748b}
     .sd-legend{font-size:12px;color:#64748b;font-weight:700}
     .sd-legend i{margin-right:6px}
+    .sd-kpi-link{display:inline-flex;align-items:center;gap:7px;color:#14532d;text-decoration:none;font-weight:900;line-height:1.25}
+    .sd-kpi-link:hover{color:#16a34a;text-decoration:none}
+    .sd-kpi-help{display:block;margin-top:4px;color:#64748b;font-size:11px;font-weight:700}
+    .formula-help-card{background:#f8fffb;border:1px solid rgba(0,104,56,.16);border-radius:14px;padding:14px 16px;margin-bottom:16px}
+    .formula-help-card .title{color:#14532d;font-size:13px;font-weight:900;margin-bottom:4px}
+    .formula-help-card .formula{display:flex;flex-wrap:wrap;gap:7px 18px;margin-top:7px;color:#334155;font-size:11.5px;font-weight:800}
 
     /* Metric cards (same visual language as KPI Graphical Report) */
     .ppmf-metric-grid{display:grid;gap:12px;align-items:stretch;margin-bottom:18px}
@@ -99,7 +107,7 @@
     <div>
         <h2 class="page-title mb-1">District {{ strtoupper($districtName) }} Scorecard</h2>
         <p class="page-subtitle mb-0" style="font-size:12px;font-weight:800">
-            Weekly KPI Performance · {{ $weekHeaders[2]['label'] ?? '—' }} · Calc: {{ ucfirst(str_replace('_',' ', $calcType)) }}
+            Weekly KPI Performance · {{ $weekHeaders[2]['label'] ?? '—' }}
         </p>
     </div>
     <div class="d-flex flex-wrap gap-2 align-items-center">
@@ -109,6 +117,11 @@
         @endif
         @if(Route::has('scorecard.tier'))
             <a href="{{ route('scorecard.tier', $filters) }}" class="btn btn-gov btn-gov-outline"><i class="bi bi-layers"></i> Tier Wise</a>
+        @endif
+        @if(($selectedKpiCategory ?? null) && Route::has('scorecard.submission.create'))
+            <a href="{{ route('scorecard.submission.create', ['district' => $district, 'kpiCategory' => $selectedKpiCategory, 'week_no' => $weekHeaders[2]['week_no'] ?? null]) }}" class="btn btn-gov btn-gov-primary">
+                <i class="bi bi-pencil-square"></i> Submit KPI Data
+            </a>
         @endif
     </div>
 </div>
@@ -185,6 +198,18 @@
             <span><i class="bi bi-dash sd-trend eq"></i> No change</span>
         </div>
     </div>
+    <div class="card-ppmf-body pb-0">
+        <div class="formula-help-card">
+            <div class="title"><i class="bi bi-info-circle me-1"></i> How this score is calculated</div>
+            <div class="text-muted small">Each KPI score is calculated from its PPT-based sub-KPIs. Sub-KPI marks make the KPI score, and all KPI marks make the district score out of 100.</div>
+            <div class="formula">
+                <span>Sub-KPI Score = Actual &divide; Target &times; Sub-KPI Weightage</span>
+                <span>KPI Score = Sum of Sub-KPI Scores</span>
+                <span>District Score = Sum of KPI Marks</span>
+                <span>Example: 8.8 of 10 marks = 88% and contributes 8.8 district marks.</span>
+            </div>
+        </div>
+    </div>
     <div class="card-ppmf-body d-flex align-items-center justify-content-between gap-2 flex-wrap">
         <div class="text-muted" style="font-size:13px;font-weight:850">
             {{ method_exists($rows, 'total') ? 'Total: ' . number_format($rows->total()) . ' KPI(s)' : '' }}
@@ -259,7 +284,21 @@
                             <td class="text-center fw-bold">
                                 {{ method_exists($rows, 'currentPage') ? (($rows->currentPage() - 1) * $rows->perPage() + $loop->iteration) : $loop->iteration }}
                             </td>
-                            <td class="fw-bold">{{ $r['kpi_name'] }}</td>
+                            <td>
+                                <a
+                                    class="sd-kpi-link"
+                                    title="View sub-KPI formula detail"
+                                    href="{{ route('scorecard.district.kpi-details', array_merge($filters, [
+                                        'district' => $district,
+                                        'kpiCategory' => $r['kpi_category_id'],
+                                        'week_no' => $weekHeaders[2]['week_no'] ?? null,
+                                    ])) }}"
+                                >
+                                    <span>{{ $r['kpi_name'] }}</span>
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                                <span class="sd-kpi-help">View sub-KPI formula detail</span>
+                            </td>
                             <td class="text-nowrap">{{ number_format((float)$r['weightage'], 2) }}</td>
                             <td>
                                 <div class="sd-cell">
@@ -375,6 +414,18 @@
             </div>
         </div>
     @endif
+</div>
+
+<div class="card-ppmf mt-3">
+    <div class="card-ppmf-body d-flex align-items-center gap-3">
+        <div class="ppmf-metric-icon" style="--accent:#166534;width:42px;height:42px;border-radius:13px;font-size:18px">
+            <i class="bi bi-eye"></i>
+        </div>
+        <div>
+            <div class="fw-bold text-success">Sub-KPI Formula Detail</div>
+            <div class="text-muted small">Click any KPI name to view formula-wise sub-KPI calculation detail.</div>
+        </div>
+    </div>
 </div>
 @endsection
 

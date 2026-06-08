@@ -32,7 +32,7 @@
     <div class="sc-panel-header">
         <div>
             <h5 class="sc-panel-title" id="tablePanelTitle">{{ $isDivision ? 'Division' : 'District' }} Ranking</h5>
-            <div class="sc-panel-subtitle">Click row to highlight on map · Click name to view detail</div>
+            <div class="sc-panel-subtitle">Click district name to view detail. Map focus changes only through direct map interaction.</div>
         </div>
         <div class="d-flex flex-column align-items-end gap-2">
             <div class="text-end sc-muted">
@@ -83,13 +83,11 @@
                                 : '#';
                         } else {
                             $detailUrl = Route::has('scorecard.district-detail')
-                                ? route('scorecard.district-detail', array_merge(['district' => $row->district_id], request()->query()))
+                                ? route('scorecard.district-detail', array_merge(['district' => $row->district_id, 'return_url' => route('scorecard.index', request()->query())], request()->query()))
                                 : '#';
                         }
                     @endphp
-                    <tr data-area="{{ strtoupper($areaName) }}"
-                        data-detail="{{ $detailUrl }}"
-                        onclick="ppmfMap.onTableClick('{{ strtoupper($areaName) }}')">
+                    <tr data-area="{{ strtoupper($areaName) }}" data-detail="{{ $detailUrl }}">
                         <td class="sc-rank"><span class="sc-rank-badge">{{ $rank }}</span></td>
                         <td>
                             <a class="sc-district-name" target="_blank" rel="noopener" href="{{ $detailUrl }}" onclick="event.stopPropagation()">

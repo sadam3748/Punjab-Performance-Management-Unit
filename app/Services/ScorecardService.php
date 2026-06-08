@@ -23,6 +23,29 @@ class ScorecardService
         'victims_negative',
     ];
 
+    private const VISIBLE_PPT_FORMULAS = [
+        'percentage' => [
+            'label' => 'Percentage Formula',
+            'explanation' => 'numerator / denominator x weightage',
+        ],
+        'resolved_ratio' => [
+            'label' => 'Resolved Ratio Formula',
+            'explanation' => 'resolved / total x weightage',
+        ],
+        'amount_deposit_ratio' => [
+            'label' => 'Fine Deposit Formula',
+            'explanation' => 'amount deposited / PSID generated x weightage',
+        ],
+        'yes_no' => [
+            'label' => 'Yes/No Formula',
+            'explanation' => 'yes = full marks; no = 0',
+        ],
+        'mobility_index' => [
+            'label' => 'Mobility Index Formula',
+            'explanation' => 'weighted mobility scores / inspection intervals x weightage',
+        ],
+    ];
+
     private const DISTRICT_GEOJSON_ALIASES = [
         // New districts that are not present in the 36-district Punjab GeoJSON.
         // Map them to the legacy polygon so they remain visible on the map.
@@ -1373,6 +1396,120 @@ class ScorecardService
             'calculationType' => $calculationType,
             'detailPerPage' => $detailPerPage,
         ];
+    }
+
+    public function getDistrictKpiSubDetail(District $district, KpiCategory $kpiCategory, array $filters): array
+    {
+        $filters = $this->normalizeFilters($filters);
+        $calculationType = (string) ($filters['calculation_type'] ?? 'general');
+        $weekNo = $filters['week_no'] ?? null;
+
+        if (! $weekNo) {
+            $latestScore = DistrictKpiScore::query()
+                ->where('district_id', $district->id)
+                ->where('kpi_category_id', $kpiCategory->id)
+                ->where('period_type', 'weekly')
+                ->where('is_active', true);
+            $latestScore = $this->applyCalculationTypeFilter($latestScore, $calculationType)->latest('week_no')->first();
+            $weekNo = $latestScore?->week_no;
+        }
+
+        $scoreQuery = DistrictKpiScore::query()
+            ->where('district_id', $district->id)
+            ->where('kpi_category_id', $kpiCategory->id)
+            ->where('period_type', 'weekly')
+            ->where('week_no', $weekNo)
+            ->where('is_active', true)
+            ->where('is_reported', true);
+        $score = $this->applyCalculationTypeFilter($scoreQuery, $calculationType)->first();
+
+        $visibleFormulaTypes = array_keys(self::VISIBLE_PPT_FORMULAS);
+        $detailsQuery = $score
+            ? $score->details()
+                ->whereHas('scoringParameter', fn ($query) => $query
+                    ->where('is_active', true)
+                    ->whereIn('formula_type', $visibleFormulaTypes))
+                ->with('scoringParameter')
+                ->orderBy('id')
+            : null;
+
+        $totalWeightage = $detailsQuery ? (float) (clone $detailsQuery)->sum('weightage') : 0;
+        $totalScore = $detailsQuery ? (float) (clone $detailsQuery)->sum('score_obtained') : 0;
+        $details = $detailsQuery
+            ? $detailsQuery->paginate(10)->withQueryString()
+            : new \Illuminate\Pagination\LengthAwarePaginator([], 0, 10, 1, [
+                'path' => request()->url(),
+                'query' => request()->query(),
+            ]);
+
+        $details->setCollection($details->getCollection()->map(function ($detail) {
+            $parameter = $detail->scoringParameter;
+            $formulaType = (string) ($parameter?->formula_type ?? $parameter?->scoring_method ?? 'percentage');
+
+            return [
+                'parameter_name' => $parameter?->parameter_name ?? 'Sub-KPI',
+                'formula_label' => self::VISIBLE_PPT_FORMULAS[$formulaType]['label'] ?? 'PPT Formula',
+                'formula_expression' => $parameter?->formula_expression ?? $parameter?->description,
+                'numerator_label' => $parameter?->numerator_label,
+                'denominator_label' => $parameter?->denominator_label,
+                'numerator_value' => $detail->numerator_value ?? $detail->reported_value,
+                'denominator_value' => $detail->denominator_value ?? $detail->target_value,
+                'achieved_percentage' => $detail->achieved_percentage,
+                'weightage' => $detail->weightage,
+                'score_obtained' => $detail->score_obtained,
+                'evidence' => $detail->evidence,
+            ];
+        }));
+
+        $periodLabel = 'No reporting week selected';
+        if ($weekNo) {
+            $periodLabel = $this->getWeekDateRange((string) $weekNo)['label_with_year'];
+        }
+
+        return [
+            'score' => $score,
+            'details' => $details,
+            'periodLabel' => $periodLabel,
+            'weekNo' => $weekNo,
+            'visibleFormulaLegend' => $this->getVisiblePptFormulaLegend(),
+            'summary' => [
+                'weightage' => (float) $kpiCategory->scorecard_weightage,
+                'marks_obtained' => round($totalScore, 2),
+                'score_percentage' => (float) ($score?->final_score ?? 0),
+                'reported_percentage' => (float) ($score?->reported_score ?? 0),
+                'performance' => $score?->performance_label ?? 'Unreported',
+                'grade' => $score?->grade ?? '—',
+                'total_weightage' => round($totalWeightage, 2),
+            ],
+        ];
+    }
+
+    public function getVisiblePptFormulaLegend(): array
+    {
+        $activeTypes = KpiScoringParameter::query()
+            ->where('is_active', true)
+            ->whereIn('formula_type', array_keys(self::VISIBLE_PPT_FORMULAS))
+            ->distinct()
+            ->pluck('formula_type')
+            ->all();
+
+        $legend = collect(self::VISIBLE_PPT_FORMULAS)
+            ->only($activeTypes)
+            ->all();
+
+        $hasTierTargets = KpiScoringParameter::query()
+            ->where('is_active', true)
+            ->whereNotNull('tier_1_target')
+            ->exists();
+
+        if ($hasTierTargets) {
+            $legend['tier_wise_target'] = [
+                'label' => 'Tier-wise Target Formula',
+                'explanation' => 'reported value / target for district tier x weightage',
+            ];
+        }
+
+        return $legend;
     }
 
     private function getWeeklyWindow(?string $currentWeekNo): array

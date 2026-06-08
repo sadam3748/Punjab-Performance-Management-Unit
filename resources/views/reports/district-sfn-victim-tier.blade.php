@@ -1,12 +1,12 @@
 @extends('layouts.app')
 
-@section('title', 'District SFN Victim Tier')
+@section('title', 'District Tier Performance')
 
 @section('content')
 
 <div class="page-title-bar">
     <div>
-        <h1 class="page-title">District SFN Victim Tier</h1>
+        <h1 class="page-title">District Tier Performance</h1>
         <p class="page-subtitle">
             Tier-wise district performance report based on KPI inspections, approvals and score percentage.
         </p>
@@ -20,7 +20,7 @@
 
         <a href="{{ route('reports.district-sfn-comparison') }}" class="btn-gov btn-gov-primary">
             <i class="bi bi-columns-gap"></i>
-            SFN Comparison
+            District Comparison
         </a>
     </div>
 </div>
@@ -196,7 +196,7 @@
         <div>
             <div class="card-ppmf-title">
                 <i class="bi bi-layers"></i>
-                District SFN Victim Tier Data
+                District Tier Performance Data
             </div>
             <p class="card-subtitle mb-0">
                 Total records:
@@ -319,8 +319,8 @@
                             <td colspan="10" class="text-center py-5">
                                 <div class="manual-box-ppmf">
                                     <i class="bi bi-layers"></i>
-                                    <h5>No SFN Victim Tier Data Found</h5>
-                                    <p>No district SFN victim tier report data is available for selected filters.</p>
+                                    <h5>No District Tier Performance Data Found</h5>
+                                    <p>No district tier performance data is available for selected filters.</p>
                                 </div>
                             </td>
                         </tr>
@@ -331,11 +331,7 @@
         </div>
     </div>
 
-    @if(method_exists($reportData, 'links'))
-        <div class="card-ppmf-body border-top">
-            {{ $reportData->links() }}
-        </div>
-    @endif
+    @include('reports.partials._pagination', ['paginator' => $reportData, 'label' => 'records'])
 </div>
 
 @endsection

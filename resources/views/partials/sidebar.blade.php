@@ -92,16 +92,6 @@
           <span class="submenu-text">Category wise District Score Report</span>
         </a>
 
-        <a href="{{ route('reports.district-sfn-victim-tier') }}" class="submenu-link {{ request()->routeIs('reports.district-sfn-victim-tier') ? 'active' : '' }}" title="District Sixty Forty, Negative & Victim Tier Wise">
-          <i class="bi bi-layers"></i>
-          <span class="submenu-text">District Sixty Forty, Negative & Victim Tier Wise</span>
-        </a>
-
-        <a href="{{ route('reports.district-sfn-comparison') }}" class="submenu-link {{ request()->routeIs('reports.district-sfn-comparison') ? 'active' : '' }}" title="District Sixty Forty & Negative Ratio Comparison">
-          <i class="bi bi-arrow-left-right"></i>
-          <span class="submenu-text">District Sixty Forty & Negative Ratio Comparison</span>
-        </a>
-
         <a href="{{ route('reports.division-score') }}" class="submenu-link {{ request()->routeIs('reports.division-score') ? 'active' : '' }}" title="Division Score Report">
           <i class="bi bi-diagram-3"></i>
           <span class="submenu-text">Division Score Report</span>

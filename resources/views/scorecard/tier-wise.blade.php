@@ -19,6 +19,9 @@
     .sc-perf-title{font-size:12px;font-weight:900;text-transform:uppercase;letter-spacing:.06em;color:#334155;line-height:1.2}
     .sc-perf-count{font-size:20px;font-weight:900;color:#0f172a;line-height:1.1}
     .sc-perf-sub{font-size:12px;color:#64748b;font-weight:700;line-height:1.2}
+    .formula-help-card{background:#f8fffb;border:1px solid rgba(0,104,56,.16);border-radius:14px;padding:14px 16px;margin-bottom:16px}
+    .formula-help-card .title{color:#14532d;font-size:13px;font-weight:900;margin-bottom:4px}
+    .formula-help-card .formula{display:flex;flex-wrap:wrap;gap:7px 18px;margin-top:7px;color:#334155;font-size:11.5px;font-weight:800}
     @media(max-width:1199px){.sc-layout{grid-template-columns:1fr}.sc-map-panel{position:relative;top:auto}.sc-google-map-wrap{height:390px}}
     @media(max-width:767px){.sc-page-card{padding:14px}.tier-tabs{grid-template-columns:1fr}.sc-panel-header{display:block}.sc-google-map-wrap{height:320px}.sc-table{min-width:760px}.sc-pagination-wrap{align-items:flex-start}.sc-pagination-wrap .page-link{min-width:34px;height:34px;font-size:12px}}
 
@@ -86,8 +89,6 @@
     $selectedYear = $filters['year'] ?? now()->format('Y');
     $selectedAreaType = 'district';
     $selectedKpiCategoryId = $filters['kpi_category_id'] ?? '';
-    $selectedCalculationType = $filters['calculation_type'] ?? 'general';
-    if ($selectedCalculationType === 'negative_marking') { $selectedCalculationType = 'special_branch_negative'; }
     $selectedPerPage = (int) ($filters['per_page'] ?? 10);
     $perPageOptions = [10, 25, 50, 100];
     $selectedTier = (string)($filters['tier'] ?? '1');
@@ -162,7 +163,7 @@
                 <div class="col-12 col-md-6 col-lg-3"><label class="form-label">Month</label><select name="month" class="form-select">@foreach($monthOptions as $value=>$label)<option value="{{ $value }}" @selected((string)$selectedMonth===(string)$value)>{{ $label }}</option>@endforeach</select></div>
                 <div class="col-12 col-md-6 col-lg-3"><label class="form-label">Year</label><select name="year" class="form-select">@foreach($yearOptions as $year)<option value="{{ $year }}" @selected((string)$selectedYear===(string)$year)>{{ $year }}</option>@endforeach</select></div>
 
-                <div class="col-12 col-md-6 col-lg-3"><label class="form-label">Calculation Type</label><select name="calculation_type" class="form-select"><option value="general" @selected($selectedCalculationType==='general')>General</option><option value="sixty_forty" @selected($selectedCalculationType==='sixty_forty')>Sixty Forty Ratio</option><option value="special_branch_negative" @selected($selectedCalculationType==='special_branch_negative')>Special Branch Negative Marking</option><option value="victims_negative" @selected($selectedCalculationType==='victims_negative')>Victims Negative Marking</option></select></div>
+                <div class="col-12 col-md-6 col-lg-3"><label class="form-label">Calculation Type</label><select name="calculation_type" class="form-select"><option value="general" selected>General</option></select></div>
                 <div class="col-12 col-md-6 col-lg-3">
                     <label class="form-label">KPI Category</label>
                     <select name="kpi_category_id" class="form-select">

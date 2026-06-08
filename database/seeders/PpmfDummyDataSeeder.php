@@ -89,7 +89,7 @@ class PpmfDummyDataSeeder extends Seeder
                     'inspection_datetime' => $inspectionDate,
                     'latitude'            => 30 + (rand(0, 600) / 100),
                     'longitude'           => 70 + (rand(0, 600) / 100),
-                    'main_title'          => 'PPMF Dummy Inspection ' . $recordIndex,
+                    'main_title'          => ' Inspection ' . $recordIndex,
                     'main_address'        => 'Sample Location, ' . $district->name,
                     'detail_data'         => json_encode([
                         'reference_no'    => 'PPMF-DUMMY-' . str_pad($recordIndex, 5, '0', STR_PAD_LEFT),
@@ -108,7 +108,7 @@ class PpmfDummyDataSeeder extends Seeder
                         'fine_amount'    => rand(0, 1) ? rand(1000, 25000) : 0,
                     ]),
                     'status'              => $status,
-                    'remarks'             => 'PPMF dummy inspection record for scorecard testing.',
+                    'remarks'             => 'inspection record for scorecard testing.',
                     'created_at'          => now(),
                     'updated_at'          => now(),
                 ];
@@ -139,7 +139,7 @@ class PpmfDummyDataSeeder extends Seeder
                     'inspection_datetime' => $inspectionDate,
                     'latitude'            => 30 + (rand(0, 600) / 100),
                     'longitude'           => 70 + (rand(0, 600) / 100),
-                    'main_title'          => 'PPMF Dummy Inspection ' . $recordIndex,
+                    'main_title'          => ' Inspection ' . $recordIndex,
                     'main_address'        => 'Sample Location, ' . $district->name,
                     'detail_data'         => json_encode([
                         'reference_no'    => 'PPMF-DUMMY-' . str_pad($recordIndex, 5, '0', STR_PAD_LEFT),
@@ -158,7 +158,7 @@ class PpmfDummyDataSeeder extends Seeder
                         'fine_amount'    => rand(0, 1) ? rand(1000, 25000) : 0,
                     ]),
                     'status'              => $status,
-                    'remarks'             => 'PPMF dummy inspection record for scorecard testing.',
+                    'remarks'             => ' inspection record for scorecard testing.',
                     'created_at'          => now(),
                     'updated_at'          => now(),
                 ];

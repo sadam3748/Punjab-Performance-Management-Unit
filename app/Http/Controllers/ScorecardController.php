@@ -2,17 +2,131 @@
 namespace App\Http\Controllers;
 
 use App\Models\District;
+use App\Models\DistrictKpiScore;
 use App\Models\Division;
+use App\Models\KpiCategory;
+use App\Services\ScorecardCalculationService;
 use App\Services\ScorecardService;
+use App\Services\ScorecardSubmissionService;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class ScorecardController extends Controller
 {
     protected ScorecardService $scorecardService;
 
-    public function __construct(ScorecardService $scorecardService)
+    public function __construct(
+        ScorecardService $scorecardService,
+        protected ScorecardSubmissionService $submissionService,
+        protected ScorecardCalculationService $calculator
+    )
     {
         $this->scorecardService = $scorecardService;
+    }
+
+    public function submissionForm(Request $request, District $district, KpiCategory $kpiCategory)
+    {
+        $default = $this->scorecardService->getLatestCompletedPpmfWeekFilters();
+        $weekNo = (string) $request->input('week_no', $default['week_no'] ?? '');
+        $parameters = $kpiCategory->scoringParameters()
+            ->where('is_active', true)
+            ->orderBy('display_order')
+            ->get();
+        $contextDefaults = [
+            'tehsil_count' => $district->tehsils()->where('is_active', true)->count(),
+            'working_days' => 5,
+        ];
+        $contextFieldsBySlug = [
+            'clearance-of-at-least-one-market-per-working-day-in-each-tehsil' => ['working_days'],
+            'inspection-of-at-least-one-market-per-working-day-in-each-tehsil' => ['working_days'],
+            'inspection-of-at-least-25-educational-institutions-for-zebra-crossings' => ['educational_institutions'],
+            'inspection-of-at-least-25-sale-points-for-illegal-lpg-decanting' => ['lpg_sale_points'],
+            'action-taken-on-violations-for-at-least-15-of-inspections' => ['inspections_count'],
+        ];
+        $requiredContextFields = $parameters
+            ->flatMap(fn ($parameter) => $contextFieldsBySlug[$parameter->parameter_slug] ?? [])
+            ->unique()
+            ->values();
+        $existingScore = DistrictKpiScore::query()
+            ->with('details')
+            ->where('district_id', $district->id)
+            ->where('kpi_category_id', $kpiCategory->id)
+            ->where('period_type', 'weekly')
+            ->where('week_no', $weekNo)
+            ->where('calculation_type', 'general')
+            ->first();
+        $existingDetails = $existingScore?->details?->keyBy('kpi_scoring_parameter_id') ?? collect();
+        $parameterMeta = $parameters->mapWithKeys(function ($parameter) use ($district, $contextDefaults, $contextFieldsBySlug) {
+            $target = $this->calculator->resolveParameterTarget($parameter, $district, [], $contextDefaults);
+            $requiredContext = $contextFieldsBySlug[$parameter->parameter_slug] ?? [];
+            $isYesNo = $parameter->formula_type === 'yes_no';
+            $hasConfiguredTarget = $parameter->target_value !== null
+                || $parameter->tier_1_target !== null
+                || $target !== null;
+
+            return [(int) $parameter->id => [
+                'target' => $target,
+                'has_configured_target' => $hasConfiguredTarget,
+                'is_yes_no' => $isYesNo,
+                'required_context' => $requiredContext,
+                'needs_denominator' => ! $isYesNo && ! $hasConfiguredTarget && $requiredContext === [],
+            ]];
+        });
+
+        return view('scorecard.submission', [
+            'district' => $district,
+            'kpiCategory' => $kpiCategory,
+            'parameters' => $parameters,
+            'weekNo' => $weekNo,
+            'contextDefaults' => $contextDefaults,
+            'requiredContextFields' => $requiredContextFields,
+            'parameterMeta' => $parameterMeta,
+            'existingDetails' => $existingDetails,
+            'existingScore' => $existingScore,
+        ]);
+    }
+
+    public function storeSubmission(Request $request, District $district, KpiCategory $kpiCategory)
+    {
+        $validated = $request->validate([
+            'week_no' => ['required', 'regex:/^\d{6}$/'],
+            'calculation_type' => ['nullable', Rule::in(['general', 'sixty_forty'])],
+            'verified_score' => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'details' => ['required', 'array', 'min:1'],
+            'details.*.kpi_scoring_parameter_id' => ['required', 'integer', 'exists:kpi_scoring_parameters,id'],
+            'details.*.numerator' => ['required', 'numeric', 'min:0'],
+            'details.*.denominator' => ['nullable', 'numeric', 'gt:0'],
+            'details.*.reported_score' => ['nullable', 'numeric', 'min:0'],
+            'details.*.evidence' => ['nullable', 'string', 'max:2000'],
+            'context' => ['nullable', 'array'],
+            'context.tehsil_count' => ['nullable', 'numeric', 'min:0'],
+            'context.working_days' => ['nullable', 'numeric', 'min:0'],
+            'context.educational_institutions' => ['nullable', 'numeric', 'min:0'],
+            'context.lpg_sale_points' => ['nullable', 'numeric', 'min:0'],
+            'context.inspections_count' => ['nullable', 'numeric', 'min:0'],
+        ], [
+            'details.required' => 'Please enter actual value for all sub-KPIs.',
+            'details.*.numerator.required' => 'Please enter actual value for all sub-KPIs.',
+            'details.*.denominator.gt' => 'Denominator cannot be zero.',
+            'details.*.denominator.numeric' => 'Target value must be a valid number.',
+            'week_no.regex' => 'Week number must use YYYYWW format.',
+        ]);
+
+        try {
+            $score = $this->submissionService->submit($district, $kpiCategory, $validated);
+        } catch (\InvalidArgumentException $exception) {
+            throw ValidationException::withMessages(['details' => $exception->getMessage()]);
+        }
+
+        return redirect()
+            ->route('scorecard.district-detail', [
+                'district' => $district,
+                'week_range' => $score->week_no,
+                'kpi_category_id' => $kpiCategory->id,
+                'calculation_type' => $score->calculation_type,
+            ])
+            ->with('success', 'PPT sub-KPI scorecard data submitted and recalculated successfully.');
     }
 
     /*
@@ -103,6 +217,7 @@ class ScorecardController extends Controller
             'performance',
             'per_page',
             'calculation_type',
+            'return_url',
         ]);
 
         $hasAnyFilter = collect($input)->filter(fn ($v) => $v !== null && $v !== '')->isNotEmpty();
@@ -227,6 +342,7 @@ class ScorecardController extends Controller
             'performance',
             'per_page',
             'calculation_type',
+            'return_url',
         ]);
 
         $hasAnyFilter = collect($input)->filter(fn ($v) => $v !== null && $v !== '')->isNotEmpty();
@@ -319,6 +435,7 @@ class ScorecardController extends Controller
             'performance',
             'per_page',
             'calculation_type',
+            'return_url',
         ]);
 
         $hasAnyFilter = collect($input)->filter(fn ($v) => $v !== null && $v !== '')->isNotEmpty();
@@ -330,6 +447,45 @@ class ScorecardController extends Controller
 
         return view('scorecard.district-detail', [
             'district' => $district,
+            'filters' => $filters,
+            ...$detail,
+        ]);
+    }
+
+    public function districtKpiDetails(Request $request, District $district, KpiCategory $kpiCategory)
+    {
+        $input = $request->only([
+            'scope',
+            'period',
+            'period_type',
+            'week_range',
+            'week_no',
+            'month',
+            'year',
+            'area_type',
+            'division_id',
+            'district_id',
+            'tehsil_id',
+            'tier',
+            'date_from',
+            'date_to',
+            'performance',
+            'per_page',
+            'detail_per_page',
+            'calculation_type',
+            'return_url',
+        ]);
+
+        $hasAnyFilter = collect($input)->filter(fn ($value) => $value !== null && $value !== '')->isNotEmpty();
+        $filters = $hasAnyFilter
+            ? $this->scorecardService->normalizeFilters($input)
+            : $this->scorecardService->getLatestCompletedPpmfWeekFilters();
+
+        $detail = $this->scorecardService->getDistrictKpiSubDetail($district, $kpiCategory, $filters);
+
+        return view('scorecard.kpi-sub-detail', [
+            'district' => $district,
+            'kpiCategory' => $kpiCategory,
             'filters' => $filters,
             ...$detail,
         ]);

@@ -11,6 +11,8 @@ class DistrictKpiScoreDetail extends Model
 
     protected $casts = [
         'reported_value'       => 'decimal:2',
+        'numerator_value'      => 'decimal:2',
+        'denominator_value'    => 'decimal:2',
         'target_value'         => 'decimal:2',
         'achieved_percentage'  => 'decimal:2',
         'weightage'            => 'decimal:2',
@@ -28,4 +30,3 @@ class DistrictKpiScoreDetail extends Model
         return $this->belongsTo(KpiScoringParameter::class, 'kpi_scoring_parameter_id');
     }
 }
-

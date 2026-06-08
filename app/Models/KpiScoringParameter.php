@@ -13,8 +13,12 @@ class KpiScoringParameter extends Model
     protected $casts = [
         'weightage'         => 'decimal:2',
         'target_value'      => 'decimal:2',
+        'tier_1_target'     => 'decimal:2',
+        'tier_2_target'     => 'decimal:2',
+        'tier_3_target'     => 'decimal:2',
         'higher_is_better'  => 'boolean',
         'sort_order'        => 'integer',
+        'display_order'     => 'integer',
         'is_active'         => 'boolean',
     ];
 
@@ -28,4 +32,3 @@ class KpiScoringParameter extends Model
         return $this->hasMany(DistrictKpiScoreDetail::class, 'kpi_scoring_parameter_id');
     }
 }
-
