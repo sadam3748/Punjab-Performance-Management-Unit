@@ -61,7 +61,7 @@ class AuthController extends Controller
         $request->session()->regenerate();
 
         return redirect()
-            ->route('scorecard.district-wise')
+            ->route('dashboard')
             ->with('success', 'Login successful.');
     }
 

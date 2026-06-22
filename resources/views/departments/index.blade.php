@@ -1,5 +1,5 @@
 @extends('layouts.app')
-@section('title', 'Department Reports | PPMF Portal')
+@section('title', 'Department Reports')
 @section('page_title', 'Department Reports')
 
 @section('content')

@@ -149,12 +149,12 @@
 
             <h1 class="login-title">
                 Punjab Performance<br>
-                Management Framework
+                Management Unit
             </h1>
 
             <p class="login-sub">
                 Government of Punjab · S&amp;GAD / PMRU Wing<br>
-                Performance Monitoring Portal
+                KPI Performance Management Portal
             </p>
 {{--
             <div class="login-feature animate-in delay-1">
@@ -192,13 +192,13 @@
                 <div class="login-logo-row">
                     <img
                         src="{{ asset('images/pmru-logo.png') }}"
-                        alt="PMRU Wing Logo"
+                        alt="PPMU Logo"
                         class="portal-logo login-logo"
                     >
 
                     <div>
-                        <h1>Punjab Performance Management Framework</h1>
-                        <p>S&amp;GAD Department | PMRU Wing | Government of the Punjab</p>
+                        <h1>PPMU - Punjab Performance Management Unit</h1>
+                        <p>KPI Performance Management | Government of the Punjab</p>
                     </div>
                 </div>
             </div>

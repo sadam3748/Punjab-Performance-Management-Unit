@@ -30,7 +30,7 @@ class PpmfDummyUserSeeder extends Seeder
         if ($lahoreDistrict) {
             $users[] = [
                 'name'        => 'Commissioner Lahore',
-                'username'    => 'commissioner.lahore',
+                'username'    => 'com.lahore',
                 'email'       => 'commissioner.lahore@ppmf.local',
                 'password'    => Hash::make('123456'),
                 'role_id'     => 4,
@@ -74,7 +74,7 @@ class PpmfDummyUserSeeder extends Seeder
         if ($layyahDistrict) {
             $users[] = [
                 'name'        => 'Commissioner Dera Ghazi Khan',
-                'username'    => 'commissioner.dgk',
+                'username'    => 'com.dgkhan',
                 'email'       => 'commissioner.dgk@ppmf.local',
                 'password'    => Hash::make('123456'),
                 'role_id'     => 4,

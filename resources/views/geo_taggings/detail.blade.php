@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Geo Tagging Detail | PPMF Portal')
+@section('title', 'Geo Tagging Detail')
 @section('page_title', 'Geo Tagging Detail')
 
 @section('content')

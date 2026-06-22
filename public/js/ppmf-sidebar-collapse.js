@@ -8,12 +8,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
   if (!sidebar) return;
 
-  const STORAGE_KEY = 'ppmfSidebarPinned';
+  const STORAGE_KEY = 'ppmuSidebarExpandedV3';
   const isMobile = () => window.matchMedia && window.matchMedia('(max-width: 1024px)').matches;
 
   function readPinned() {
     try {
-      return localStorage.getItem(STORAGE_KEY) === '1';
+      const saved = localStorage.getItem(STORAGE_KEY);
+      return saved === '1';
     } catch (e) {
       return false;
     }
@@ -26,6 +27,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function applyPinned(pinned) {
+    root.classList.remove('ppmu-sidebar-peek');
     if (pinned) {
       root.classList.add('ppmf-sidebar-pinned');
       root.classList.remove('ppmf-sidebar-collapsed');
@@ -35,8 +37,21 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  function openPeek() {
+    if (!isMobile() && !root.classList.contains('ppmf-sidebar-pinned')) {
+      root.classList.add('ppmu-sidebar-peek');
+    }
+  }
+
+  function closePeek() {
+    root.classList.remove('ppmu-sidebar-peek');
+  }
+
   // Initial desktop state
   applyPinned(readPinned());
+
+  sidebar.addEventListener('mouseenter', openPeek);
+  sidebar.addEventListener('mouseleave', closePeek);
 
   // Toggle button pins/unpins on desktop (mobile handled by initSidebar in ppmf-dashboard.js)
   toggles.forEach(btn => {
@@ -53,6 +68,7 @@ document.addEventListener('DOMContentLoaded', () => {
   window.addEventListener('resize', () => {
     if (!isMobile()) {
       sidebar.classList.remove('open');
+      closePeek();
       const overlay = document.querySelector('.sidebar-overlay');
       if (overlay) overlay.classList.remove('show');
       applyPinned(readPinned());

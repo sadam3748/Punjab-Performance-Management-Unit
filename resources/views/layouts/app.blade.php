@@ -7,7 +7,7 @@
 
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
-    <title>@yield('title', 'Dashboard') — PPMF Portal</title>
+    <title>@yield('title', 'Dashboard') | PPMU - Punjab Performance Management Unit</title>
 
     {{-- Bootstrap 5 --}}
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
@@ -16,14 +16,15 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
 
     {{-- PPMF Global Theme CSS --}}
-    <link rel="stylesheet" href="{{ asset('css/ppmf-style.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/ppmf-sidebar-collapse.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/ppmf-style.css') }}?v={{ filemtime(public_path('css/ppmf-style.css')) }}">
+    <link rel="stylesheet" href="{{ asset('css/ppmf-sidebar-collapse.css') }}?v={{ filemtime(public_path('css/ppmf-sidebar-collapse.css')) }}">
 
     {{-- Sidebar state (desktop): collapsed by default, pin via localStorage --}}
     <script>
         (function () {
             try {
-                var pinned = localStorage.getItem('ppmfSidebarPinned') === '1';
+                var saved = localStorage.getItem('ppmuSidebarExpandedV3');
+                var pinned = saved === '1';
                 var root = document.documentElement;
                 if (pinned) {
                     root.classList.add('ppmf-sidebar-pinned');
@@ -57,7 +58,7 @@
         @include('partials.header')
 
         {{-- Page Content --}}
-        <main class="ppmf-content">
+        <main class="ppmf-content @yield('content_class')">
             @yield('content')
         </main>
 
@@ -73,8 +74,8 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
 
     {{-- PPMF Global Dashboard JS --}}
-    <script src="{{ asset('js/ppmf-dashboard.js') }}"></script>
-    <script src="{{ asset('js/ppmf-sidebar-collapse.js') }}"></script>
+    <script src="{{ asset('js/ppmf-dashboard.js') }}?v={{ filemtime(public_path('js/ppmf-dashboard.js')) }}"></script>
+    <script src="{{ asset('js/ppmf-sidebar-collapse.js') }}?v={{ filemtime(public_path('js/ppmf-sidebar-collapse.js')) }}"></script>
 
     {{-- Page Specific JS --}}
     @stack('scripts')

@@ -1,6 +1,6 @@
 ﻿@extends('layouts.app')
 
-@section('title', 'District Scorecard | PPMF Portal')
+@section('title', 'District Scorecard')
 @section('page_title', 'District Scorecard')
 
 @php

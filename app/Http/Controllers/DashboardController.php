@@ -2,12 +2,12 @@
 
 namespace App\Http\Controllers;
 
-use App\Services\DashboardService;
+use App\Services\KpiDashboardService;
 use Illuminate\Http\Request;
 
 class DashboardController extends Controller
 {
-    protected DashboardService $dashboardService;
+    protected KpiDashboardService $dashboardService;
 
     /*
     |--------------------------------------------------------------------------
@@ -15,7 +15,7 @@ class DashboardController extends Controller
     |--------------------------------------------------------------------------
     | Dashboard query/calculation logic is handled inside DashboardService.
     */
-    public function __construct(DashboardService $dashboardService)
+    public function __construct(KpiDashboardService $dashboardService)
     {
         $this->dashboardService = $dashboardService;
     }
@@ -28,36 +28,12 @@ class DashboardController extends Controller
     */
     public function index(Request $request)
     {
-        $filters = $request->only([
-            'district_id',
-            'tehsil_id',
-            'kpi_category_id',
-            'date_from',
-            'date_to',
-            'period',
-        ]);
+        $user = $request->user()->loadMissing(['role', 'division', 'district', 'tehsil']);
+        $cards = $this->dashboardService->assignedCards($user, $request);
+        $location = $user->tehsil?->name ?? $user->district?->name ?? $user->division?->name ?? 'Punjab';
+        $filters = $this->dashboardService->filterOptionsForView();
+        $period = $this->dashboardService->periodState($request);
 
-        $summary = $this->dashboardService->getSummaryCards($filters);
-        $statusChart = $this->dashboardService->getInspectionStatusChart($filters);
-        $categoryChart = $this->dashboardService->getCategoryWiseChart($filters);
-        $districtChart = $this->dashboardService->getDistrictWiseChart($filters);
-        $geoTaggingSummary = $this->dashboardService->getGeoTaggingSummary($filters);
-        $baselineSummary = $this->dashboardService->getBaselineSummary($filters);
-        $recentInspections = $this->dashboardService->getRecentInspections($filters);
-        $filterData = $this->dashboardService->getFilterData();
-
-        return view('dashboard.index', [
-            'summary' => $summary,
-            'statusChart' => $statusChart,
-            'categoryChart' => $categoryChart,
-            'districtChart' => $districtChart,
-            'geoTaggingSummary' => $geoTaggingSummary,
-            'baselineSummary' => $baselineSummary,
-            'recentInspections' => $recentInspections,
-            'districts' => $filterData['districts'],
-            'tehsils' => $filterData['tehsils'],
-            'kpiCategories' => $filterData['kpiCategories'],
-            'filters' => $filters,
-        ]);
+        return view('dashboard.index', compact('user', 'cards', 'location', 'filters', 'period'));
     }
 }

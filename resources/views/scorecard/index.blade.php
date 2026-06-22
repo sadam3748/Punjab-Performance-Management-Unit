@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Chief Minister Governance Scorecard District Wise | PPMF Portal')
+@section('title', 'Chief Minister Governance Scorecard District Wise')
 @section('page_title', 'Chief Minister Governance Scorecard District Wise')
 
 @push('styles')

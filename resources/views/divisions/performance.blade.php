@@ -1,5 +1,5 @@
 @extends('layouts.app')
-@section('title', 'Division Performance | PPMF Portal')
+@section('title', 'Division Performance')
 @section('page_title', 'Division Performance')
 
 @section('content')

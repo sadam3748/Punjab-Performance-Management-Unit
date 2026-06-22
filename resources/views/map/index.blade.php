@@ -1,5 +1,5 @@
 @extends('layouts.app')
-@section('title', 'Punjab Map View | PPMF Portal')
+@section('title', 'Punjab Map View')
 @section('page_title', 'Punjab Map View')
 
 @section('content')

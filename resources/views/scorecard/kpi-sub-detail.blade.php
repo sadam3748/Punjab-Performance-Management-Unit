@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'KPI Sub-Detail | PPMF Portal')
+@section('title', 'KPI Sub-Detail')
 @section('page_title', 'KPI Sub-Detail')
 
 @php

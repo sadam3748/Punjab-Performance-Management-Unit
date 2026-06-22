@@ -1,6 +1,6 @@
 ﻿@extends('layouts.app')
 
-@section('title', 'Division Scorecard | PPMF Portal')
+@section('title', 'Division Scorecard')
 @section('page_title', 'Division Scorecard')
 
 @push('styles')

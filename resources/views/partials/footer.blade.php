@@ -1,9 +1,1 @@
-<footer class="ppmf-footer footer-ppmf">
-  <div style="display:flex;align-items:center;gap:10px;min-width:0;">
-    <img src="{{ asset('images/pmru-logo.png') }}" alt="PMRU Wing Logo" class="portal-logo footer-logo">
-    <div style="min-width:0;">
-      Punjab Performance Management Framework — S&amp;GAD Department, PMRU Wing, Government of the Punjab
-    </div>
-  </div>
-  <div style="white-space:nowrap;">&copy; {{ date('Y') }}</div>
-</footer>
+<footer class="ppmf-footer footer-ppmf"><div style="display:flex;align-items:center;gap:10px;min-width:0"><img src="{{ asset('images/pmru-logo.png') }}" alt="PPMU Logo" class="portal-logo footer-logo"><div>Punjab Performance Management Unit | Government of the Punjab</div></div><div style="white-space:nowrap">&copy; {{ date('Y') }}</div></footer>

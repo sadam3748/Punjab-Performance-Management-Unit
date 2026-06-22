@@ -116,6 +116,16 @@ class User extends Authenticatable
         return $this->hasMany(ActivityLog::class);
     }
 
+    public function kpiAssignments()
+    {
+        return $this->hasMany(KpiAssignment::class);
+    }
+
+    public function kpiSubmissions()
+    {
+        return $this->hasMany(KpiSubmission::class);
+    }
+
     /*
     |--------------------------------------------------------------------------
     | Helper Methods

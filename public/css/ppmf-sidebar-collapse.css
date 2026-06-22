@@ -1,114 +1,113 @@
-/* Sidebar collapse/hover/pin behavior (desktop) */
-:root {
-  --sidebar-w-collapsed: 76px;
-}
+/* Predictable desktop sidebar states: expanded with labels, collapsed with icons. */
+:root { --sidebar-w: 268px; --sidebar-w-collapsed: 72px; }
 
-html.ppmf-sidebar-collapsed .ppmf-sidebar { width: var(--sidebar-w-collapsed); }
-html.ppmf-sidebar-collapsed .ppmf-sidebar:hover { width: var(--sidebar-w); }
+.sidebar-brand { height: var(--header-h); min-height: var(--header-h); padding: 9px 16px; gap: 10px; }
+.sidebar-brand-text { flex: 1; min-width: 0; overflow: hidden; }
+.sidebar-brand-title { font-size: 14px; line-height: 1.1; }
+.sidebar-brand-sub { margin-top: 3px; font-size: 8px; line-height: 1.15; letter-spacing: .25px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sidebar-nav-wrap { padding-top: 8px; }
+.nav-group-label { padding: 12px 18px 5px; }
+.nav-item { margin: 2px 9px; }
+.nav-link { min-height: 40px; padding: 9px 11px; }
+
+.ppmf-sidebar,
+.ppmf-main { transition: width .22s ease, margin-left .22s ease; }
+.ppmf-main { width: auto; min-width: 0; overflow-x: hidden; }
+
 html.ppmf-sidebar-pinned .ppmf-sidebar { width: var(--sidebar-w); }
-
-html.ppmf-sidebar-collapsed .ppmf-main { margin-left: var(--sidebar-w-collapsed); }
 html.ppmf-sidebar-pinned .ppmf-main { margin-left: var(--sidebar-w); }
+html.ppmf-sidebar-collapsed .ppmf-sidebar { width: var(--sidebar-w-collapsed); }
+html.ppmf-sidebar-collapsed .ppmf-main { margin-left: var(--sidebar-w-collapsed); }
 
-html.ppmf-sidebar-collapsed .sidebar-brand {
-  padding: 18px 14px 14px;
-  justify-content: center;
-}
+/* Cursor expansion also moves content, preventing forms from being covered. */
+html.ppmu-sidebar-peek .ppmf-sidebar { width: var(--sidebar-w); }
+html.ppmu-sidebar-peek .ppmf-main { margin-left: var(--sidebar-w); }
 
-html.ppmf-sidebar-collapsed .sidebar-brand-text {
-  width: 0;
-  opacity: 0;
-  pointer-events: none;
-  transform: translateX(-6px);
-  transition: var(--transition);
-}
+html.ppmf-sidebar-collapsed .sidebar-brand { justify-content: center; padding: 9px 10px; }
+html.ppmf-sidebar-collapsed .sidebar-brand-text,
+html.ppmf-sidebar-collapsed .nav-group-label,
+html.ppmf-sidebar-collapsed .nav-text,
+html.ppmf-sidebar-collapsed .sidebar-user-meta,
+html.ppmf-sidebar-collapsed .sidebar-user-logout { display: none !important; }
 
-html.ppmf-sidebar-collapsed .ppmf-sidebar:hover .sidebar-brand {
-  padding: 20px 20px 16px;
-  justify-content: flex-start;
-}
-
-html.ppmf-sidebar-collapsed .ppmf-sidebar:hover .sidebar-brand-text {
-  width: auto;
-  opacity: 1;
-  pointer-events: auto;
-  transform: translateX(0);
-}
-
-html.ppmf-sidebar-collapsed .nav-group-label {
-  opacity: 0;
-  height: 0;
-  padding: 0;
-  margin: 0;
-  overflow: hidden;
-}
-
-html.ppmf-sidebar-collapsed .ppmf-sidebar:hover .nav-group-label {
-  opacity: 1;
-  height: auto;
-  padding: 16px 20px 6px;
-}
-
-.nav-text { display: inline-block; }
-
-html.ppmf-sidebar-collapsed .nav-item { margin: 2px 8px; }
-
-html.ppmf-sidebar-collapsed .nav-link {
-  justify-content: center;
-  padding: 10px 10px;
-}
-
-html.ppmf-sidebar-collapsed .nav-link .bi-chevron-down { display: none; }
-
-html.ppmf-sidebar-collapsed .nav-text {
-  width: 0;
-  opacity: 0;
-  overflow: hidden;
-  pointer-events: none;
-  transform: translateX(-6px);
-  transition: var(--transition);
-}
-
-html.ppmf-sidebar-collapsed .ppmf-sidebar:hover .nav-link {
-  justify-content: flex-start;
-  padding: 9px 12px;
-}
-
-html.ppmf-sidebar-collapsed .ppmf-sidebar:hover .nav-link .bi-chevron-down { display: inline-block; }
-
-html.ppmf-sidebar-collapsed .ppmf-sidebar:hover .nav-text {
-  width: auto;
-  opacity: 1;
-  pointer-events: auto;
-  transform: translateX(0);
-}
-
-html.ppmf-sidebar-collapsed .submenu { display: none; }
-html.ppmf-sidebar-collapsed .ppmf-sidebar:hover .submenu.show { display: grid; }
-
-.sidebar-user-meta { transition: var(--transition); }
-
-html.ppmf-sidebar-collapsed .sidebar-footer { padding: 14px 14px; }
-
+html.ppmf-sidebar-collapsed .nav-item { margin: 3px 9px; }
+html.ppmf-sidebar-collapsed .nav-link { width: 52px; min-height: 44px; padding: 10px; justify-content: center; gap: 0; }
+html.ppmf-sidebar-collapsed .nav-link i { margin: 0; flex: 0 0 auto; font-size: 18px; }
+html.ppmf-sidebar-collapsed .sidebar-footer { padding: 12px 10px; }
 html.ppmf-sidebar-collapsed .sidebar-user { justify-content: center; }
 
-html.ppmf-sidebar-collapsed .sidebar-user-meta {
-  width: 0;
-  opacity: 0;
-  overflow: hidden;
-  pointer-events: none;
-  transform: translateX(-6px);
+html.ppmu-sidebar-peek .sidebar-brand { justify-content: flex-start; padding: 9px 16px; }
+html.ppmu-sidebar-peek .sidebar-brand-text,
+html.ppmu-sidebar-peek .nav-group-label,
+html.ppmu-sidebar-peek .nav-text,
+html.ppmu-sidebar-peek .sidebar-user-meta,
+html.ppmu-sidebar-peek .sidebar-user-logout { display: block !important; }
+html.ppmu-sidebar-peek .nav-item { margin: 2px 9px; }
+html.ppmu-sidebar-peek .nav-link { width: auto; justify-content: flex-start; gap: 11px; padding: 9px 11px; }
+html.ppmu-sidebar-peek .nav-link i { width: 20px; font-size: 16px; }
+html.ppmu-sidebar-peek .sidebar-footer { padding: 12px 16px; }
+html.ppmu-sidebar-peek .sidebar-user { justify-content: flex-start; }
+html.ppmu-sidebar-peek .sidebar-user-meta { flex: 1; min-width: 0; overflow: hidden; }
+html.ppmu-sidebar-peek .nav-text,
+html.ppmu-sidebar-peek .sidebar-user-name,
+html.ppmu-sidebar-peek .sidebar-user-role { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+html.ppmf-sidebar-pinned .sidebar-brand-text,
+html.ppmf-sidebar-pinned .nav-text,
+html.ppmf-sidebar-pinned .sidebar-user-meta { display: block; min-width: 0; }
+html.ppmf-sidebar-pinned .nav-link.active,
+html.ppmf-sidebar-collapsed .nav-link.active,
+html.ppmu-sidebar-peek .nav-link.active {
+  color: #fff;
+  background: linear-gradient(90deg, rgba(255,255,255,.24), rgba(255,255,255,.11));
+  border: 1px solid rgba(255,255,255,.18);
+  box-shadow: inset 2px 0 0 #e8bd4a, 0 4px 12px rgba(3,39,24,.16);
+  font-weight: 800;
 }
 
-html.ppmf-sidebar-collapsed .sidebar-user-logout { display: none; }
-
-html.ppmf-sidebar-collapsed .ppmf-sidebar:hover .sidebar-user { justify-content: flex-start; }
-
-html.ppmf-sidebar-collapsed .ppmf-sidebar:hover .sidebar-user-meta {
-  width: auto;
-  opacity: 1;
-  pointer-events: auto;
-  transform: translateX(0);
+html.ppmf-sidebar-pinned .nav-link.active i,
+html.ppmf-sidebar-collapsed .nav-link.active i,
+html.ppmu-sidebar-peek .nav-link.active i {
+  color: #ffe6a3;
+  background: rgba(232,189,74,.13);
+  box-shadow: none;
 }
 
-html.ppmf-sidebar-collapsed .ppmf-sidebar:hover .sidebar-user-logout { display: inline-block; }
+html.ppmf-sidebar-pinned .nav-link.active::after,
+html.ppmf-sidebar-collapsed .nav-link.active::after,
+html.ppmu-sidebar-peek .nav-link.active::after {
+  content: '';
+  width: 5px;
+  height: 5px;
+  margin-left: auto;
+  border-radius: 50%;
+  background: #f4cc67;
+  box-shadow: 0 0 0 3px rgba(244,204,103,.12);
+}
+
+html.ppmf-sidebar-collapsed .nav-link.active::after {
+  position: absolute;
+  right: 4px;
+  width: 4px;
+  height: 4px;
+}
+
+html.ppmf-sidebar-pinned .nav-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+html.ppmf-sidebar-pinned .sidebar-user-meta { flex: 1; overflow: hidden; }
+html.ppmf-sidebar-pinned .sidebar-user-name,
+html.ppmf-sidebar-pinned .sidebar-user-role { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+@media (max-width: 1024px) {
+  html.ppmf-sidebar-collapsed .ppmf-main,
+  html.ppmf-sidebar-pinned .ppmf-main,
+  html.ppmu-sidebar-peek .ppmf-main { margin-left: 0; }
+  html.ppmf-sidebar-collapsed .ppmf-sidebar,
+  html.ppmf-sidebar-pinned .ppmf-sidebar,
+  html.ppmu-sidebar-peek .ppmf-sidebar { width: var(--sidebar-w); }
+  html.ppmf-sidebar-collapsed .sidebar-brand-text,
+  html.ppmf-sidebar-collapsed .nav-group-label,
+  html.ppmf-sidebar-collapsed .nav-text,
+  html.ppmf-sidebar-collapsed .sidebar-user-meta,
+  html.ppmf-sidebar-collapsed .sidebar-user-logout { display: block !important; }
+  html.ppmf-sidebar-collapsed .nav-link { width: auto; justify-content: flex-start; gap: 11px; }
+}

@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Petrol Pump Monitoring | PPMF Portal')
+@section('title', 'Petrol Pump Monitoring')
 @section('page_title', 'Petrol Pump Monitoring')
 
 @section('content')

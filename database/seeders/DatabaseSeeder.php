@@ -22,9 +22,7 @@ class DatabaseSeeder extends Seeder
             KpiCategorySeeder::class,
             GeoTaggingTypeSeeder::class,
 
-            AdminUserSeeder::class,
-
-            PpmfDummyUserSeeder::class,
+            UserSeeder::class,
             // PpmfDummyDataSeeder::class,
             PpmfDummyGeoTaggingSeeder::class,
             PpmfDummyBaselineSeeder::class,
@@ -35,6 +33,11 @@ class DatabaseSeeder extends Seeder
             KpiScoringParameterSeeder::class,
             DistrictKpiScoreSeeder::class,
             DistrictKpiScoreDetailSeeder::class,
+            KpiCardSeeder::class,
+            KpiFormFieldSeeder::class,
+            KpiAssignmentSeeder::class,
+            KpiSubmissionSeeder::class,
+            KpiScoreSeeder::class,
         ]);
     }
 }
