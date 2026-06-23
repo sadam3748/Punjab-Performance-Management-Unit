@@ -228,6 +228,24 @@
     padding: 0 2px;
 }
 
+.ppmu-kpi-tile-ach-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    width: 100%;
+}
+
+.ppmu-kpi-tile-ach-row .ppmu-kpi-tile-pct {
+    flex: 0 0 auto;
+    margin-bottom: 0;
+    white-space: nowrap;
+}
+
+.ppmu-kpi-tile-ach-row .ppmu-kpi-tile-progress {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
 .ppmu-kpi-tile-pct {
     display: block;
     font-size: 13px;
@@ -324,6 +342,261 @@
     color: #fff;
     transform: translateY(-1px);
     box-shadow: 0 12px 22px rgba(4, 120, 87, .26);
+}
+
+/* ── Main dashboard: one-page compact (23 KPIs, no scroll) ───── */
+.ppmf-content.ppmu-main-dashboard {
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+    overflow-x: clip;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 4px 8px 6px !important;
+}
+
+.ppmu-main-dashboard .ppmu-page-head-compact {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: nowrap;
+    margin: 0;
+    min-height: 0;
+    flex: 0 0 auto;
+}
+
+.ppmu-main-dashboard .ppmu-page-head-compact h1 {
+    font-size: 16px;
+    font-weight: 800;
+    margin: 0;
+    line-height: 1.1;
+    white-space: nowrap;
+}
+
+.ppmu-main-dashboard .ppmu-page-head-meta {
+    font-size: 10px;
+    color: var(--ppmu-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+}
+
+.ppmu-main-dashboard .ppmu-period-filter-ajax {
+    flex: 0 0 auto;
+    gap: 4px;
+    padding: 5px 8px;
+    margin: 0;
+}
+
+.ppmu-main-dashboard .ppmu-period-filter-top {
+    gap: 6px;
+    align-items: center;
+}
+
+.ppmu-main-dashboard .ppmu-period-pills button {
+    padding: 3px 9px;
+    font-size: 10px;
+}
+
+.ppmu-main-dashboard .ppmu-period-range {
+    padding: 4px 8px;
+    font-size: 10px;
+    border-radius: 8px;
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.ppmu-main-dashboard .ppmu-period-range i {
+    font-size: 12px;
+}
+
+.ppmu-main-dashboard .ppmu-period-filter-controls {
+    gap: 6px;
+}
+
+.ppmu-main-dashboard .ppmu-period-filter-ajax .ppmu-period-selects .form-select,
+.ppmu-main-dashboard .ppmu-period-filter-ajax .ppmu-period-selects .form-control {
+    min-width: 100px;
+    font-size: 10px;
+    padding: 2px 6px;
+    height: 28px;
+}
+
+.ppmu-main-dashboard .ppmu-period-filter-ajax .ppmu-filter-week {
+    min-width: 160px;
+    max-width: 220px;
+}
+
+.ppmu-main-dashboard .ppmu-filter-reset {
+    padding: 2px 8px;
+    height: 28px;
+}
+
+.ppmu-main-dashboard .ppmu-main-refreshable {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.ppmu-main-dashboard .ppmu-kpi-grid {
+    height: 100%;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    grid-template-rows: repeat(4, minmax(0, 1fr));
+    grid-auto-rows: minmax(0, 1fr);
+    gap: 5px;
+    overflow: hidden;
+}
+
+.ppmu-main-dashboard .ppmu-kpi-tile {
+    min-height: 0;
+    height: 100%;
+    padding: 5px 6px 4px;
+    border-radius: 11px;
+    box-shadow: 0 3px 10px rgba(15, 23, 42, 0.06);
+}
+
+.ppmu-main-dashboard .ppmu-kpi-tile:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(15, 23, 42, 0.1);
+}
+
+.ppmu-main-dashboard .ppmu-kpi-tile-status {
+    top: 4px;
+    right: 4px;
+    padding: 2px 5px;
+    font-size: 7px;
+    letter-spacing: 0.03em;
+    box-shadow: 0 2px 6px rgba(15, 23, 42, 0.1);
+}
+
+.ppmu-main-dashboard .ppmu-kpi-tile-image {
+    flex: 1 1 auto;
+    min-height: 0;
+    height: auto;
+    max-height: 58%;
+    margin-bottom: 2px;
+    border-radius: 9px;
+}
+
+.ppmu-main-dashboard .ppmu-kpi-tile-image img {
+    width: auto;
+    height: 100%;
+    max-height: 100%;
+    max-width: 94%;
+    filter: drop-shadow(0 4px 8px rgba(15, 118, 72, .18));
+}
+
+.ppmu-main-dashboard .ppmu-kpi-tile:hover .ppmu-kpi-tile-image img {
+    transform: scale(1.04);
+}
+
+.ppmu-main-dashboard .ppmu-kpi-tile-title {
+    font-size: 10px;
+    font-weight: 800;
+    min-height: 0;
+    margin: 0 0 2px;
+    line-height: 1.15;
+    flex: 0 0 auto;
+}
+
+.ppmu-main-dashboard .ppmu-kpi-tile-achievement {
+    margin-bottom: 2px;
+    flex: 0 0 auto;
+}
+
+.ppmu-main-dashboard .ppmu-kpi-tile-pct {
+    font-size: 9px;
+    font-weight: 800;
+}
+
+.ppmu-main-dashboard .ppmu-kpi-tile-progress {
+    height: 4px;
+}
+
+.ppmu-main-dashboard .ppmu-kpi-tile-values {
+    margin-bottom: 2px;
+    gap: 3px;
+    flex: 0 0 auto;
+}
+
+.ppmu-main-dashboard .ppmu-kpi-tile-value {
+    padding: 2px 3px;
+    border-radius: 5px;
+}
+
+.ppmu-main-dashboard .ppmu-kpi-tile-value span {
+    font-size: 7px;
+    letter-spacing: 0.02em;
+    margin-bottom: 0;
+}
+
+.ppmu-main-dashboard .ppmu-kpi-tile-value strong {
+    font-size: 10px;
+    font-weight: 800;
+}
+
+.ppmu-main-dashboard .ppmu-kpi-tile-btn {
+    height: 22px;
+    font-size: 9px;
+    border-radius: 7px;
+    gap: 4px;
+    box-shadow: 0 4px 10px rgba(4, 120, 87, .14);
+    flex: 0 0 auto;
+}
+
+.ppmu-main-dashboard .ppmu-kpi-tile-btn .bi {
+    font-size: 9px;
+}
+
+.ppmf-main:has(.ppmu-main-dashboard) .ppmf-footer {
+    padding: 4px 12px;
+    font-size: 10px;
+}
+
+.ppmf-main:has(.ppmu-main-dashboard) .ppmf-footer .footer-logo {
+    height: 18px;
+}
+
+@media (max-height: 820px) {
+    .ppmu-main-dashboard .ppmu-kpi-tile-title {
+        font-size: 9px;
+        -webkit-line-clamp: 1;
+    }
+
+    .ppmu-main-dashboard .ppmu-kpi-tile-btn {
+        height: 20px;
+        font-size: 8px;
+    }
+}
+
+@media (max-width: 1499px) {
+    .ppmu-main-dashboard .ppmu-kpi-grid {
+        grid-template-columns: repeat(6, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 1199px) {
+    .ppmf-content.ppmu-main-dashboard {
+        overflow: auto;
+    }
+
+    .ppmu-main-dashboard .ppmu-main-refreshable {
+        overflow: visible;
+    }
+
+    .ppmu-main-dashboard .ppmu-kpi-grid {
+        height: auto;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        grid-template-rows: none;
+    }
+
+    .ppmu-main-dashboard .ppmu-kpi-tile {
+        min-height: 220px;
+        height: auto;
+    }
 }
 
 .ppmu-empty {

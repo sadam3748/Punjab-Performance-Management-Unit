@@ -19,10 +19,10 @@ class KpiDashboardTest extends TestCase
         $card = KpiCard::where('slug', $slug)->firstOrFail();
         $admin = User::where('username', 'super_admin')->firstOrFail();
 
-        $this->actingAs($admin)->get('/dashboard')->assertOk()->assertSee('PPMU Main KPI Dashboard');
-        $this->actingAs($admin)->get('/dashboard')->assertSeeInOrder(['Target', 'Reported', 'Achieved', 'View Dashboard']);
+        $this->actingAs($admin)->get('/dashboard')->assertOk()->assertSee('Main KPI Dashboard');
+        $this->actingAs($admin)->get('/dashboard')->assertSeeInOrder(['Target', 'Reported', 'Achieved', 'View']);
         $this->actingAs($admin)->get('/dashboard')->assertSee('ppmu-kpi-tile-status', false);
-        $this->actingAs($admin)->get('/dashboard')->assertSee('Achievement', false);
+        $this->actingAs($admin)->get('/dashboard')->assertSee('ppmu-main-dashboard', false);
         $this->actingAs($admin)->get("/kpi/{$slug}/dashboard")->assertOk()->assertSee('Water Filtration');
         $this->actingAs($admin)->get('/manage-kpis')->assertOk()->assertSee('Manage KPI Cards');
 
@@ -53,7 +53,7 @@ class KpiDashboardTest extends TestCase
 
             $cardCount = substr_count($response->getContent(), 'data-kpi-card');
             $this->assertSame(23, $cardCount, "User {$login} should see 23 KPI cards");
-            $response->assertSee('View Dashboard')->assertSee('Reported')->assertSee('Achievement', false)->assertDontSee('Performance</span>', false);
+            $response->assertSee('View')->assertSee('Reported')->assertSee('ppmu-kpi-tile-progress', false)->assertDontSee('Performance</span>', false);
 
             $this->get('/kpi/functional-and-clean-water-filtration-plants/dashboard')
                 ->assertOk()

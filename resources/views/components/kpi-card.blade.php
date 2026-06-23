@@ -25,9 +25,11 @@
     <h3 class="ppmu-kpi-tile-title" id="kpi-title-{{ $card->id }}" title="{{ $card->title }}">{{ $card->title }}</h3>
 
     <div class="ppmu-kpi-tile-achievement">
-        <span class="ppmu-kpi-tile-pct ppmu-kpi-pct-{{ $status }}">{{ rtrim(rtrim(number_format($pct, 1), '0'), '.') }}% Achievement</span>
-        <div class="ppmu-kpi-tile-progress" role="progressbar" aria-valuenow="{{ $pct }}" aria-valuemin="0" aria-valuemax="100" aria-label="Achievement progress">
-            <span class="ppmu-kpi-tile-progress-fill ppmu-kpi-progress-{{ $status }}" style="width: {{ $pct }}%"></span>
+        <div class="ppmu-kpi-tile-ach-row">
+            <span class="ppmu-kpi-tile-pct ppmu-kpi-pct-{{ $status }}" title="Achievement">{{ rtrim(rtrim(number_format($pct, 1), '0'), '.') }}%</span>
+            <div class="ppmu-kpi-tile-progress" role="progressbar" aria-valuenow="{{ $pct }}" aria-valuemin="0" aria-valuemax="100" aria-label="Achievement {{ $pct }} percent">
+                <span class="ppmu-kpi-tile-progress-fill ppmu-kpi-progress-{{ $status }}" style="width: {{ $pct }}%"></span>
+            </div>
         </div>
     </div>
 
@@ -46,7 +48,7 @@
         </div>
     </div>
 
-    <a href="{{ $detailUrl }}" class="ppmu-kpi-tile-btn" target="_blank" rel="noopener noreferrer" data-kpi-detail-link>
-        <i class="bi bi-box-arrow-up-right"></i> View Dashboard
+    <a href="{{ $detailUrl }}" class="ppmu-kpi-tile-btn" target="_blank" rel="noopener noreferrer" data-kpi-detail-link title="Open KPI dashboard">
+        <i class="bi bi-box-arrow-up-right"></i> View
     </a>
 </article>
