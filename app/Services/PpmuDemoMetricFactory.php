@@ -15,7 +15,7 @@ class PpmuDemoMetricFactory
     $lahore = $username === 'ac.lahore';
     $base = $this->basePerformance($slug, $lahore);
     $trend = $this->trendFactor($date, $dayOffset, $lahore);
-    $pct = max(42, min(98, $base + $trend));
+    $pct = max(32, min(98, $base + $trend));
 
     $snapshot = match ($slug) {
       'price-of-roti' => $this->roti($pct, $dayOffset),
@@ -54,15 +54,29 @@ class PpmuDemoMetricFactory
   private function basePerformance(string $slug, bool $lahore): float
   {
     $profiles = [
-      'price-of-roti' => [82, 76],
-      'price-of-plain-bakery-bread' => [78, 71],
-      'price-control-of-essential-commodities' => [74, 66],
-      'functional-and-clean-water-filtration-plants' => [88, 79],
-      'inspection-of-educational-institutions' => [84, 77],
-      'inspection-of-health-facilities' => [81, 73],
-      'chief-ministers-complaint-cell' => [86, 78],
-      'stray-dogs' => [58, 48],
-      'repair-of-small-roads-in-both-urban-and-rural-areas' => [62, 54],
+      'price-of-roti' => [86, 78],
+      'price-of-plain-bakery-bread' => [76, 70],
+      'price-control-of-essential-commodities' => [44, 38],
+      'repair-of-small-roads-in-both-urban-and-rural-areas' => [58, 52],
+      'zebra-crossings' => [72, 66],
+      'dysfunctional-streetlights' => [46, 40],
+      'covering-of-manholes' => [62, 56],
+      'functional-and-clean-water-filtration-plants' => [91, 84],
+      'inspection-of-educational-institutions' => [88, 80],
+      'inspection-of-health-facilities' => [79, 72],
+      'violation-of-marriage-functions-act' => [70, 64],
+      'anti-encroachment-campaign' => [48, 42],
+      'regulation-of-shops-and-handcarts' => [75, 68],
+      'stray-dogs' => [55, 47],
+      'removal-of-wall-chalking' => [68, 60],
+      'graveyards' => [73, 67],
+      'e-biz' => [82, 74],
+      'illegal-decanting' => [66, 58],
+      'suthra-punjab-campaign' => [84, 76],
+      'maintenance-of-greenbelts' => [77, 69],
+      'maintenance-of-drains-and-sewerage-lines' => [61, 54],
+      'bus-terminals' => [71, 63],
+      'chief-ministers-complaint-cell' => [90, 82],
     ];
 
     [$good, $avg] = $profiles[$slug] ?? [72, 64];

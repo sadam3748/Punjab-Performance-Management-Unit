@@ -45,6 +45,7 @@ class KpiDashboardService
                 'submissions as pending_count' => fn (Builder $q) => $this->filteredSubmissions($q, $user, $request)->whereIn('status', ['draft', 'pending']),
             ])
             ->withAvg(['submissions as achieved_avg' => fn (Builder $q) => $this->filteredSubmissions($q, $user, $request)], 'achieved_value')
+            ->withAvg(['submissions as pct_avg' => fn (Builder $q) => $this->filteredSubmissions($q, $user, $request)], 'achievement_percentage')
             ->withSum(['submissions as reported_sum' => fn (Builder $q) => $this->filteredSubmissions($q, $user, $request)], 'reported_value')
             ->orderBy('display_order')
             ->get()
@@ -52,7 +53,10 @@ class KpiDashboardService
                 $target = (float) $card->total_marks;
                 $achieved = round((float) ($card->achieved_avg ?? 0), 1);
                 $reported = (int) ($card->reported_sum ?? 0);
-                $pct = $this->formula->achievementPercentage($achieved, $target);
+                $pct = round((float) ($card->pct_avg ?? 0), 1);
+                if ($pct <= 0 && $target > 0 && $achieved > 0) {
+                    $pct = $this->formula->achievementPercentage($achieved, $target);
+                }
 
                 $card->target = $target;
                 $card->reported = $reported;

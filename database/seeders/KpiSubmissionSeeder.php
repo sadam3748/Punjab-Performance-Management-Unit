@@ -137,12 +137,25 @@ class KpiSubmissionSeeder extends Seeder
 
     private function dateForIndex(int $index, int $total, string $username): Carbon
     {
+        $period = app(KpiPeriodService::class);
+        $currentWeekStart = Carbon::parse($period->weekRangeForDate(now())['week_start']);
         $lahore = str_contains($username, 'lahore');
-        $base = Carbon::now()->subMonths(11);
-        $spread = (int) floor(330 / max(1, $total - 1));
-        $dayOffset = $index * $spread + ($lahore ? 0 : 3);
+        $recentStart = max(0, $total - 12);
 
-        return $base->copy()->addDays(min(364, $dayOffset))->startOfDay();
+        if ($index >= $recentStart) {
+            $weekOffset = ($total - 1) - $index;
+
+            return $currentWeekStart
+                ->copy()
+                ->subWeeks($weekOffset)
+                ->addDays(($lahore ? 0 : 1) + ($index % 4))
+                ->startOfDay();
+        }
+
+        $base = Carbon::now()->subMonths(11);
+        $spread = (int) floor(300 / max(1, $recentStart));
+
+        return $base->copy()->addDays(min(300, $index * $spread + ($lahore ? 0 : 5)))->startOfDay();
     }
 
     private function periodTypeForIndex(int $index): string
