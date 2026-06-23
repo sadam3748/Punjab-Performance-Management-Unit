@@ -38,11 +38,6 @@
         <i class="bi bi-people"></i><span class="nav-text">Users</span>
       </a>
     </div>
-    <div class="nav-item">
-      <a href="{{ route('settings.change-password') }}" class="nav-link {{ request()->routeIs('settings.change-password*') ? 'active' : '' }}" title="Change Password">
-        <i class="bi bi-key"></i><span class="nav-text">Change Password</span>
-      </a>
-    </div>
     @endif
   </div>
   <div class="sidebar-footer">

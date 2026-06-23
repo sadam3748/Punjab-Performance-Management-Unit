@@ -7,6 +7,17 @@
         @endforeach
     </div>
     <div class="ppmu-period-selects">
+        @if(($period['period_type'] ?? '') === 'weekly')
+            <select name="week_no" class="form-select form-select-sm" onchange="this.form.submit()">
+                <option value="">Latest PPMF week</option>
+                @foreach($filters['weeks'] ?? [] as $value => $label)
+                    <option value="{{ $value }}" @selected((string) ($period['week_no'] ?? '') === (string) $value)>{{ $label }}</option>
+                @endforeach
+            </select>
+        @endif
+        @if(($period['period_type'] ?? '') === 'daily')
+            <input type="date" name="date" value="{{ $period['date'] ?? '' }}" class="form-control form-control-sm" onchange="this.form.submit()">
+        @endif
         <select name="month" class="form-select form-select-sm" onchange="this.form.submit()">
             <option value="">All months</option>
             @foreach($filters['months'] as $value => $label)

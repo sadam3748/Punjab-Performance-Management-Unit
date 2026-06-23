@@ -6,7 +6,7 @@ use App\Models\District;
 use App\Models\Division;
 use App\Models\KpiCategory;
 use App\Models\KpiMetricValue;
-use App\Services\ScorecardService;
+use App\Services\KpiPeriodService;
 use Carbon\Carbon;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
@@ -22,29 +22,29 @@ class KpiMetricValueSeeder extends Seeder
         $divisions = Division::where('is_active', true)->orderBy('id')->get(['id', 'name']);
         $districts = District::where('is_active', true)->orderBy('id')->get(['id', 'name', 'division_id']);
 
-        $scorecard = app(ScorecardService::class);
+        $period = app(KpiPeriodService::class);
 
-        $latest = $scorecard->getLatestCompletedPpmfWeekFilters();
-        $latestWeekNo = (string) ($latest['week_no'] ?? '');
-        $latestRange = $latestWeekNo ? $scorecard->getWeekDateRange($latestWeekNo) : null;
+        $latestWeek = $period->weekRangeForDate(now()->subWeek());
+        $latestWeekNo = (string) $latestWeek['week_no'];
+        $latestRange = $period->getWeekDateRange($latestWeekNo);
         $weekStart = $latestRange['start'] ?? now()->copy()->subWeek()->startOfDay();
 
         // Seed 6 completed weekly snapshots (Thu->Wed) for province + district charts.
         $weeklyStarts = [];
-        $cursor = $weekStart->copy()->startOfDay();
         for ($i = 0; $i < 6; $i++) {
-            $weeklyStarts[] = $cursor->copy()->subWeeks($i);
+            $weeklyStarts[] = Carbon::parse($period->weekRangeForDate($weekStart->copy()->subWeeks($i))['week_start']);
         }
 
         $rows = [];
 
         foreach ($weeklyStarts as $weekCursor) {
-            $dateFrom = $weekCursor->copy()->startOfDay();
-            $dateTo = $weekCursor->copy()->addDays(6)->endOfDay();
+            $week = $period->weekRangeForDate($weekCursor);
+            $dateFrom = Carbon::parse($week['week_start'])->startOfDay();
+            $dateTo = Carbon::parse($week['week_end'])->endOfDay();
             $year = (int) $dateFrom->format('Y');
             $month = (int) $dateFrom->format('n');
             $quarter = (int) ceil($month / 3);
-            $weekNo = sprintf('%d%02d', (int) $dateFrom->isoFormat('GGGG'), (int) $dateFrom->isoWeek());
+            $weekNo = $week['week_no'];
 
             foreach ($categories as $category) {
                 $defs = $this->metricDefinitionsForGraphicalReport($category->slug, $category->name);
@@ -132,13 +132,13 @@ class KpiMetricValueSeeder extends Seeder
 
         // Division-level summary for latest week only (keeps volume small)
         if (! empty($weeklyStarts)) {
-            $latestStart = $weeklyStarts[0];
-            $dateFrom = $latestStart->copy()->startOfDay();
-            $dateTo = $latestStart->copy()->addDays(6)->endOfDay();
+            $week = $period->weekRangeForDate($weeklyStarts[0]);
+            $dateFrom = Carbon::parse($week['week_start'])->startOfDay();
+            $dateTo = Carbon::parse($week['week_end'])->endOfDay();
             $year = (int) $dateFrom->format('Y');
             $month = (int) $dateFrom->format('n');
             $quarter = (int) ceil($month / 3);
-            $weekNo = sprintf('%d%02d', (int) $dateFrom->isoFormat('GGGG'), (int) $dateFrom->isoWeek());
+            $weekNo = $week['week_no'];
 
             foreach ($categories as $category) {
                 $defs = $this->metricDefinitionsForCategory($category->slug, $category->name);
@@ -190,27 +190,28 @@ class KpiMetricValueSeeder extends Seeder
         // Seed a compact, report-friendly dataset for those presets so provincial + district-wise KPI score pages
         // can show metric cards + dynamic district columns like old PPMF.
         $legacyPeriods = [
-            'last_week' => [
-                'from' => $weekStart->copy()->startOfDay(),
-                'to'   => $weekStart->copy()->addDays(6)->endOfDay(),
-            ],
-            'current_week' => [
-                'from' => $weekStart->copy()->addWeek()->startOfDay(),
-                'to'   => $weekStart->copy()->addWeek()->addDays(6)->endOfDay(),
-            ],
+            'last_week' => $period->weekRangeForDate($weekStart->copy()),
+            'current_week' => $period->weekRangeForDate($weekStart->copy()->addWeek()),
             'last_four_weeks' => [
-                'from' => $weekStart->copy()->subWeeks(3)->startOfDay(),
-                'to'   => $weekStart->copy()->addDays(6)->endOfDay(),
+                'week_start' => $period->weekRangeForDate($weekStart->copy()->subWeeks(3))['week_start'],
+                'week_end' => $period->weekRangeForDate($weekStart)['week_end'],
             ],
         ];
 
         foreach ($legacyPeriods as $periodType => $range) {
-            $dateFrom = $range['from']->copy();
-            $dateTo = $range['to']->copy();
+            if ($periodType === 'last_four_weeks') {
+                $dateFrom = Carbon::parse($range['week_start'])->startOfDay();
+                $dateTo = Carbon::parse($range['week_end'])->endOfDay();
+                $weekNo = $period->weekRangeForDate($dateFrom)['week_no'];
+            } else {
+                $dateFrom = Carbon::parse($range['week_start'])->startOfDay();
+                $dateTo = Carbon::parse($range['week_end'])->endOfDay();
+                $weekNo = $range['week_no'];
+            }
+
             $year = (int) $dateFrom->format('Y');
             $month = (int) $dateFrom->format('n');
             $quarter = (int) ceil($month / 3);
-            $weekNo = sprintf('%d%02d', (int) $dateFrom->isoFormat('GGGG'), (int) $dateFrom->isoWeek());
 
             foreach ($categories as $category) {
                 $defs = $this->metricDefinitionsForLegacyReport($category->slug, $category->name);

@@ -79,6 +79,7 @@ class KpiCardController extends Controller
             'category' => ['required', 'string', 'max:100'],
             'description' => ['nullable', 'string'],
             'icon' => ['required', 'string', 'max:80'],
+            'image_path' => ['nullable', 'string', 'max:255'],
             'frequency' => ['required', Rule::in(['daily', 'weekly', 'monthly', 'yearly'])],
             'total_marks' => ['required', 'numeric', 'min:1'],
             'display_order' => ['required', 'integer', 'min:0'],

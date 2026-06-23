@@ -15,17 +15,18 @@ class KpiDashboardTest extends TestCase
     public function test_role_based_kpi_dashboards_and_management_pages_render(): void
     {
         $this->seed(PpmuSeeder::class);
-        $card = KpiCard::where('slug', 'water-filtration')->firstOrFail();
+        $slug = 'functional-and-clean-water-filtration-plants';
+        $card = KpiCard::where('slug', $slug)->firstOrFail();
         $admin = User::where('username', 'super_admin')->firstOrFail();
 
         $this->actingAs($admin)->get('/dashboard')->assertOk()->assertSee('PPMU Main KPI Dashboard');
-        $this->actingAs($admin)->get('/dashboard')->assertSeeInOrder(['Performance', 'Open Dashboard']);
-        $this->actingAs($admin)->get('/kpi/water-filtration/dashboard')->assertOk()->assertSee('Water Filtration');
+        $this->actingAs($admin)->get('/dashboard')->assertSeeInOrder(['Target', 'Reported', 'Achieved', 'View Dashboard']);
+        $this->actingAs($admin)->get("/kpi/{$slug}/dashboard")->assertOk()->assertSee('Water Filtration');
         $this->actingAs($admin)->get('/manage-kpis')->assertOk()->assertSee('Manage KPI Cards');
 
         $ac = User::whereHas('role', fn ($query) => $query->where('slug', 'ac'))->whereNotNull('tehsil_id')->firstOrFail();
         $this->actingAs($ac)->get('/dashboard')->assertOk()->assertSee($card->title);
-        $this->actingAs($ac)->get('/submit-kpi/water-filtration')->assertOk();
+        $this->actingAs($ac)->get("/submit-kpi/{$slug}")->assertOk();
         $this->actingAs($ac)->get('/manage-kpis')->assertForbidden();
     }
 
@@ -35,18 +36,24 @@ class KpiDashboardTest extends TestCase
 
         $this->assertSame(23, KpiCard::where('is_active', true)->count());
 
+        KpiCard::where('is_active', true)->each(function (KpiCard $card) {
+            $this->assertStringStartsWith('images/kpi-images/', $card->image_path);
+            $this->assertFileExists(public_path($card->resolvedImagePath()), "Missing KPI image for {$card->slug}");
+        });
+
         foreach (['super_admin', 'cs.pmru', 'com.lahore', 'dc.lahore', 'ac.lahore', 'com.dgkhan', 'dc.layyah', 'ac.layyah'] as $login) {
             auth()->logout();
             $this->post('/login', ['login' => $login, 'password' => '123456'])
                 ->assertRedirect(route('dashboard'));
 
             $response = $this->get('/dashboard');
-            $response->assertOk()->assertSee('Water Filtration')->assertSee('Price of Roti');
+            $response->assertOk()->assertSee('Water Filtration')->assertSee('Price of Roti')->assertSee('images/kpi-images/', false);
 
-            $cardCount = substr_count($response->getContent(), 'data-kpi-card');
+            $cardCount = substr_count($response->getContent(), '<article class="kpi-png-tile" data-kpi-card');
             $this->assertSame(23, $cardCount, "User {$login} should see 23 KPI cards");
+            $response->assertSee('View Dashboard')->assertSee('Reported')->assertDontSee('Performance</span>', false);
 
-            $this->get('/kpi/water-filtration/dashboard')
+            $this->get('/kpi/functional-and-clean-water-filtration-plants/dashboard')
                 ->assertOk()
                 ->assertSee('KPI Metrics')
                 ->assertSee('statusChart')
