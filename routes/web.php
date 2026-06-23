@@ -4,6 +4,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\KpiCardController;
 use App\Http\Controllers\KpiDashboardController;
+use App\Http\Controllers\KpiInspectionController;
 use App\Http\Controllers\KpiSubmissionController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\SettingController;
@@ -21,6 +22,10 @@ Route::middleware('auth')->group(function () {
     Route::get('/dashboard/data', [DashboardController::class, 'data'])->name('dashboard.data');
     Route::get('/kpi/{kpiCard}/dashboard', [KpiDashboardController::class, 'show'])->name('kpi.dashboard');
     Route::get('/kpi/{kpiCard}/dashboard/data', [KpiDashboardController::class, 'data'])->name('kpi.dashboard.data');
+
+    Route::get('/kpi/{kpiCard}/inspections/{inspection}/detail', [KpiInspectionController::class, 'show'])->name('kpi.inspections.show');
+    Route::post('/kpi/{kpiCard}/inspections/{inspection}/approve', [KpiInspectionController::class, 'approve'])->name('kpi.inspections.approve');
+    Route::post('/kpi/{kpiCard}/inspections/{inspection}/reject', [KpiInspectionController::class, 'reject'])->name('kpi.inspections.reject');
 
     Route::get('/kpi-submissions', [KpiSubmissionController::class, 'review'])->name('kpi-submissions.index');
     Route::get('/submit-kpi/{kpiCard}', [KpiSubmissionController::class, 'create'])->name('kpi-submissions.create');

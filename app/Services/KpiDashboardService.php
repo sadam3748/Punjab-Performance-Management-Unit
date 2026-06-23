@@ -17,6 +17,7 @@ class KpiDashboardService
         private readonly KpiMetricConfigService $metricConfig,
         private readonly KpiFormulaService $formula,
         private readonly KpiChartService $chartService,
+        private readonly KpiInspectionService $inspectionService,
     ) {}
 
     public function assignedCards(User $user, ?Request $request = null): Collection
@@ -137,6 +138,10 @@ class KpiDashboardService
             'filters' => $this->filterOptionsForView(),
             'period' => $this->periodState($request),
             'period_description' => $this->periodService->description($request),
+            'inspectionRecords' => $this->inspectionService->getInspectionListForKpi($card, $user, $request),
+            'inspectionStatusCounts' => $this->inspectionService->buildStatusCounts($card, $user, $request),
+            'inspectionFilters' => $this->inspectionService->filterOptions($user),
+            'canReviewInspections' => $this->inspectionService->canReviewInspections($user),
         ];
     }
 

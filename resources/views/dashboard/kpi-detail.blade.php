@@ -114,13 +114,13 @@
         <x-chart-card :title="$comparisonTitle" subtitle="Achievement % by geographic scope" canvas="areaChart"/>
     </div>
 
-    <div id="kpiDetailRecords">
-        @include('dashboard.partials.kpi-detail-records', [
+    <div id="kpiDetailInspections">
+        @include('dashboard.partials.kpi-detail-inspections', [
             'kpiCard' => $kpiCard,
-            'summary' => $summary,
-            'tableSubmissions' => $tableSubmissions,
-            'imageUrl' => $imageUrl,
-            'periodDescription' => $period_description ?? 'All periods · Complete available data',
+            'inspectionRecords' => $inspectionRecords,
+            'inspectionStatusCounts' => $inspectionStatusCounts,
+            'inspectionFilters' => $inspectionFilters,
+            'canReviewInspections' => $canReviewInspections,
         ])
     </div>
 </div>

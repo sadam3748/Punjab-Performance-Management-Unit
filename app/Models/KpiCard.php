@@ -23,4 +23,5 @@ class KpiCard extends Model
     public function assignments() { return $this->hasMany(KpiAssignment::class); }
     public function submissions() { return $this->hasMany(KpiSubmission::class); }
     public function scores() { return $this->hasMany(KpiScore::class); }
+    public function inspections() { return $this->hasMany(KpiInspection::class); }
 }

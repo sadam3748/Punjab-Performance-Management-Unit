@@ -1,4 +1,4 @@
-@php $roleSlug = auth()->user()?->role?->slug; $isAdmin = $roleSlug === 'super_admin'; $canReview = !in_array($roleSlug, ['ac','field_user']); @endphp
+@php $roleSlug = auth()->user()?->role?->slug; $isAdmin = $roleSlug === 'super_admin'; $mainNavLabel = request()->routeIs('kpi.dashboard', 'kpi.dashboard.data') ? 'Dashboard' : 'Home'; @endphp
 <aside class="ppmf-sidebar" id="ppmfSidebar">
   <a href="{{ route('dashboard') }}" class="sidebar-brand">
     <div class="sidebar-brand-icon"><img src="{{ asset('images/pmru-logo.png') }}" alt="PPMU Logo" class="portal-logo sidebar-logo"></div>
@@ -10,20 +10,8 @@
   <div class="sidebar-nav-wrap">
     <div class="nav-group-label">Main</div>
     <div class="nav-item">
-      <a href="{{ route('dashboard') }}" class="nav-link {{ request()->routeIs('dashboard','kpi.dashboard') ? 'active' : '' }}" title="Dashboard">
-        <i class="bi bi-grid-1x2-fill"></i><span class="nav-text">Dashboard</span>
-      </a>
-    </div>
-    @if($canReview)
-    <div class="nav-item">
-      <a href="{{ route('kpi-submissions.index') }}" class="nav-link {{ request()->routeIs('kpi-submissions.*','submissions.*') ? 'active' : '' }}" title="KPI Submissions">
-        <i class="bi bi-clipboard2-check"></i><span class="nav-text">KPI Submissions</span>
-      </a>
-    </div>
-    @endif
-    <div class="nav-item">
-      <a href="{{ route('reports') }}" class="nav-link {{ request()->routeIs('reports') ? 'active' : '' }}" title="Reports">
-        <i class="bi bi-file-earmark-bar-graph"></i><span class="nav-text">Reports</span>
+      <a href="{{ route('dashboard') }}" class="nav-link {{ request()->routeIs('dashboard','dashboard.data','kpi.dashboard','kpi.dashboard.data') ? 'active' : '' }}" title="{{ $mainNavLabel }}">
+        <i class="bi bi-house-door-fill"></i><span class="nav-text">{{ $mainNavLabel }}</span>
       </a>
     </div>
     @if($isAdmin)

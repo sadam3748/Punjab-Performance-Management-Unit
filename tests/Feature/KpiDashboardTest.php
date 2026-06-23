@@ -19,7 +19,7 @@ class KpiDashboardTest extends TestCase
         $card = KpiCard::where('slug', $slug)->firstOrFail();
         $admin = User::where('username', 'super_admin')->firstOrFail();
 
-        $this->actingAs($admin)->get('/dashboard')->assertOk()->assertSee('Main KPI Dashboard');
+        $this->actingAs($admin)->get('/dashboard')->assertOk()->assertSee('Home');
         $this->actingAs($admin)->get('/dashboard')->assertSeeInOrder(['Target', 'Reported', 'Achieved', 'View']);
         $this->actingAs($admin)->get('/dashboard')->assertSee('ppmu-kpi-tile-status', false);
         $this->actingAs($admin)->get('/dashboard')->assertSee('ppmu-main-dashboard', false);
@@ -107,8 +107,10 @@ class KpiDashboardTest extends TestCase
                 'summary_html',
                 'metrics_html',
                 'records_html',
+                'inspections_html',
                 'charts' => ['status_donut', 'target_achieved', 'trend', 'areas'],
                 'records_total',
+                'inspections_total',
                 'period_description',
             ]);
     }

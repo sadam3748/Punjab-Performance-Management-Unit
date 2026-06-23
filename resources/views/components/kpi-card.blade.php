@@ -16,39 +16,40 @@
     $detailUrl = route('kpi.dashboard', $card).($periodQuery ? '?'.$periodQuery : '');
 @endphp
 <article class="ppmu-kpi-tile" data-kpi-card aria-labelledby="kpi-title-{{ $card->id }}">
-    <span class="ppmu-kpi-tile-status ppmu-kpi-status-{{ $status }}">{{ $statusText }}</span>
-
-    <div class="ppmu-kpi-tile-image">
-        <img src="{{ $imageUrl }}" alt="{{ $card->title }}" width="140" height="140" loading="lazy">
+    <div class="ppmu-kpi-tile-hero">
+        <span class="ppmu-kpi-tile-status ppmu-kpi-status-{{ $status }}">{{ $statusText }}</span>
+        <img class="ppmu-kpi-tile-png" src="{{ $imageUrl }}" alt="{{ $card->title }}" width="72" height="72" loading="lazy">
     </div>
 
-    <h3 class="ppmu-kpi-tile-title" id="kpi-title-{{ $card->id }}" title="{{ $card->title }}">{{ $card->title }}</h3>
+    <div class="ppmu-kpi-tile-foot">
+        <h3 class="ppmu-kpi-tile-title" id="kpi-title-{{ $card->id }}" title="{{ $card->title }}">{{ $card->title }}</h3>
 
-    <div class="ppmu-kpi-tile-achievement">
-        <div class="ppmu-kpi-tile-ach-row">
-            <span class="ppmu-kpi-tile-pct ppmu-kpi-pct-{{ $status }}" title="Achievement">{{ rtrim(rtrim(number_format($pct, 1), '0'), '.') }}%</span>
-            <div class="ppmu-kpi-tile-progress" role="progressbar" aria-valuenow="{{ $pct }}" aria-valuemin="0" aria-valuemax="100" aria-label="Achievement {{ $pct }} percent">
-                <span class="ppmu-kpi-tile-progress-fill ppmu-kpi-progress-{{ $status }}" style="width: {{ $pct }}%"></span>
+        <div class="ppmu-kpi-tile-achievement">
+            <div class="ppmu-kpi-tile-ach-row">
+                <span class="ppmu-kpi-tile-pct ppmu-kpi-pct-{{ $status }}" title="Achievement">{{ rtrim(rtrim(number_format($pct, 1), '0'), '.') }}%</span>
+                <div class="ppmu-kpi-tile-progress" role="progressbar" aria-valuenow="{{ $pct }}" aria-valuemin="0" aria-valuemax="100" aria-label="Achievement {{ $pct }} percent">
+                    <span class="ppmu-kpi-tile-progress-fill ppmu-kpi-progress-{{ $status }}" style="width: {{ $pct }}%"></span>
+                </div>
             </div>
         </div>
-    </div>
 
-    <div class="ppmu-kpi-tile-values ppmu-kpi-tile-values-3">
-        <div class="ppmu-kpi-tile-value">
-            <span>Target</span>
-            <strong>{{ $formatValue($target) }}</strong>
+        <div class="ppmu-kpi-tile-stats">
+            <div class="ppmu-kpi-stat">
+                <strong>{{ $formatValue($target) }}</strong>
+                <span>Target</span>
+            </div>
+            <div class="ppmu-kpi-stat">
+                <strong>{{ number_format($reported) }}</strong>
+                <span>Reported</span>
+            </div>
+            <div class="ppmu-kpi-stat ppmu-kpi-stat-accent">
+                <strong>{{ $formatValue($achieved) }}</strong>
+                <span>Achieved</span>
+            </div>
         </div>
-        <div class="ppmu-kpi-tile-value">
-            <span>Reported</span>
-            <strong>{{ number_format($reported) }}</strong>
-        </div>
-        <div class="ppmu-kpi-tile-value ppmu-kpi-tile-value-accent">
-            <span>Achieved</span>
-            <strong>{{ $formatValue($achieved) }}</strong>
-        </div>
-    </div>
 
-    <a href="{{ $detailUrl }}" class="ppmu-kpi-tile-btn" target="_blank" rel="noopener noreferrer" data-kpi-detail-link title="Open KPI dashboard">
-        <i class="bi bi-box-arrow-up-right"></i> View
-    </a>
+        <a href="{{ $detailUrl }}" class="ppmu-kpi-tile-btn" target="_blank" rel="noopener noreferrer" data-kpi-detail-link title="Open KPI dashboard">
+            <i class="bi bi-box-arrow-up-right"></i> View
+        </a>
+    </div>
 </article>

@@ -15,7 +15,7 @@ class PpmuDemoMetricFactory
     $lahore = $username === 'ac.lahore';
     $base = $this->basePerformance($slug, $lahore);
     $trend = $this->trendFactor($date, $dayOffset, $lahore);
-    $pct = max(32, min(98, $base + $trend));
+    $pct = $this->boundedPerformance($base + $trend, $dayOffset);
 
     $snapshot = match ($slug) {
       'price-of-roti' => $this->roti($pct, $dayOffset),
@@ -61,8 +61,8 @@ class PpmuDemoMetricFactory
       'zebra-crossings' => [72, 66],
       'dysfunctional-streetlights' => [46, 40],
       'covering-of-manholes' => [62, 56],
-      'functional-and-clean-water-filtration-plants' => [91, 84],
-      'inspection-of-educational-institutions' => [88, 80],
+      'functional-and-clean-water-filtration-plants' => [98, 94],
+      'inspection-of-educational-institutions' => [96, 91],
       'inspection-of-health-facilities' => [79, 72],
       'violation-of-marriage-functions-act' => [70, 64],
       'anti-encroachment-campaign' => [48, 42],
@@ -76,7 +76,7 @@ class PpmuDemoMetricFactory
       'maintenance-of-greenbelts' => [77, 69],
       'maintenance-of-drains-and-sewerage-lines' => [61, 54],
       'bus-terminals' => [71, 63],
-      'chief-ministers-complaint-cell' => [90, 82],
+      'chief-ministers-complaint-cell' => [98, 93],
     ];
 
     [$good, $avg] = $profiles[$slug] ?? [72, 64];
@@ -95,6 +95,31 @@ class PpmuDemoMetricFactory
     $lahoreBoost = $lahore ? 2 : -1;
 
     return round($weekly + $weekday + $lahoreBoost + (($dayOffset % 5) - 2), 1);
+  }
+
+  private function boundedPerformance(float $raw, int $dayOffset): float
+  {
+    $cycle = $dayOffset % 16;
+
+    $target = match (true) {
+      $cycle === 0 => 42 + ($dayOffset % 5),
+      $cycle === 5 => 58 + ($dayOffset % 7),
+      $cycle === 10 => 74 + ($dayOffset % 8),
+      $cycle === 15 => 88 + ($dayOffset % 7),
+      default => $raw,
+    };
+
+    return round(max(32, min(98, $target)), 1);
+  }
+
+  private function performanceStatus(float $pct): string
+  {
+    return match (true) {
+      $pct >= 85 => 'Excellent',
+      $pct >= 70 => 'Good',
+      $pct >= 50 => 'Needs Attention',
+      default => 'Critical',
+    };
   }
 
   private function roti(float $pct, int $d): array
@@ -456,15 +481,16 @@ class PpmuDemoMetricFactory
   private function remarks(string $slug, Carbon $date, string $periodType, bool $lahore, float $pct): string
   {
     $area = $lahore ? 'Lahore tehsil' : 'Layyah tehsil';
-    $status = $pct >= 85 ? 'Strong compliance' : ($pct >= 70 ? 'Satisfactory progress' : 'Needs follow-up');
+    $status = $this->performanceStatus($pct);
 
     return sprintf(
-      '%s field report (%s) for %s on %s — %s.',
+      '%s field report (%s) for %s on %s - %s at %.1f%% achievement.',
       ucfirst($periodType),
       str_replace('-', ' ', $slug),
       $area,
       $date->format('d M Y'),
-      $status
+      $status,
+      $pct
     );
   }
 }

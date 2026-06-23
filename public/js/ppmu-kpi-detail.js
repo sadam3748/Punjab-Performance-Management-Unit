@@ -150,14 +150,14 @@
         }
     }
 
-    function bindTableSearch() {
-        const searchInput = document.getElementById('kpiTableSearch');
-        if (!searchInput || searchInput.dataset.bound) return;
-        searchInput.dataset.bound = '1';
-        searchInput.addEventListener('input', function () {
-            const q = this.value.trim().toLowerCase();
-            document.querySelectorAll('#kpiDetailTable tbody tr[data-search]').forEach(row => {
-                row.style.display = (!q || row.dataset.search.includes(q)) ? '' : 'none';
+    function bindInspectionFilters() {
+        const form = document.getElementById('kpiInspectionFilter');
+        if (!form || form.dataset.bound) return;
+        form.dataset.bound = '1';
+        form.querySelectorAll('[data-insp-filter]').forEach(el => {
+            el.addEventListener('change', () => {
+                const params = collectFilterParams({ insp_page: '1' });
+                window.location.href = window.location.pathname + '?' + params.toString();
             });
         });
     }
@@ -175,8 +175,9 @@
             });
         }
 
-        const perPage = document.querySelector('[data-kpi-per-page]');
-        if (perPage && perPage.value) params.set('per_page', perPage.value);
+        document.querySelectorAll('#kpiInspectionFilter [data-insp-filter]').forEach(el => {
+            if (el.value) params.set(el.dataset.inspFilter, el.value);
+        });
 
         return params;
     }
@@ -208,7 +209,12 @@
             updatePeriodRange(data.period_description);
             document.getElementById('kpiDetailSummary').innerHTML = data.summary_html;
             document.getElementById('kpiDetailMetrics').innerHTML = data.metrics_html;
-            document.getElementById('kpiDetailRecords').innerHTML = data.records_html;
+
+            const inspEl = document.getElementById('kpiDetailInspections');
+            if (inspEl && data.inspections_html) {
+                inspEl.innerHTML = data.inspections_html;
+                bindInspectionFilters();
+            }
 
             buildCharts({
                 status_donut: data.charts.status_donut,
@@ -219,7 +225,6 @@
                 comparison_label: data.charts.comparison_label,
             });
 
-            bindTableSearch();
             history.replaceState(null, '', window.location.pathname + (params.toString() ? '?' + params.toString() : ''));
         } catch (e) {
             if (e.name !== 'AbortError') console.error(e);
@@ -291,20 +296,16 @@
 
         filter.querySelector('[data-filter-reset]')?.addEventListener('click', resetToDefaults);
 
-        document.addEventListener('change', e => {
-            if (e.target.matches('[data-kpi-per-page]')) loadDashboard({ page: '1' });
-        });
-
         document.addEventListener('click', e => {
-            const link = e.target.closest('#kpiDetailRecords .pagination a.page-link');
+            const link = e.target.closest('#kpiDetailInspections .pagination a.page-link');
             if (!link || link.closest('.disabled')) return;
             e.preventDefault();
-            const page = new URL(link.href).searchParams.get('page') || '1';
-            loadDashboard({ page });
+            const page = new URL(link.href).searchParams.get('insp_page') || '1';
+            loadDashboard({ insp_page: page });
         });
     }
 
     buildCharts(cfg.charts);
-    bindTableSearch();
+    bindInspectionFilters();
     initFilters();
 })();
