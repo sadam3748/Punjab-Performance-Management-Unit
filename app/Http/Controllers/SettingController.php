@@ -21,20 +21,8 @@ class SettingController extends Controller
 
     /*
     |--------------------------------------------------------------------------
-    | Settings Page
-    |--------------------------------------------------------------------------
-    | Shows general system/user settings page.
-    */
-    public function index()
-    {
-        return view('settings.index');
-    }
-
-    /*
-    |--------------------------------------------------------------------------
     | Change Password Page
     |--------------------------------------------------------------------------
-    | Shows logged-in user password change form.
     */
     public function changePassword()
     {
@@ -73,16 +61,5 @@ class SettingController extends Controller
         return redirect()
             ->route('settings.change-password')
             ->with('success', 'Password updated successfully.');
-    }
-
-    /*
-    |--------------------------------------------------------------------------
-    | System Manual Page
-    |--------------------------------------------------------------------------
-    | Shows static/help manual page.
-    */
-    public function systemManual()
-    {
-        return view('settings.system-manual');
     }
 }

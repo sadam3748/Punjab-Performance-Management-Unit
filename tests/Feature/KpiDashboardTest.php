@@ -21,6 +21,7 @@ class KpiDashboardTest extends TestCase
 
         $this->actingAs($admin)->get('/dashboard')->assertOk()->assertSee('PPMU Main KPI Dashboard');
         $this->actingAs($admin)->get('/dashboard')->assertSeeInOrder(['Target', 'Reported', 'Achieved', 'View Dashboard']);
+        $this->actingAs($admin)->get('/dashboard')->assertSee('ppmu-kpi-grid', false)->assertSee('ppmu-kpi-image-wrap', false);
         $this->actingAs($admin)->get("/kpi/{$slug}/dashboard")->assertOk()->assertSee('Water Filtration');
         $this->actingAs($admin)->get('/manage-kpis')->assertOk()->assertSee('Manage KPI Cards');
 
@@ -49,7 +50,7 @@ class KpiDashboardTest extends TestCase
             $response = $this->get('/dashboard');
             $response->assertOk()->assertSee('Water Filtration')->assertSee('Price of Roti')->assertSee('images/kpi-images/', false);
 
-            $cardCount = substr_count($response->getContent(), '<article class="kpi-png-tile" data-kpi-card');
+            $cardCount = substr_count($response->getContent(), 'data-kpi-card');
             $this->assertSame(23, $cardCount, "User {$login} should see 23 KPI cards");
             $response->assertSee('View Dashboard')->assertSee('Reported')->assertDontSee('Performance</span>', false);
 

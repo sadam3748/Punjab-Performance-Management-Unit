@@ -14,7 +14,7 @@
 
 <x-period-filter :filters="$filters" :period="$period" />
 
-<div class="kpi-png-grid" id="kpiGrid">
+<div class="ppmu-kpi-grid" id="kpiGrid">
     @forelse($cards as $card)
         <x-kpi-card :card="$card" />
     @empty

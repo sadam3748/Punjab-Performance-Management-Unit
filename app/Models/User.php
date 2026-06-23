@@ -65,57 +65,6 @@ class User extends Authenticatable
         return $this->belongsTo(Tehsil::class);
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | PPMF Module Relations
-    |--------------------------------------------------------------------------
-    */
-
-    public function inspections()
-    {
-        return $this->hasMany(Inspection::class, 'performed_by');
-    }
-
-    public function uploadedInspectionAttachments()
-    {
-        return $this->hasMany(InspectionAttachment::class, 'uploaded_by');
-    }
-
-    public function geoTaggings()
-    {
-        return $this->hasMany(GeoTagging::class, 'performed_by');
-    }
-
-    public function uploadedGeoTaggingAttachments()
-    {
-        return $this->hasMany(GeoTaggingAttachment::class, 'uploaded_by');
-    }
-
-    public function createdBaselineData()
-    {
-        return $this->hasMany(DistrictBaselineData::class, 'created_by');
-    }
-
-    public function updatedBaselineData()
-    {
-        return $this->hasMany(DistrictBaselineData::class, 'updated_by');
-    }
-
-    public function createdBaselineAssets()
-    {
-        return $this->hasMany(BaselineAsset::class, 'created_by');
-    }
-
-    public function updatedBaselineAssets()
-    {
-        return $this->hasMany(BaselineAsset::class, 'updated_by');
-    }
-
-    public function activityLogs()
-    {
-        return $this->hasMany(ActivityLog::class);
-    }
-
     public function kpiAssignments()
     {
         return $this->hasMany(KpiAssignment::class);

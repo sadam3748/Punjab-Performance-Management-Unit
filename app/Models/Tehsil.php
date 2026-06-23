@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
@@ -24,20 +25,5 @@ class Tehsil extends Model
     public function users()
     {
         return $this->hasMany(User::class);
-    }
-
-    public function inspections()
-    {
-        return $this->hasMany(Inspection::class);
-    }
-
-    public function geoTaggings()
-    {
-        return $this->hasMany(GeoTagging::class);
-    }
-
-    public function baselineAssets()
-    {
-        return $this->hasMany(BaselineAsset::class);
     }
 }

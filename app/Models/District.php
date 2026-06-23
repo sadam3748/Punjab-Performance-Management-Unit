@@ -33,40 +33,4 @@ class District extends Model
     {
         return $this->hasMany(User::class);
     }
-
-    public function inspections()
-    {
-        return $this->hasMany(Inspection::class);
-    }
-
-    public function geoTaggings()
-    {
-        return $this->hasMany(GeoTagging::class);
-    }
-
-    public function baselineData()
-    {
-        return $this->hasMany(DistrictBaselineData::class);
-    }
-
-    public function baselineAssets()
-    {
-        return $this->hasMany(BaselineAsset::class);
-    }
-
-    public function districtKpiMetricValues()
-    {
-        // Backward-compatible alias (old name) for unified KPI metric values.
-        return $this->hasMany(KpiMetricValue::class)->where('area_level', 'district');
-    }
-
-    public function metricValues()
-    {
-        return $this->hasMany(KpiMetricValue::class)->where('area_level', 'district');
-    }
-
-    public function districtKpiScores()
-    {
-        return $this->hasMany(DistrictKpiScore::class);
-    }
 }

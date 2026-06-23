@@ -28,7 +28,7 @@ class KpiFormulaService
         return match (true) {
             $percentage >= 85 => 'excellent',
             $percentage >= 70 => 'good',
-            $percentage >= 50 => 'needs attention',
+            $percentage >= 50 => 'attention',
             default => 'critical',
         };
     }
