@@ -22,9 +22,10 @@ class KpiInspectionTest extends TestCase
         $this->actingAs($admin)
             ->get("/kpi/{$slug}/dashboard")
             ->assertOk()
-            ->assertSee('Inspection Records')
-            ->assertSee('Field inspection evidence, location details, and review status for this KPI.')
-            ->assertSee('View Detail')
+            ->assertSee('Inspection List')
+            ->assertSee('kpiInspectionFilter', false)
+            ->assertSee('ppmu-inspection-view-icon', false)
+            ->assertSee('bi-eye', false)
             ->assertSee('Pending Review', false);
     }
 
@@ -45,7 +46,7 @@ class KpiInspectionTest extends TestCase
             ->assertSee('Evidence Images')
             ->assertSee('Map Location')
             ->assertSee('Approve Inspection')
-            ->assertSee('Open in Google Maps');
+            ->assertSee('Open in Maps');
 
         $this->actingAs($ac)
             ->post(route('kpi.inspections.approve', [$card, $inspection]), [
@@ -104,12 +105,12 @@ class KpiInspectionTest extends TestCase
 
         KpiCard::where('is_active', true)->each(function (KpiCard $card) {
             $this->assertSame(
-                12,
+                15,
                 KpiInspection::where('kpi_card_id', $card->id)->count(),
-                "KPI {$card->slug} should have 12 inspections"
+                "KPI {$card->slug} should have 15 inspections"
             );
         });
 
-        $this->assertSame(276, KpiInspection::count());
+        $this->assertSame(345, KpiInspection::count());
     }
 }

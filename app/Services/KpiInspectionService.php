@@ -13,7 +13,11 @@ use Illuminate\Support\Facades\DB;
 
 class KpiInspectionService
 {
-    public function __construct(private readonly KpiScopeService $scopeService) {}
+    public function __construct(
+        private readonly KpiScopeService $scopeService,
+        private readonly KpiGeoFilterService $geoFilterService,
+        private readonly KpiDashboardConfigService $dashboardConfig,
+    ) {}
 
     public function applyInspectionScope(Builder $query, User $user): Builder
     {
@@ -44,6 +48,14 @@ class KpiInspectionService
             ->withQueryString();
     }
 
+    public function getInspectionsCollection(KpiCard $card, User $user, Request $request): Collection
+    {
+        $query = $this->baseQuery($card, $user);
+        $this->applyListFilters($query, $request, $user);
+
+        return $query->with(['district:id,name', 'tehsil:id,name'])->get();
+    }
+
     public function buildStatusCounts(KpiCard $card, User $user, Request $request): array
     {
         $query = $this->baseQuery($card, $user);
@@ -62,37 +74,105 @@ class KpiInspectionService
         ];
     }
 
+    /** @return list<array<string, mixed>> */
+    public function getTableColumnsForKpi(string $slug): array
+    {
+        $slug = $this->dashboardConfig->normalizeSlug($slug);
+        $definitionColumns = $this->dashboardConfig->tableColumnsFor($slug);
+
+        $columns = [
+            ['key' => 'reference_no', 'label' => 'Ref.', 'type' => 'base'],
+        ];
+
+        $entityColumns = collect($definitionColumns)->filter(
+            fn (array $column): bool => ($column['from'] ?? 'detail_data') === 'entity'
+        );
+        $addressColumns = collect($definitionColumns)->filter(
+            fn (array $column): bool => ($column['from'] ?? 'detail_data') === 'address' || $column['field'] === 'address'
+        );
+        $kpiColumns = collect($definitionColumns)->reject(
+            fn (array $column): bool => in_array($column['from'] ?? 'detail_data', ['entity', 'address', 'inspector'], true)
+        );
+
+        foreach ($entityColumns as $column) {
+            $columns[] = $this->mapTableColumn($column, 'base');
+        }
+
+        foreach ($addressColumns as $column) {
+            $columns[] = $this->mapTableColumn($column, 'base');
+        }
+
+        $columns[] = ['key' => 'tehsil', 'label' => 'Tehsil', 'type' => 'base'];
+
+        foreach ($kpiColumns as $column) {
+            $columns[] = $this->mapTableColumn($column, 'kpi');
+        }
+
+        $columns[] = ['key' => 'inspected_by', 'label' => 'Insp.', 'type' => 'base'];
+        $columns[] = ['key' => 'inspection_date', 'label' => 'Date', 'type' => 'base'];
+
+        if ($slug === 'functional-and-clean-water-filtration-plants') {
+            $columns[] = ['key' => 'inspection_link', 'label' => 'Link', 'type' => 'link'];
+        }
+
+        $columns[] = ['key' => 'status', 'label' => 'Status', 'type' => 'base'];
+        $columns[] = ['key' => 'action', 'label' => '', 'type' => 'base'];
+
+        return $columns;
+    }
+
+    /** @param  array{label: string, field: string, from?: string}  $column */
+    private function mapTableColumn(array $column, string $type): array
+    {
+        return [
+            'key' => $column['field'],
+            'label' => $column['label'],
+            'field' => $column['field'],
+            'from' => $column['from'] ?? 'detail_data',
+            'type' => $type,
+        ];
+    }
+
+    /** @param  list<array<string, mixed>>  $columns */
+    public function buildDynamicTableRows(Collection $inspections, array $columns): Collection
+    {
+        return $inspections->map(fn (KpiInspection $inspection): array => [
+            'inspection' => $inspection,
+            'cells' => collect($columns)
+                ->reject(fn (array $column): bool => in_array($column['key'], ['action', 'status'], true))
+                ->mapWithKeys(fn (array $column): array => [
+                    $column['key'] => $this->cellValue($inspection, $column),
+                ])
+                ->all(),
+        ]);
+    }
+
+    /** @param  array<string, mixed>  $column */
+    public function cellValue(KpiInspection $inspection, array $column): string
+    {
+        $key = $column['key'] ?? $column['field'] ?? '';
+
+        return match ($key) {
+            'reference_no' => (string) $inspection->reference_no,
+            'inspection_date' => $inspection->inspection_datetime->format('d M Y'),
+            'district' => (string) ($inspection->district?->name ?? '—'),
+            'tehsil' => (string) ($inspection->tehsil?->name ?? '—'),
+            'inspected_by' => (string) ($inspection->inspectedBy?->name ?? '—'),
+            'entity_name' => (string) ($inspection->entity_name ?? '—'),
+            'address' => (string) ($inspection->address ?? '—'),
+            'identifier' => (string) ($inspection->identifier ?? '—'),
+            default => $this->resolveFieldValue($inspection, $column),
+        };
+    }
+
     public function filterOptions(User $user): array
     {
-        $role = $user->role?->slug;
-
-        $districts = collect();
-        $tehsils = collect();
-
-        if (in_array($role, ['super_admin', 'chief_secretary', 'pmru_user', 'viewer', 'commissioner'], true)) {
-            $districts = DB::table('districts')->orderBy('name')->pluck('name', 'id');
-        }
-
-        if (in_array($role, ['super_admin', 'chief_secretary', 'pmru_user', 'viewer', 'commissioner', 'dc'], true)) {
-            $tehsilQuery = DB::table('tehsils')->orderBy('name');
-            if ($role === 'dc') {
-                $tehsilQuery->where('district_id', $user->district_id);
-            } elseif ($role === 'commissioner') {
-                $tehsilQuery->whereIn('district_id', DB::table('districts')->where('division_id', $user->division_id)->pluck('id'));
-            }
-            $tehsils = $tehsilQuery->pluck('name', 'id');
-        }
-
         return [
             'statuses' => [
                 KpiInspection::STATUS_PENDING => 'Pending Review',
                 KpiInspection::STATUS_APPROVED => 'Approved',
                 KpiInspection::STATUS_REJECTED => 'Rejected',
             ],
-            'districts' => $districts,
-            'tehsils' => $tehsils,
-            'show_district_filter' => $districts->isNotEmpty(),
-            'show_tehsil_filter' => $tehsils->isNotEmpty(),
         ];
     }
 
@@ -116,6 +196,7 @@ class KpiInspectionService
             'canReview' => $this->canReviewInspection($inspection, $user),
             'fallbackImage' => $card->resolvedImagePath(),
             'googleMapsKey' => config('services.google_maps.key'),
+            'detailFields' => $this->dashboardConfig->detailFieldsFor($card->slug),
         ];
     }
 
@@ -182,18 +263,12 @@ class KpiInspectionService
         ], true);
     }
 
-  private function applyListFilters(Builder $query, Request $request, User $user, bool $skipStatus = false): void
+    private function applyListFilters(Builder $query, Request $request, User $user, bool $skipStatus = false): void
     {
+        $this->geoFilterService->apply($query, $request, $user);
+
         if (! $skipStatus && $request->filled('insp_status')) {
             $query->where('status', $request->string('insp_status')->toString());
-        }
-
-        if ($request->filled('insp_district') && $this->filterOptions($user)['show_district_filter']) {
-            $query->where('district_id', (int) $request->input('insp_district'));
-        }
-
-        if ($request->filled('insp_tehsil') && $this->filterOptions($user)['show_tehsil_filter']) {
-            $query->where('tehsil_id', (int) $request->input('insp_tehsil'));
         }
 
         if ($request->filled('insp_date_from')) {
@@ -203,5 +278,25 @@ class KpiInspectionService
         if ($request->filled('insp_date_to')) {
             $query->whereDate('inspection_datetime', '<=', $request->input('insp_date_to'));
         }
+    }
+
+    /** @param  array<string, mixed>  $column */
+    private function resolveFieldValue(KpiInspection $inspection, array $column): string
+    {
+        $from = $column['from'] ?? 'detail_data';
+        $field = $column['field'] ?? $column['key'] ?? '';
+
+        $value = match ($from) {
+            'entity' => $inspection->{$field} ?? null,
+            'address' => $inspection->address,
+            'inspector' => $inspection->inspectedBy?->name,
+            default => data_get($inspection->detail_data, $field),
+        };
+
+        if (is_array($value)) {
+            return json_encode($value);
+        }
+
+        return $value === null || $value === '' ? '—' : (string) $value;
     }
 }

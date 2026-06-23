@@ -14,10 +14,11 @@ class KpiDashboardService
     public function __construct(
         private readonly KpiScopeService $scopeService,
         private readonly KpiPeriodService $periodService,
-        private readonly KpiMetricConfigService $metricConfig,
         private readonly KpiFormulaService $formula,
         private readonly KpiChartService $chartService,
         private readonly KpiInspectionService $inspectionService,
+        private readonly KpiDashboardConfigService $dashboardConfig,
+        private readonly KpiGeoFilterService $geoFilterService,
     ) {}
 
     public function assignedCards(User $user, ?Request $request = null): Collection
@@ -40,32 +41,31 @@ class KpiDashboardService
                         });
                 });
             })
-            ->withCount([
-                'submissions as total_count' => fn (Builder $q) => $this->filteredSubmissions($q, $user, $request),
-                'submissions as submitted_count' => fn (Builder $q) => $this->filteredSubmissions($q, $user, $request)->where('status', 'submitted'),
-                'submissions as pending_count' => fn (Builder $q) => $this->filteredSubmissions($q, $user, $request)->whereIn('status', ['draft', 'pending']),
-            ])
-            ->withAvg(['submissions as achieved_avg' => fn (Builder $q) => $this->filteredSubmissions($q, $user, $request)], 'achieved_value')
-            ->withAvg(['submissions as pct_avg' => fn (Builder $q) => $this->filteredSubmissions($q, $user, $request)], 'achievement_percentage')
-            ->withSum(['submissions as reported_sum' => fn (Builder $q) => $this->filteredSubmissions($q, $user, $request)], 'reported_value')
             ->orderBy('display_order')
             ->get()
-            ->map(function (KpiCard $card) {
-                $target = (float) $card->total_marks;
-                $achieved = round((float) ($card->achieved_avg ?? 0), 1);
-                $reported = (int) ($card->reported_sum ?? 0);
-                $pct = round((float) ($card->pct_avg ?? 0), 1);
-                if ($pct <= 0 && $target > 0 && $achieved > 0) {
-                    $pct = $this->formula->achievementPercentage($achieved, $target);
+            ->pipe(function (Collection $cards) use ($user, $request) {
+                if ($cards->isEmpty()) {
+                    return $cards;
                 }
 
-                $card->target = $target;
-                $card->reported = $reported;
-                $card->achieved = $achieved;
-                $card->achievement_percentage = $pct;
-                $card->status_label = $this->formula->performanceLabel($pct);
+                $submissionsByCard = $this->filteredSubmissions(
+                    KpiSubmission::query()->whereIn('kpi_card_id', $cards->pluck('id')),
+                    $user,
+                    $request
+                )
+                    ->get(['kpi_card_id', 'metric_snapshot', 'reported_value', 'achieved_value', 'achievement_percentage', 'target_value'])
+                    ->groupBy('kpi_card_id');
 
-                return $card;
+                return $cards->map(function (KpiCard $card) use ($submissionsByCard) {
+                    $header = $this->resolveOperationalHeader($card, $submissionsByCard->get($card->id, collect()));
+
+                    $card->target = $header['operational_target'];
+                    $card->achieved = $header['completed'];
+                    $card->achievement_percentage = $header['achievement_percentage'];
+                    $card->status_label = $header['status_label'];
+
+                    return $card;
+                });
             });
     }
 
@@ -76,70 +76,75 @@ class KpiDashboardService
 
     public function detail(KpiCard $card, User $user, Request $request): array
     {
-        $baseQuery = $this->filteredSubmissions(
-            KpiSubmission::query()->where('kpi_card_id', $card->id),
-            $user,
-            $request
-        );
-
-        $submissions = (clone $baseQuery)
-            ->with(['user:id,name', 'division:id,name', 'district:id,name', 'tehsil:id,name', 'values.field', 'kpiScore'])
-            ->latest('submission_date')
-            ->get();
+        [$submissions, $usedFallback] = $this->loadSubmissions($card, $user, $request);
 
         $perPage = min(50, max(10, (int) $request->input('per_page', 15)));
 
-        $tableSubmissions = (clone $baseQuery)
-            ->with(['user:id,name', 'division:id,name', 'district:id,name', 'tehsil:id,name', 'values.field', 'kpiScore'])
-            ->latest('submission_date')
-            ->paginate($perPage)
-            ->withQueryString();
+        $tableSubmissions = $this->paginateSubmissions($card, $user, $request, $perPage, $usedFallback);
 
-        $target = (float) $card->total_marks;
-        $reported = (int) $submissions->sum(fn ($s) => (float) ($s->reported_value ?? 1));
-        $achieved = round((float) $submissions->avg(fn ($s) => (float) ($s->achieved_value ?? $s->score)), 1);
-        $pending = round((float) $submissions->sum(fn ($s) => (float) ($s->pending_value ?? 0)), 1);
-        $pct = $this->formula->achievementPercentage($achieved, $target);
-        $score = $this->formula->scoreFromWeightage($pct, (float) $card->total_marks);
+        $headerMetrics = $this->resolveOperationalHeader($card, $submissions);
+        $headerLabels = $this->dashboardConfig->headerLabelsFor($card->slug);
         $areaScores = $this->areaScores($submissions, $user);
 
+        $kpiConfig = $this->dashboardConfig->forKpi($card->slug);
+        $chartDefinitions = $kpiConfig['charts'];
+        $inspectionCollection = $this->inspectionService->getInspectionsCollection($card, $user, $request);
+        $inspectionStatusCounts = $this->inspectionService->buildStatusCounts($card, $user, $request);
+        $inspectionTableColumns = $this->inspectionService->getTableColumnsForKpi($card->slug);
+
         return [
+            'kpiConfig' => $kpiConfig,
+            'chartDefinitions' => $chartDefinitions,
+            'inspectionTableColumns' => $inspectionTableColumns,
+            'geoFilters' => $this->geoFilterService->options($user),
             'submissions' => $submissions,
             'tableSubmissions' => $tableSubmissions,
+            'data_fallback' => $usedFallback,
             'summary' => [
                 'total' => $submissions->count(),
                 'approved' => $submissions->where('status', 'approved')->count(),
                 'submitted' => $submissions->where('status', 'submitted')->count(),
-                'reported' => $reported,
-                'pending' => $pending,
+                'reported' => $headerMetrics['records'],
+                'pending' => $headerMetrics['pending'],
                 'rejected' => $submissions->where('status', 'rejected')->count(),
-                'target' => $target,
-                'achieved' => $achieved,
-                'achievement_percentage' => $pct,
-                'score' => $score,
-                'status_label' => $this->formula->performanceLabel($pct),
+                'target' => $headerMetrics['operational_target'],
+                'achieved' => $headerMetrics['completed'],
+                'achievement_percentage' => $headerMetrics['achievement_percentage'],
+                'score' => $headerMetrics['score'],
+                'status_label' => $headerMetrics['status_label'],
                 'best_area' => $areaScores->sortDesc()->keys()->first() ?: '—',
                 'weak_area' => $areaScores->sort()->keys()->first() ?: '—',
             ],
-            'header' => [
-                'target' => $target,
-                'reported' => $reported,
-                'achieved' => $achieved,
-                'pending' => $pending,
-                'score' => $score,
-                'achievement_percentage' => $pct,
-                'status_label' => $this->formula->performanceLabel($pct),
+            'header' => array_merge($headerMetrics, [
+                'labels' => $headerLabels,
                 'period_label' => $this->periodService->label($request),
                 'area_level' => $this->scopeService->areaLevel($user),
                 'scope_label' => $this->scopeService->locationLabel($user),
-            ],
-            'metrics' => $this->metrics($card, $submissions, $target, $achieved, $pct),
-            'charts' => $this->chartService->build($submissions, $user, $target, $achieved, $areaScores),
+            ]),
+            'metrics' => $this->metrics(
+                $card,
+                $submissions,
+                $headerMetrics['operational_target'],
+                $headerMetrics['completed'],
+                $headerMetrics['achievement_percentage'],
+                $inspectionStatusCounts
+            ),
+            'charts' => $this->chartService->buildForKpi(
+                $card->slug,
+                $submissions,
+                $inspectionCollection,
+                $user,
+                $headerMetrics['operational_target'],
+                $headerMetrics['completed'],
+                $areaScores,
+                $chartDefinitions,
+            ),
             'filters' => $this->filterOptionsForView(),
+            'geo' => $this->geoFilterService->state($request),
             'period' => $this->periodState($request),
             'period_description' => $this->periodService->description($request),
             'inspectionRecords' => $this->inspectionService->getInspectionListForKpi($card, $user, $request),
-            'inspectionStatusCounts' => $this->inspectionService->buildStatusCounts($card, $user, $request),
+            'inspectionStatusCounts' => $inspectionStatusCounts,
             'inspectionFilters' => $this->inspectionService->filterOptions($user),
             'canReviewInspections' => $this->inspectionService->canReviewInspections($user),
         ];
@@ -177,63 +182,277 @@ class KpiDashboardService
 
     private function filteredSubmissions(Builder $query, User $user, Request $request): Builder
     {
-        return $this->periodService->applyToQuery($this->scopeService->apply($query, $user), $request);
+        $query = $this->periodService->applyToQuery($this->scopeService->apply($query, $user), $request);
+
+        return $this->geoFilterService->apply($query, $request, $user);
     }
 
-    private function metrics(KpiCard $card, Collection $submissions, float $target, float $achieved, float $pct): Collection
+    /** @return array{0: Collection<int, KpiSubmission>, 1: bool} */
+    private function loadSubmissions(KpiCard $card, User $user, Request $request): array
     {
-        $configured = collect($this->metricConfig->cardsFor($card->slug) ?: ($card->metric_config ?? []));
-        $allValues = $submissions->flatMap->values;
-
-        $metrics = $configured->map(function ($metric) use ($allValues) {
-            $fieldValues = $allValues->filter(fn ($v) => $v->field?->field_name === $metric['field']);
-
-            return array_merge($metric, [
-                'value' => round($fieldValues->sum(fn ($v) => (float) $v->value), 1),
-                'hint' => $metric['hint'] ?? $this->metricHint($metric['label']),
-            ]);
-        });
-
-        $metrics->push(
-            ['label' => 'Target', 'field' => 'target', 'icon' => 'bi-bullseye', 'tone' => 'purple', 'value' => $target, 'hint' => 'Period performance goal'],
-            ['label' => 'Achieved', 'field' => 'achieved', 'icon' => 'bi-graph-up-arrow', 'tone' => 'green', 'value' => $achieved, 'hint' => 'Reported achievement total'],
-            ['label' => 'Score', 'field' => 'score', 'icon' => 'bi-award', 'tone' => 'blue', 'value' => $this->formula->scoreFromWeightage($pct, $target), 'hint' => 'Weighted KPI score'],
+        $query = $this->filteredSubmissions(
+            KpiSubmission::query()->where('kpi_card_id', $card->id),
+            $user,
+            $request
         );
 
-        return $metrics;
+        $submissions = (clone $query)
+            ->with(['user:id,name', 'division:id,name', 'district:id,name', 'tehsil:id,name', 'values.field', 'kpiScore'])
+            ->latest('submission_date')
+            ->get();
+
+        if ($submissions->isNotEmpty()) {
+            return [$submissions, false];
+        }
+
+        $fallback = $this->scopedSubmissions($card, $user, $request)
+            ->whereYear('submission_date', (int) ($request->input('year') ?: now()->year))
+            ->whereMonth('submission_date', (int) ($request->input('month') ?: now()->month))
+            ->with(['user:id,name', 'division:id,name', 'district:id,name', 'tehsil:id,name', 'values.field', 'kpiScore'])
+            ->latest('submission_date')
+            ->limit(120)
+            ->get();
+
+        if ($fallback->isNotEmpty()) {
+            return [$fallback, true];
+        }
+
+        $recent = $this->scopedSubmissions($card, $user, $request)
+            ->with(['user:id,name', 'division:id,name', 'district:id,name', 'tehsil:id,name', 'values.field', 'kpiScore'])
+            ->latest('submission_date')
+            ->limit(80)
+            ->get();
+
+        return [$recent, $recent->isNotEmpty()];
+    }
+
+    private function scopedSubmissions(KpiCard $card, User $user, Request $request): Builder
+    {
+        return $this->geoFilterService->apply(
+            $this->scopeService->apply(
+                KpiSubmission::query()->where('kpi_card_id', $card->id),
+                $user
+            ),
+            $request,
+            $user
+        );
+    }
+
+    private function paginateSubmissions(KpiCard $card, User $user, Request $request, int $perPage, bool $usedFallback)
+    {
+        if ($usedFallback) {
+            return $this->scopedSubmissions($card, $user, $request)
+                ->with(['user:id,name', 'division:id,name', 'district:id,name', 'tehsil:id,name', 'values.field', 'kpiScore'])
+                ->latest('submission_date')
+                ->paginate($perPage)
+                ->withQueryString();
+        }
+
+        return $this->filteredSubmissions(
+            KpiSubmission::query()->where('kpi_card_id', $card->id),
+            $user,
+            $request
+        )
+            ->with(['user:id,name', 'division:id,name', 'district:id,name', 'tehsil:id,name', 'values.field', 'kpiScore'])
+            ->latest('submission_date')
+            ->paginate($perPage)
+            ->withQueryString();
+    }
+
+    private function resolveAchieved(Collection $submissions, float $target): float
+    {
+        if ($submissions->isEmpty()) {
+            return 0.0;
+        }
+
+        $avg = round((float) $submissions->avg(fn ($s) => (float) ($s->achieved_value ?? $s->score)), 1);
+        if ($avg > 0) {
+            return $avg;
+        }
+
+        $pctAvg = round((float) $submissions->avg(fn ($s) => (float) ($s->achievement_percentage ?? 0)), 1);
+        if ($pctAvg > 0 && $target > 0) {
+            return round($target * $pctAvg / 100, 1);
+        }
+
+        return $avg;
+    }
+
+    private function resolveAchievementPct(Collection $submissions, float $achieved, float $target): float
+    {
+        if ($submissions->isEmpty()) {
+            return 0.0;
+        }
+
+        if ($target > 0) {
+            return $this->formula->achievementPercentage($achieved, $target);
+        }
+
+        $pct = round((float) $submissions->avg(fn ($s) => (float) ($s->achievement_percentage ?? $s->kpiScore?->percentage ?? 0)), 1);
+
+        return $pct > 0 ? $pct : 0.0;
+    }
+
+    /** @return array<string, float|int|string> */
+    private function resolveOperationalHeader(KpiCard $card, Collection $submissions): array
+    {
+        $fields = $this->dashboardConfig->operationalFieldsFor($card->slug);
+        $marks = (float) $card->total_marks;
+
+        $operationalTarget = $this->snapshotAverage($submissions, $fields['target']);
+        $completed = $this->snapshotAverage($submissions, $fields['completed']);
+
+        if ($operationalTarget <= 0) {
+            $operationalTarget = round((float) $submissions->avg('target_value'), 1);
+        }
+        if ($completed <= 0) {
+            $completed = $this->resolveAchieved($submissions, max($operationalTarget, $marks));
+        }
+
+        $records = max(
+            $submissions->count(),
+            (int) round((float) $submissions->sum(fn ($s) => (float) ($s->reported_value ?? 0)))
+        );
+
+        $pct = $this->resolveAchievementPct($submissions, $completed, $operationalTarget);
+        $score = $this->formula->scoreFromWeightage($pct, $marks);
+
+        return [
+            'operational_target' => $operationalTarget,
+            'completed' => $completed,
+            'records' => $records,
+            'achievement_percentage' => $pct,
+            'score' => $score,
+            'total_marks' => $marks,
+            'status_label' => $this->formula->performanceLabel($pct),
+            'target' => $operationalTarget,
+            'achieved' => $completed,
+            'reported' => $records,
+            'pending' => max(0, round($operationalTarget - $completed, 1)),
+        ];
+    }
+
+    private function snapshotAverage(Collection $submissions, string $field): float
+    {
+        if ($submissions->isEmpty()) {
+            return 0.0;
+        }
+
+        if ($field === 'applications_target') {
+            return round((float) $submissions->avg(function ($submission) {
+                $snapshot = $submission->metric_snapshot ?? [];
+
+                return (float) ($snapshot['pending_applications'] ?? 0)
+                    + (float) ($snapshot['applications_completed'] ?? 0);
+            }), 1);
+        }
+
+        return round((float) $submissions->avg(
+            fn ($submission) => (float) data_get($submission->metric_snapshot, $field, 0)
+        ), 1);
+    }
+
+    /** @param  array<string, int>  $inspectionStatusCounts */
+    private function metrics(KpiCard $card, Collection $submissions, float $target, float $achieved, float $pct, array $inspectionStatusCounts): Collection
+    {
+        $configured = collect($this->dashboardConfig->dashboardStatsFor($card->slug));
+        $allValues = $submissions->flatMap->values;
+
+        return $configured->map(function (array $metric) use ($allValues, $submissions, $inspectionStatusCounts, $pct) {
+            $value = $this->resolveMetricValue($metric['field'], $submissions, $allValues, $inspectionStatusCounts, $pct);
+
+            return array_merge($metric, [
+                'value' => $value,
+                'hint' => $this->shortCardHint($metric),
+            ]);
+        });
+    }
+
+    private function shortCardHint(array $metric): ?string
+    {
+        $formula = trim((string) ($metric['formula_text'] ?? ''));
+        $label = strtolower((string) ($metric['label'] ?? ''));
+
+        if ($formula === '') {
+            return null;
+        }
+
+        if (str_contains($label, 'rate')
+            || str_contains($label, '%')
+            || str_contains($label, 'achievement')
+            || str_contains($label, 'compliance')
+            || str_contains($label, 'resolution')) {
+            return \Illuminate\Support\Str::limit($formula, 42);
+        }
+
+        return null;
+    }
+
+    /** @param  array<string, int>  $inspectionStatusCounts */
+    private function resolveMetricValue(string $field, Collection $submissions, Collection $allValues, array $inspectionStatusCounts, float $pct): float|string|int
+    {
+        return match ($field) {
+            'achievement_rate' => round($this->metricFieldSum($submissions, $allValues, $field) ?: $pct, 1),
+            'complaint_resolution_rate', 'plant_coverage_rate', 'filter_change_rate',
+            'resolution_rate', 'compliance_rate', 'fine_imposition_rate', 'dc_visit_completion', 'ac_visit_completion'
+                => round($this->metricFieldSum($submissions, $allValues, $field), 1),
+            'approved_validations' => (int) ($inspectionStatusCounts['approved'] ?? 0),
+            'rejected_validations' => (int) ($inspectionStatusCounts['rejected'] ?? 0),
+            'validated_inspections' => (int) (($inspectionStatusCounts['approved'] ?? 0) + ($inspectionStatusCounts['rejected'] ?? 0)),
+            'approved_rejected_validations' => sprintf(
+                '%d / %d',
+                (int) ($inspectionStatusCounts['approved'] ?? 0),
+                (int) ($inspectionStatusCounts['rejected'] ?? 0)
+            ),
+            default => $this->roundMetricValue($this->metricFieldSum($submissions, $allValues, $field)),
+        };
+    }
+
+    private function roundMetricValue(float $value): float
+    {
+        return round($value, fmod(abs($value), 1.0) > 0.001 ? 1 : 0);
+    }
+
+    private function metricFieldSum(Collection $submissions, Collection $allValues, string $field): float
+    {
+        $fromValues = (float) $allValues
+            ->filter(fn ($v) => $v->field?->field_name === $field)
+            ->sum(fn ($v) => (float) $v->value);
+
+        if ($fromValues > 0) {
+            return $fromValues;
+        }
+
+        return (float) $submissions->sum(function ($submission) use ($field) {
+            $snapshot = $submission->metric_snapshot;
+            if (is_string($snapshot)) {
+                $snapshot = json_decode($snapshot, true) ?: [];
+            }
+
+            return (float) data_get($snapshot, $field, 0);
+        });
     }
 
     private function metricHint(string $label): string
     {
-        $key = strtolower($label);
-
-        return match (true) {
-            str_contains($key, 'compliance') || str_contains($key, '%') => 'Compliance percentage',
-            str_contains($key, 'target') => 'Assigned period target',
-            str_contains($key, 'achieved') || str_contains($key, 'resolved') || str_contains($key, 'completed') => 'Completed in selected period',
-            str_contains($key, 'pending') => 'Outstanding items',
-            str_contains($key, 'visit') => 'Official field visits',
-            str_contains($key, 'inspection') || str_contains($key, 'inspected') => 'Inspection activity count',
-            str_contains($key, 'report') => 'Reports submitted',
-            str_contains($key, 'fine') || str_contains($key, 'violation') => 'Enforcement actions',
-            str_contains($key, 'functional') || str_contains($key, 'clean') => 'Operational status count',
-            str_contains($key, 'non-functional') || str_contains($key, 'open') => 'Issues requiring action',
-            str_contains($key, 'total') || str_contains($key, 'plants') || str_contains($key, 'roads') => 'Baseline operational count',
-            str_contains($key, 'meeting') || str_contains($key, 'council') => 'Governance meetings held',
-            str_contains($key, 'mobility') || str_contains($key, 'index') => 'Coverage mobility index',
-            str_contains($key, 'complaint') => 'Citizen complaint actions',
-            str_contains($key, 'tier') => 'Tier-wise target value',
-            default => 'Operational indicator value',
-        };
+        return '';
     }
 
     private function areaScores(Collection $submissions, User $user): Collection
     {
         $relation = $this->scopeService->comparisonRelation($user);
 
-        return $submissions
+        $scores = $submissions
             ->filter(fn ($item) => $item->{$relation})
             ->groupBy(fn ($item) => $item->{$relation}->name)
             ->map(fn ($group) => round($group->avg(fn ($item) => (float) ($item->achievement_percentage ?? $item->kpiScore?->percentage ?? $item->score)), 1));
+
+        if ($scores->isNotEmpty()) {
+            return $scores;
+        }
+
+        return $submissions
+            ->groupBy(fn ($item) => $item->submission_date?->format('d M') ?? 'Period')
+            ->map(fn ($group) => round($group->avg(fn ($item) => (float) ($item->achievement_percentage ?? 0)), 1));
     }
 }

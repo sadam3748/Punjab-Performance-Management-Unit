@@ -1,5 +1,5 @@
 @extends('layouts.app')
-@section('title', $kpiCard->title . ' — KPI Detail')
+@section('title', $kpiCard->title . ' — KPI Detail Dashboard')
 @section('content_class', 'ppmu-dashboard-content ppmu-detail-page')
 @push('styles')
 <link rel="stylesheet" href="{{ asset('css/ppmu-kpi.css') }}?v={{ filemtime(public_path('css/ppmu-kpi.css')) }}">
@@ -10,9 +10,13 @@
     $imageUrl  = asset($kpiCard->resolvedImagePath());
     $pct       = (float) $header['achievement_percentage'];
     $score     = (float) ($header['score'] ?? 0);
+    $marks     = (float) ($header['total_marks'] ?? $kpiCard->total_marks);
+    $labels    = $header['labels'] ?? app(\App\Services\KpiDashboardConfigService::class)->headerLabelsFor($kpiCard->slug);
     $userScope = $header['scope_label'] ?? ($user->tehsil?->name ?? $user->district?->name ?? $user->division?->name ?? 'All Punjab');
     $statusDonut = $charts['status_donut'] ?? $charts['donut'];
     $comparisonTitle = $charts['comparison_label'] ?? 'Area comparison';
+    $visibleCharts = $chartDefinitions ?? $kpiConfig['charts'] ?? [];
+    $chartCount = count($visibleCharts);
     $areaChartColors = $charts['areas']->values()->map(fn ($v) =>
         $v >= 85 ? '#087443' : ($v >= 70 ? '#2563eb' : ($v >= 50 ? '#e07b00' : '#dc2626'))
     );
@@ -36,7 +40,7 @@
         </div>
 
         <div class="ppmu-detail-info">
-            <span class="ppmu-detail-category">{{ $kpiCard->category }}</span>
+            <span class="ppmu-detail-category">KPI Detail Dashboard · {{ $kpiCard->category }}</span>
             <h1>{{ $kpiCard->title }}</h1>
             <div class="ppmu-detail-meta">
                 <span><i class="bi bi-person-badge-fill"></i>{{ $user->role?->name }}</span>
@@ -46,32 +50,30 @@
             </div>
         </div>
 
-        <div class="ppmu-detail-stats" id="kpiDetailHeaderStats">
-            <div class="ppmu-ds-item" data-stat="target">
-                <span>Target</span>
-                <strong>{{ number_format($header['target'], 1) }}</strong>
+        <div class="ppmu-detail-stats" id="kpiDetailHeaderStats"
+             data-label-target="{{ $labels['target'] }}"
+             data-label-completed="{{ $labels['completed'] }}">
+            <div class="ppmu-ds-item" data-stat="target" title="Required operational work for the selected period">
+                <span data-label="target">{{ $labels['target'] }}</span>
+                <strong>{{ number_format($header['operational_target'] ?? $header['target'], 1) }}</strong>
             </div>
-            <div class="ppmu-ds-item" data-stat="reported">
-                <span>Reported</span>
-                <strong>{{ number_format($header['reported']) }}</strong>
+            <div class="ppmu-ds-item ppmu-ds-accent" data-stat="achieved" title="Actual operational work completed">
+                <span data-label="completed">{{ $labels['completed'] }}</span>
+                <strong>{{ number_format($header['completed'] ?? $header['achieved'], 1) }}</strong>
             </div>
-            <div class="ppmu-ds-item ppmu-ds-accent" data-stat="achieved">
-                <span>Achieved</span>
-                <strong>{{ number_format($header['achieved'], 1) }}</strong>
+            <div class="ppmu-ds-item" data-stat="reported" title="Submitted inspection and report records in scope">
+                <span>Records</span>
+                <strong>{{ number_format($header['records'] ?? $header['reported']) }}</strong>
             </div>
-            <div class="ppmu-ds-item" data-stat="pending">
-                <span>Pending</span>
-                <strong>{{ number_format($header['pending'], 1) }}</strong>
-            </div>
-            <div class="ppmu-ds-item ppmu-ds-pct" data-stat="pct">
-                <span>Achievement</span>
+            <div class="ppmu-ds-item ppmu-ds-pct" data-stat="pct" title="Completed ÷ Operational Target × 100">
+                <span>Progress</span>
                 <strong>{{ $pct }}%</strong>
             </div>
-            <div class="ppmu-ds-item" data-stat="score">
-                <span>Score</span>
-                <strong>{{ number_format($score, 2) }}</strong>
+            <div class="ppmu-ds-item" data-stat="score" title="KPI marks based on progress and weightage">
+                <span>KPI Score</span>
+                <strong>{{ number_format($score, 1) }} / {{ rtrim(rtrim(number_format($marks, 1), '0'), '.') }}</strong>
             </div>
-            <div class="ppmu-ds-item ppmu-ds-status" data-stat="status">
+            <div class="ppmu-ds-item ppmu-ds-status" data-stat="status" title="Performance status from progress">
                 <span>Status</span>
                 <x-status-badge :status="$header['status_label']"/>
             </div>
@@ -86,15 +88,20 @@
     :ajax="true"
     :period-description="$period_description ?? ''"/>
 
-<div id="kpiDetailRefreshable" class="ppmu-detail-refreshable">
-    <div id="kpiDetailSummary">
-        @include('dashboard.partials.kpi-detail-summary', ['summary' => $summary])
-    </div>
+<x-kpi-geo-filter :geo-filters="$geoFilters" :kpi-card="$kpiCard" :geo="$geo ?? []"/>
 
+@if(!empty($data_fallback))
+    <div class="ppmu-data-fallback-note alert alert-light border py-2 px-3 mb-3" role="status">
+        <i class="bi bi-info-circle text-success me-1"></i>
+        No records matched the exact period filter. Showing the nearest available scoped data for this KPI.
+    </div>
+@endif
+
+<div id="kpiDetailRefreshable" class="ppmu-detail-refreshable">
     <div class="ppmu-section-head">
         <div>
-            <h2><i class="bi bi-speedometer2"></i> Performance Indicators</h2>
-            <p>Key KPI values and operational indicators for the selected period.</p>
+            <h2><i class="bi bi-speedometer2"></i> KPI Performance Cards</h2>
+            <p>Key counts and rates for this KPI in the selected period.</p>
         </div>
     </div>
     <div id="kpiDetailMetrics">
@@ -103,15 +110,17 @@
 
     <div class="ppmu-section-head mt-4">
         <div>
-            <h2><i class="bi bi-bar-chart-fill"></i> Performance Charts</h2>
-            <p>Status, targets, trends and geographic comparison at a glance.</p>
+            <h2><i class="bi bi-bar-chart-fill"></i> KPI Charts</h2>
+            <p>Charts defined in the KPI specification for this indicator.</p>
         </div>
     </div>
-    <div class="ppmu-chart-grid" id="kpiDetailCharts">
-        <x-chart-card title="Status Distribution" subtitle="Approved, submitted, pending & rejected" canvas="statusChart"/>
-        <x-chart-card title="Target vs Achieved" subtitle="Period performance against target" canvas="targetChart"/>
-        <x-chart-card title="Performance Trend" subtitle="Achievement % over reporting dates" canvas="trendChart"/>
-        <x-chart-card :title="$comparisonTitle" subtitle="Achievement % by geographic scope" canvas="areaChart"/>
+    <div class="ppmu-chart-grid ppmu-chart-grid-count-{{ $chartCount }}" id="kpiDetailCharts">
+        @foreach($visibleCharts as $index => $chart)
+            <x-chart-card
+                :title="$chart['title']"
+                :subtitle="ucfirst($chart['type']).' chart'"
+                :canvas="'kpiChart_'.$index"/>
+        @endforeach
     </div>
 
     <div id="kpiDetailInspections">
@@ -120,6 +129,7 @@
             'inspectionRecords' => $inspectionRecords,
             'inspectionStatusCounts' => $inspectionStatusCounts,
             'inspectionFilters' => $inspectionFilters,
+            'inspectionTableColumns' => $inspectionTableColumns,
             'canReviewInspections' => $canReviewInspections,
         ])
     </div>
@@ -133,7 +143,9 @@ window.PPMU_KPI_DETAIL = {
     ajaxUrl: @json(route('kpi.dashboard.data', $kpiCard)),
     defaults: @json($filters['defaults'] ?? []),
     period: @json($period),
+    chartDefinitions: @json($charts['definitions'] ?? []),
     charts: {
+        definitions: @json($charts['definitions'] ?? []),
         status_donut: @json($statusDonut),
         target_achieved: @json($charts['target_achieved']),
         trend: @json($charts['trend']),

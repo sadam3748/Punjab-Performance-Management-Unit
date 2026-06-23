@@ -124,18 +124,31 @@ class PpmuDemoMetricFactory
 
   private function roti(float $pct, int $d): array
   {
-    $tier = 18 + ($d % 4);
+    $tier = [10, 8, 6][$d % 3];
+    $inspectors = 6 + ($d % 3);
     $inspections = 24 + ($d % 8);
+    $totalTarget = $inspectors * $tier;
     $fines = max(2, (int) round($inspections * 0.16));
-    $complaints = max(1, (int) round($inspections * 0.12));
+    $violations = max(2, (int) round($inspections * 0.22));
+    $complaints = max(3, (int) round($inspections * 0.12));
+    $resolved = max(2, (int) round($complaints * 0.85));
+    $validationTarget = 12 + ($d % 4);
 
     return [
-      'dc_weekly_review' => 2,
-      'tandoor_inspections' => $inspections,
+      'dc_weekly_review' => 1 + ($d % 2),
       'tier_target' => $tier,
+      'total_inspectors' => $inspectors,
+      'inspections_total_target' => $totalTarget,
+      'tandoor_inspections' => $inspections,
+      'achievement_rate' => round(min(100, ($inspections / max(1, $totalTarget)) * 100), 1),
       'coverage_mobility_index' => round(72 + ($pct - 70) * 0.4, 1),
+      'violations_found' => $violations,
       'fine_imposed' => $fines,
-      'citizen_complaint_action' => $complaints,
+      'fine_imposition_rate' => round(($fines / max(1, $inspections)) * 100, 1),
+      'citizen_complaints_received' => $complaints,
+      'complaint_resolution_rate' => round(($resolved / max(1, $complaints)) * 100, 1),
+      'validation_target' => $validationTarget,
+      'validated_inspections' => max(8, (int) round($validationTarget * 0.82)),
     ];
   }
 
@@ -230,18 +243,33 @@ class PpmuDemoMetricFactory
   private function waterPlants(float $pct, int $d): array
   {
     $total = 24;
+    $roPlants = 14;
+    $ufPlants = $total - $roPlants;
     $inspect = 18 + ($d % 4);
-    $functional = max(14, (int) round($total * $pct / 100));
+    $functional = min($total, max(14, (int) round($total * $pct / 100)));
+    $blocked = $d % 3;
+    $clean = max(12, $functional - 2);
+    $changed = 6 + ($d % 3);
+    $pending = max(0, 4 - ($d % 3));
 
     return [
       'total_plants' => $total,
+      'total_ro_plants' => $roPlants,
+      'total_uf_plants' => $ufPlants,
       'plants_to_inspect' => $inspect,
       'inspected_plants' => $inspect,
+      'non_inspected_plants' => max(0, $total - $inspect),
+      'plant_coverage_rate' => round(($inspect / $total) * 100, 1),
+      'blocked_plants' => $blocked,
       'functional_plants' => $functional,
       'non_functional_plants' => max(0, $total - $functional),
-      'ro_filter_changed' => 6 + ($d % 3),
-      'ro_filter_pending' => max(0, 4 - ($d % 3)),
-      'clean_plants' => max(12, $functional - 2),
+      'clean_plants' => $clean,
+      'unclean_plants' => max(0, $total - $clean),
+      'ro_filter_changed' => $changed,
+      'ro_filter_pending' => $pending,
+      'filter_change_rate' => round(($changed / max(1, $changed + $pending)) * 100, 1),
+      'approved_validations' => max(4, (int) round($inspect * 0.72)),
+      'rejected_validations' => max(1, (int) round($inspect * 0.08)),
     ];
   }
 
@@ -264,18 +292,37 @@ class PpmuDemoMetricFactory
 
   private function health(float $pct, int $d, bool $lahore): array
   {
+    $total = $lahore ? 32 : 24;
     $required = $lahore ? 22 : 18;
-    $visits = max(6, (int) round($required * $pct / 100));
+    $visits = min($total, max(6, (int) round($required * $pct / 100)));
+    $dcTarget = 2;
+    $dcVisits = min($dcTarget, 1 + ($d % 2));
+    $acTarget = 4;
+    $acVisits = min($acTarget, 3 + ($d % 2));
+    $validationTarget = 12 + ($d % 4);
+    $validated = max(5, (int) round($validationTarget * $pct / 100));
 
     return [
-      'dc_visits' => 2,
-      'ac_visits' => 3 + ($d % 2),
+      'total_health_facilities' => $total,
+      'dc_visits' => $dcVisits,
+      'ac_visits' => $acVisits,
       'required_visits' => $required,
       'facility_visits' => $visits,
+      'facilities_not_inspected' => max(0, $total - $visits),
+      'dc_visit_completion' => round(($dcVisits / $dcTarget) * 100, 1),
+      'ac_visit_completion' => round(($acVisits / $acTarget) * 100, 1),
       'health_council_meeting' => 2,
       'sb_points' => 5 + ($d % 3),
       'issues_resolved' => max(3, (int) round($visits * 0.7)),
       'compliance_rate' => round($pct, 1),
+      'issues_cleanliness' => max(1, (int) round($visits * 0.12)),
+      'issues_staff_absence' => max(1, (int) round($visits * 0.08)),
+      'issues_medicine_shortage' => max(1, (int) round($visits * 0.07)),
+      'issues_equipment_utilities' => max(1, (int) round($visits * 0.1)),
+      'validation_target' => $validationTarget,
+      'validated_inspections' => $validated,
+      'approved_validations' => max(4, (int) round($validated * 0.82)),
+      'rejected_validations' => max(1, (int) round($validated * 0.1)),
     ];
   }
 

@@ -6,6 +6,8 @@
             :value="$metric['value']"
             :icon="$metric['icon'] ?? 'bi-bar-chart'"
             :tone="$metric['tone'] ?? 'blue'"
-            :hint="$metric['hint'] ?? null"/>
+            :formula="$metric['formula_text'] ?? null"
+            :hint="$metric['hint'] ?? null"
+            :description="$metric['description'] ?? null"/>
     @endforeach
 </div>

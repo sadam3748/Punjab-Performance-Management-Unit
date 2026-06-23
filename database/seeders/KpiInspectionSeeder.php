@@ -9,11 +9,29 @@ use Illuminate\Support\Str;
 
 class KpiInspectionSeeder extends Seeder
 {
-    private const PER_KPI = 12;
+    private const PER_KPI = 15;
 
-    private const LAHORE = ['division_id' => 6, 'district_id' => 23, 'tehsil_id' => 81, 'lat' => 31.5204, 'lng' => 74.3587, 'area' => 'Lahore'];
+    private const LAHORE = [
+        'division_id' => 6,
+        'district_id' => 23,
+        'tehsil_id' => 81,
+        'lat' => 31.5204,
+        'lng' => 74.3587,
+        'area' => 'Lahore',
+        'tehsil_name' => 'Lahore City',
+        'district_name' => 'Lahore',
+    ];
 
-    private const LAYYAH = ['division_id' => 2, 'district_id' => 7, 'tehsil_id' => 24, 'lat' => 30.9617, 'lng' => 70.9397, 'area' => 'Layyah'];
+    private const LAYYAH = [
+        'division_id' => 2,
+        'district_id' => 7,
+        'tehsil_id' => 24,
+        'lat' => 30.9617,
+        'lng' => 70.9397,
+        'area' => 'Layyah',
+        'tehsil_name' => 'Layyah',
+        'district_name' => 'Layyah',
+    ];
 
     public function run(): void
     {
@@ -42,7 +60,7 @@ class KpiInspectionSeeder extends Seeder
                 $reviewer = $users->get($side === self::LAHORE ? 'dc.lahore' : 'dc.layyah');
 
                 $status = $statuses[$i];
-                $inspectedAt = $now->copy()->subDays(($cardIndex * 3) + $i + 2)->setTime(9 + ($i % 6), 15 * ($i % 4), 0);
+                $inspectedAt = $now->copy()->subDays($i % 21)->setTime(9 + ($i % 6), 15 * ($i % 4), 0);
                 $entity = $entities[$i % count($entities)];
                 $reference = sprintf('INSP-%s-%06d', $now->format('Y'), $refCounter++);
 
@@ -60,12 +78,9 @@ class KpiInspectionSeeder extends Seeder
                     ? ['Evidence uploaded and checklist completed.', 'Location coordinates captured during visit.']
                     : ['Preliminary site visit completed.'];
 
-                $detailData = [
-                    'facility_category' => $entity['type'],
-                    'visit_type' => $i % 2 === 0 ? 'Scheduled' : 'Follow-up',
-                    'compliance_score' => 55 + (($i + $cardIndex) % 40),
-                    'priority' => $status === 'rejected' ? 'High' : 'Normal',
-                ];
+                $detailData = \Database\Seeders\Support\KpiInspectionDetailFactory::forSlug($card->slug, $i);
+                $location = $this->locationFor($side, $i);
+                $fullAddress = $this->fullAddress($side, $entity, $location);
 
                 $row = [
                     'uuid' => (string) Str::uuid(),
@@ -81,9 +96,9 @@ class KpiInspectionSeeder extends Seeder
                     'entity_name' => $entity['name'],
                     'entity_type' => $entity['type'],
                     'identifier' => $entity['id'],
-                    'address' => $entity['address'].', '.$side['area'].' Tehsil',
-                    'latitude' => round($side['lat'] + (($i % 5) * 0.004) + ($cardIndex * 0.0003), 7),
-                    'longitude' => round($side['lng'] + (($i % 4) * 0.004) + ($cardIndex * 0.0002), 7),
+                    'address' => $fullAddress,
+                    'latitude' => $location['lat'],
+                    'longitude' => $location['lng'],
                     'inspection_datetime' => $inspectedAt,
                     'status' => $status,
                     'observations' => json_encode($observations),
@@ -171,6 +186,7 @@ class KpiInspectionSeeder extends Seeder
             'pending_review', 'approved', 'approved', 'pending_review',
             'approved', 'rejected', 'pending_review', 'approved',
             'approved', 'rejected', 'pending_review', 'approved',
+            'pending_review', 'approved', 'rejected',
         ];
     }
 
@@ -201,5 +217,55 @@ class KpiInspectionSeeder extends Seeder
         };
 
         return array_values(array_merge($specific, $generic));
+    }
+
+    /** @param  array<string, mixed>  $side */
+    private function locationFor(array $side, int $i): array
+    {
+        $spots = $side === self::LAHORE
+            ? [
+                ['street' => 'Main Boulevard, Gulberg III', 'lat' => 31.5204, 'lng' => 74.3587],
+                ['street' => 'Ferozepur Road, Model Town', 'lat' => 31.4834, 'lng' => 74.3250],
+                ['street' => 'The Mall Road, Anarkali', 'lat' => 31.5656, 'lng' => 74.3142],
+                ['street' => 'Johar Town Block H', 'lat' => 31.4697, 'lng' => 74.2728],
+                ['street' => 'Canal Road, Township', 'lat' => 31.4512, 'lng' => 74.3189],
+                ['street' => 'Defence Phase 5, DHA', 'lat' => 31.4673, 'lng' => 74.4095],
+            ]
+            : [
+                ['street' => 'Kot Addu Road, Civil Lines', 'lat' => 30.9617, 'lng' => 70.9397],
+                ['street' => 'Chowk Azam Road, City Center', 'lat' => 30.9700, 'lng' => 70.9450],
+                ['street' => 'Karor Lal Esan Road', 'lat' => 30.9520, 'lng' => 70.9280],
+                ['street' => 'Thal Hospital Road', 'lat' => 30.9685, 'lng' => 70.9510],
+                ['street' => 'Railway Road, Layyah City', 'lat' => 30.9580, 'lng' => 70.9325],
+                ['street' => 'College Road, Layyah', 'lat' => 30.9655, 'lng' => 70.9410],
+            ];
+
+        $spot = $spots[$i % count($spots)];
+        $jitter = (($i % 7) - 3) * 0.00035;
+
+        return [
+            'street' => $spot['street'],
+            'lat' => round($spot['lat'] + $jitter, 7),
+            'lng' => round($spot['lng'] + $jitter, 7),
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $side
+     * @param  array<string, string>  $entity
+     * @param  array<string, mixed>  $location
+     */
+    private function fullAddress(array $side, array $entity, array $location): string
+    {
+        $plot = 10 + (crc32($entity['id']) % 180);
+
+        return sprintf(
+            'Plot No. %d, %s, Near %s, %s Tehsil, %s District, Punjab, Pakistan',
+            $plot,
+            $location['street'],
+            $entity['name'],
+            $side['tehsil_name'],
+            $side['district_name']
+        );
     }
 }

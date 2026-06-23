@@ -32,79 +32,136 @@
         Object.keys(charts).forEach(k => { if (charts[k]) { charts[k].destroy(); charts[k] = null; } });
     }
 
+    function chartColors(count) {
+        const palette = [G, B, O, R, T, '#7c3aed', '#0f766e', '#b45309'];
+        return Array.from({ length: count }, (_, i) => palette[i % palette.length]);
+    }
+
     function buildCharts(data) {
         destroyCharts();
+        const definitions = data.definitions || cfg.chartDefinitions || [];
+
+        if (definitions.length) {
+            definitions.forEach((def, index) => {
+                const canvas = document.getElementById('kpiChart_' + index);
+                if (!canvas) return;
+
+                const payload = def.data || {};
+                const labels = payload.labels || [];
+                const values = payload.values || [];
+
+                if (!labels.length && !values.length) {
+                    const parent = canvas.closest('.card-ppmf-body');
+                    if (parent) {
+                        parent.innerHTML = '<div class="ppmu-chart-empty"><i class="bi bi-bar-chart"></i><span>No data available for this chart</span></div>';
+                    }
+                    return;
+                }
+                const colors = chartColors(Math.max(labels.length, values.length, 1));
+                const chartType = def.type === 'donut' ? 'doughnut' : (def.type === 'pie' ? 'pie' : def.type);
+
+                if (chartType === 'gauge') {
+                    const value = values[0] ?? 0;
+                    charts['kpiChart_' + index] = new Chart(canvas, {
+                        type: 'doughnut',
+                        data: {
+                            labels: ['Progress', 'Remaining'],
+                            datasets: [{ data: [value, Math.max(0, 100 - value)], backgroundColor: [G, '#e2e8f0'], borderWidth: 0 }]
+                        },
+                        options: {
+                            responsive: true, maintainAspectRatio: false, cutout: '72%',
+                            plugins: {
+                                legend: { display: false },
+                                tooltip: { callbacks: { label: ctx => ' ' + ctx.parsed + '%' } }
+                            }
+                        }
+                    });
+                    return;
+                }
+
+                if (chartType === 'line') {
+                    charts['kpiChart_' + index] = new Chart(canvas, {
+                        type: 'line',
+                        data: {
+                            labels,
+                            datasets: [{
+                                label: def.title,
+                                data: values,
+                                borderColor: G,
+                                backgroundColor: 'rgba(8,116,67,.08)',
+                                fill: true,
+                                tension: .38,
+                                pointBackgroundColor: G,
+                                pointBorderColor: '#fff',
+                                pointBorderWidth: 2,
+                                pointRadius: 4,
+                            }]
+                        },
+                        options: {
+                            responsive: true, maintainAspectRatio: false,
+                            scales: {
+                                y: { beginAtZero: true, grid, ticks: { font: fnt } },
+                                x: { grid: { display: false }, ticks: { font: fnt, maxRotation: 45, autoSkip: true, maxTicksLimit: 10 } }
+                            },
+                            plugins: { legend: { display: false } }
+                        }
+                    });
+                    return;
+                }
+
+                if (chartType === 'bar') {
+                    const horizontal = String(def.key || '').includes('comparison');
+                    charts['kpiChart_' + index] = new Chart(canvas, {
+                        type: 'bar',
+                        data: {
+                            labels,
+                            datasets: [{ data: values, backgroundColor: colors, borderRadius: 6, borderSkipped: false, maxBarThickness: horizontal ? 22 : 48 }]
+                        },
+                        options: {
+                            indexAxis: horizontal ? 'y' : 'x',
+                            responsive: true, maintainAspectRatio: false,
+                            scales: {
+                                y: { beginAtZero: true, grid, ticks: { font: fnt } },
+                                x: { beginAtZero: true, grid: horizontal ? grid : { display: false }, ticks: { font: fnt } }
+                            },
+                            plugins: { legend: { display: false } }
+                        }
+                    });
+                    return;
+                }
+
+                charts['kpiChart_' + index] = new Chart(canvas, {
+                    type: chartType,
+                    data: {
+                        labels,
+                        datasets: [{ data: values, backgroundColor: colors, borderWidth: 3, borderColor: '#fff', hoverOffset: 8 }]
+                    },
+                    options: {
+                        responsive: true, maintainAspectRatio: false, cutout: chartType === 'doughnut' ? '62%' : undefined,
+                        plugins: { legend: { position: 'bottom', labels: { padding: 16, usePointStyle: true, pointStyle: 'circle' } } }
+                    }
+                });
+            });
+            return;
+        }
+
         const statusDonut = data.status_donut || {};
         const statusLabels = Object.keys(statusDonut);
         const statusColors = statusLabels.map(l => statusPalette[l] || T);
 
-        charts.status = new Chart(document.getElementById('statusChart'), {
-            type: 'doughnut',
-            data: {
-                labels: statusLabels,
-                datasets: [{ data: Object.values(statusDonut), backgroundColor: statusColors, borderWidth: 3, borderColor: '#fff', hoverOffset: 8 }]
-            },
-            options: {
-                responsive: true, maintainAspectRatio: false, cutout: '62%',
-                plugins: { legend: { position: 'bottom', labels: { padding: 16, usePointStyle: true, pointStyle: 'circle' } } }
-            }
-        });
-
-        const ta = data.target_achieved || {};
-        charts.target = new Chart(document.getElementById('targetChart'), {
-            type: 'bar',
-            data: {
-                labels: Object.keys(ta),
-                datasets: [{ data: Object.values(ta), backgroundColor: [B, G], borderRadius: 8, borderSkipped: false, maxBarThickness: 48 }]
-            },
-            options: {
-                responsive: true, maintainAspectRatio: false,
-                scales: { y: { beginAtZero: true, grid, ticks: { font: fnt } }, x: { grid: { display: false }, ticks: { font: fnt } } },
-                plugins: { legend: { display: false } }
-            }
-        });
-
-        const trend = data.trend || {};
-        charts.trend = new Chart(document.getElementById('trendChart'), {
-            type: 'line',
-            data: {
-                labels: Object.keys(trend),
-                datasets: [{
-                    label: 'Achievement %', data: Object.values(trend), borderColor: G, backgroundColor: 'rgba(8,116,67,.08)',
-                    fill: true, tension: .38, pointBackgroundColor: G, pointBorderColor: '#fff', pointBorderWidth: 2, pointRadius: 4
-                }]
-            },
-            options: {
-                responsive: true, maintainAspectRatio: false,
-                scales: {
-                    y: { beginAtZero: true, max: 100, grid, ticks: { font: fnt, callback: v => v + '%' } },
-                    x: { grid: { display: false }, ticks: { font: fnt, maxRotation: 45, autoSkip: true, maxTicksLimit: 10 } }
+        const statusCanvas = document.getElementById('statusChart');
+        if (statusCanvas) {
+            charts.status = new Chart(statusCanvas, {
+                type: 'doughnut',
+                data: {
+                    labels: statusLabels,
+                    datasets: [{ data: Object.values(statusDonut), backgroundColor: statusColors, borderWidth: 3, borderColor: '#fff', hoverOffset: 8 }]
                 },
-                plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ' ' + ctx.parsed.y + '%' } } }
-            }
-        });
-
-        const areas = data.areas || {};
-        const areaColors = data.area_colors || Object.values(areas).map(v => v >= 85 ? G : (v >= 70 ? B : (v >= 50 ? O : R)));
-        charts.area = new Chart(document.getElementById('areaChart'), {
-            type: 'bar',
-            data: {
-                labels: Object.keys(areas),
-                datasets: [{ data: Object.values(areas), backgroundColor: areaColors, borderRadius: 6, borderSkipped: false, maxBarThickness: 22 }]
-            },
-            options: {
-                indexAxis: 'y', responsive: true, maintainAspectRatio: false,
-                scales: {
-                    x: { beginAtZero: true, max: 100, grid, ticks: { font: fnt, callback: v => v + '%' } },
-                    y: { grid: { display: false }, ticks: { font: fnt } }
-                },
-                plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ' ' + ctx.parsed.x + '%' } } }
-            }
-        });
-
-        if (data.comparison_label) {
-            const titleEl = document.getElementById('areaChart')?.closest('.ppmu-chart-card')?.querySelector('.card-ppmf-title');
-            if (titleEl) titleEl.textContent = data.comparison_label;
+                options: {
+                    responsive: true, maintainAspectRatio: false, cutout: '62%',
+                    plugins: { legend: { position: 'bottom', labels: { padding: 16, usePointStyle: true, pointStyle: 'circle' } } }
+                }
+            });
         }
     }
 
@@ -137,12 +194,22 @@
     function updateHeader(header) {
         const stats = document.getElementById('kpiDetailHeaderStats');
         if (!stats || !header) return;
-        stats.querySelector('[data-stat="target"] strong').textContent = fmtNum(header.target, 1);
-        stats.querySelector('[data-stat="reported"] strong').textContent = fmtNum(header.reported, 0);
-        stats.querySelector('[data-stat="achieved"] strong').textContent = fmtNum(header.achieved, 1);
-        stats.querySelector('[data-stat="pending"] strong').textContent = fmtNum(header.pending, 1);
+
+        const targetLabel = header.labels?.target || stats.dataset.labelTarget || 'Operational Target';
+        const completedLabel = header.labels?.completed || stats.dataset.labelCompleted || 'Completed';
+        const marks = header.total_marks ?? 0;
+
+        const targetSpan = stats.querySelector('[data-stat="target"] [data-label="target"]');
+        const completedSpan = stats.querySelector('[data-stat="achieved"] [data-label="completed"]');
+        if (targetSpan) targetSpan.textContent = targetLabel;
+        if (completedSpan) completedSpan.textContent = completedLabel;
+
+        stats.querySelector('[data-stat="target"] strong').textContent = fmtNum(header.operational_target ?? header.target, 1);
+        stats.querySelector('[data-stat="reported"] strong').textContent = fmtNum(header.records ?? header.reported, 0);
+        stats.querySelector('[data-stat="achieved"] strong').textContent = fmtNum(header.completed ?? header.achieved, 1);
         stats.querySelector('[data-stat="pct"] strong').textContent = header.achievement_percentage + '%';
-        stats.querySelector('[data-stat="score"] strong').textContent = fmtNum(header.score, 2);
+        stats.querySelector('[data-stat="score"] strong').textContent = fmtNum(header.score, 1) + ' / ' + fmtNum(marks, marks % 1 ? 1 : 0);
+
         const statusEl = stats.querySelector('[data-stat="status"]');
         if (statusEl) {
             const badge = statusEl.querySelector('.badge') || statusEl.lastElementChild;
@@ -154,10 +221,32 @@
         const form = document.getElementById('kpiInspectionFilter');
         if (!form || form.dataset.bound) return;
         form.dataset.bound = '1';
+
+        form.addEventListener('submit', e => {
+            e.preventDefault();
+            loadDashboard({ insp_page: '1' });
+        });
+
         form.querySelectorAll('[data-insp-filter]').forEach(el => {
             el.addEventListener('change', () => {
-                const params = collectFilterParams({ insp_page: '1' });
-                window.location.href = window.location.pathname + '?' + params.toString();
+                loadDashboard({ insp_page: '1' });
+            });
+        });
+    }
+
+    function bindGeoFilters() {
+        const form = document.getElementById('kpiGeoFilter');
+        if (!form || form.dataset.bound) return;
+        form.dataset.bound = '1';
+
+        form.addEventListener('submit', e => {
+            e.preventDefault();
+            loadDashboard({ insp_page: '1' });
+        });
+
+        form.querySelectorAll('[data-geo-filter]').forEach(el => {
+            el.addEventListener('change', () => {
+                loadDashboard({ insp_page: '1' });
             });
         });
     }
@@ -177,6 +266,10 @@
 
         document.querySelectorAll('#kpiInspectionFilter [data-insp-filter]').forEach(el => {
             if (el.value) params.set(el.dataset.inspFilter, el.value);
+        });
+
+        document.querySelectorAll('#kpiGeoFilter [name]').forEach(el => {
+            if (el.name && el.value) params.set(el.name, el.value);
         });
 
         return params;
@@ -207,7 +300,6 @@
 
             updateHeader(data.header);
             updatePeriodRange(data.period_description);
-            document.getElementById('kpiDetailSummary').innerHTML = data.summary_html;
             document.getElementById('kpiDetailMetrics').innerHTML = data.metrics_html;
 
             const inspEl = document.getElementById('kpiDetailInspections');
@@ -217,6 +309,7 @@
             }
 
             buildCharts({
+                definitions: data.charts.definitions || [],
                 status_donut: data.charts.status_donut,
                 target_achieved: data.charts.target_achieved,
                 trend: data.charts.trend,
@@ -305,7 +398,8 @@
         });
     }
 
-    buildCharts(cfg.charts);
+    buildCharts({ definitions: cfg.chartDefinitions || cfg.charts?.definitions || [], ...cfg.charts });
     bindInspectionFilters();
+    bindGeoFilters();
     initFilters();
 })();

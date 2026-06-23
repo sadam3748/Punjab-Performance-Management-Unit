@@ -32,9 +32,6 @@ class KpiDashboardController extends Controller
 
         return response()->json([
             'header' => $data['header'],
-            'summary_html' => view('dashboard.partials.kpi-detail-summary', [
-                'summary' => $data['summary'],
-            ])->render(),
             'metrics_html' => view('dashboard.partials.kpi-detail-metrics', [
                 'metrics' => $data['metrics'],
             ])->render(),
@@ -50,9 +47,11 @@ class KpiDashboardController extends Controller
                 'inspectionRecords' => $data['inspectionRecords'],
                 'inspectionStatusCounts' => $data['inspectionStatusCounts'],
                 'inspectionFilters' => $data['inspectionFilters'],
+                'inspectionTableColumns' => $data['inspectionTableColumns'],
                 'canReviewInspections' => $data['canReviewInspections'],
             ])->render(),
             'charts' => [
+                'definitions' => $data['charts']['definitions'] ?? [],
                 'status_donut' => $data['charts']['status_donut'],
                 'target_achieved' => $data['charts']['target_achieved'],
                 'trend' => $data['charts']['trend'],

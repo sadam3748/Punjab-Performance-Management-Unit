@@ -20,8 +20,9 @@ class KpiDashboardTest extends TestCase
         $admin = User::where('username', 'super_admin')->firstOrFail();
 
         $this->actingAs($admin)->get('/dashboard')->assertOk()->assertSee('Home');
-        $this->actingAs($admin)->get('/dashboard')->assertSeeInOrder(['Target', 'Reported', 'Achieved', 'View']);
-        $this->actingAs($admin)->get('/dashboard')->assertSee('ppmu-kpi-tile-status', false);
+        $this->actingAs($admin)->get('/dashboard')->assertSeeInOrder(['Target', 'Achieved', 'Progress']);
+        $this->actingAs($admin)->get('/dashboard')->assertSee('ppmu-kpi-percent-badge', false);
+        $this->actingAs($admin)->get('/dashboard')->assertDontSee('ppmu-kpi-tile-status', false);
         $this->actingAs($admin)->get('/dashboard')->assertSee('ppmu-main-dashboard', false);
         $this->actingAs($admin)->get("/kpi/{$slug}/dashboard")->assertOk()->assertSee('Water Filtration');
         $this->actingAs($admin)->get('/manage-kpis')->assertOk()->assertSee('Manage KPI Cards');
@@ -53,13 +54,14 @@ class KpiDashboardTest extends TestCase
 
             $cardCount = substr_count($response->getContent(), 'data-kpi-card');
             $this->assertSame(23, $cardCount, "User {$login} should see 23 KPI cards");
-            $response->assertSee('View')->assertSee('Reported')->assertSee('ppmu-kpi-tile-progress', false)->assertDontSee('Performance</span>', false);
+            $response->assertSee('View Dashboard')->assertSee('Achieved')->assertSee('Progress')->assertSee('ppmu-kpi-percent-badge', false)->assertDontSee('Reported')->assertDontSee('ppmu-kpi-tile-status', false)->assertDontSee('Performance</span>', false);
 
             $this->get('/kpi/functional-and-clean-water-filtration-plants/dashboard')
                 ->assertOk()
-                ->assertSee('Performance Indicators')
-                ->assertSee('statusChart')
-                ->assertSee('targetChart');
+                ->assertSee('KPI Performance Cards')
+                ->assertSee('KPI Detail Dashboard')
+                ->assertSee('kpiChart_0', false)
+                ->assertSee('RO Filter Change Compliance');
         }
     }
 
@@ -104,11 +106,10 @@ class KpiDashboardTest extends TestCase
             ->assertOk()
             ->assertJsonStructure([
                 'header',
-                'summary_html',
                 'metrics_html',
                 'records_html',
                 'inspections_html',
-                'charts' => ['status_donut', 'target_achieved', 'trend', 'areas'],
+                'charts' => ['definitions', 'status_donut', 'target_achieved', 'trend', 'areas'],
                 'records_total',
                 'inspections_total',
                 'period_description',

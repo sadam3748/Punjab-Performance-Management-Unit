@@ -12,16 +12,16 @@ class KpiSubmissionSeeder extends Seeder
 {
     private const STATUSES = ['approved', 'approved', 'approved', 'submitted', 'pending'];
 
-    /** @var array<string, int> */
+    /** @var array<string, int> Per-user share; totals 56 submissions per KPI */
     private const USER_COUNTS = [
-        'ac.lahore' => 52,
-        'ac.layyah' => 52,
-        'dc.lahore' => 8,
-        'dc.layyah' => 8,
-        'com.lahore' => 6,
-        'com.dgkhan' => 6,
-        'super_admin' => 7,
-        'cs.pmru' => 7,
+        'ac.lahore' => 18,
+        'ac.layyah' => 18,
+        'dc.lahore' => 6,
+        'dc.layyah' => 6,
+        'com.lahore' => 3,
+        'com.dgkhan' => 3,
+        'super_admin' => 1,
+        'cs.pmru' => 1,
     ];
 
     public function run(): void
@@ -41,7 +41,6 @@ class KpiSubmissionSeeder extends Seeder
             ->groupBy('kpi_card_id');
 
         $submissionRows = [];
-        $valueRows = [];
         $meta = [];
 
         foreach ($cards as $card) {
@@ -55,18 +54,18 @@ class KpiSubmissionSeeder extends Seeder
                     continue;
                 }
 
-                $records = $testing ? min(3, $count) : $count;
+                $records = $testing ? min(4, $count) : $count;
                 [$divId, $distId, $tehsilId] = $this->scopeIds($user);
                 $areaLevel = $this->areaLevel($user);
 
                 for ($i = 0; $i < $records; $i++) {
-                    $date = $this->dateForIndex($i, $records, $username);
+                    $date = $this->dateForIndex($i, $records);
                     $periodType = $this->periodTypeForIndex($i);
                     $week = $period->weekRangeForDate($date);
                     $demo = $factory->build($card->slug, $date, $username, $i, $periodType);
                     $snapshot = $demo['snapshot'];
                     $target = (float) $card->total_marks;
-                    $pct = $demo['achievement_pct'];
+                    $pct = max(55, min(98, $demo['achievement_pct']));
                     $achieved = round($target * $pct / 100, 2);
                     $reported = $this->reportedTotal($snapshot);
                     $pending = max(0, round($target - $achieved, 2));
@@ -91,7 +90,7 @@ class KpiSubmissionSeeder extends Seeder
                         'reported_value' => $reported,
                         'achieved_value' => $achieved,
                         'pending_value' => $pending,
-                        'achievement_percentage' => round(min(100, $pct), 1),
+                        'achievement_percentage' => round($pct, 1),
                         'remarks' => $demo['remarks'],
                         'evidence_count' => 1 + ($i % 4),
                         'metric_snapshot' => json_encode($snapshot),
@@ -104,13 +103,14 @@ class KpiSubmissionSeeder extends Seeder
             }
         }
 
-        DB::transaction(function () use ($submissionRows, $meta, $valueRows) {
+        DB::transaction(function () use ($submissionRows, $meta) {
             foreach (array_chunk($submissionRows, 500) as $chunk) {
                 DB::table('kpi_submissions')->insert($chunk);
             }
 
             $labels = array_column($meta, 'label');
             $idMap = DB::table('kpi_submissions')->whereIn('period_label', $labels)->pluck('id', 'period_label');
+            $valueRows = [];
 
             foreach ($meta as $row) {
                 $submissionId = $idMap[$row['label']] ?? null;
@@ -135,27 +135,24 @@ class KpiSubmissionSeeder extends Seeder
         });
     }
 
-    private function dateForIndex(int $index, int $total, string $username): Carbon
+    private function dateForIndex(int $index, int $total): Carbon
     {
         $period = app(KpiPeriodService::class);
-        $currentWeekStart = Carbon::parse($period->weekRangeForDate(now())['week_start']);
-        $lahore = str_contains($username, 'lahore');
-        $recentStart = max(0, $total - 12);
+        $weekStart = Carbon::parse($period->weekRangeForDate(now())['week_start']);
 
-        if ($index >= $recentStart) {
-            $weekOffset = ($total - 1) - $index;
+        if ($index < (int) ceil($total * 0.65)) {
+            $dayOffset = $index % 7;
 
-            return $currentWeekStart
-                ->copy()
-                ->subWeeks($weekOffset)
-                ->addDays(($lahore ? 0 : 1) + ($index % 4))
-                ->startOfDay();
+            return $weekStart->copy()->addDays($dayOffset)->startOfDay();
         }
 
-        $base = Carbon::now()->subMonths(11);
-        $spread = (int) floor(300 / max(1, $recentStart));
+        if ($index < (int) ceil($total * 0.9)) {
+            $weeksBack = 1 + (($index - (int) ceil($total * 0.65)) % 4);
 
-        return $base->copy()->addDays(min(300, $index * $spread + ($lahore ? 0 : 5)))->startOfDay();
+            return $weekStart->copy()->subWeeks($weeksBack)->addDays($index % 5)->startOfDay();
+        }
+
+        return Carbon::now()->subMonths(2 + ($index % 4))->addDays($index % 20)->startOfDay();
     }
 
     private function periodTypeForIndex(int $index): string
@@ -172,7 +169,7 @@ class KpiSubmissionSeeder extends Seeder
     {
         $sum = 0;
         foreach ($snapshot as $key => $value) {
-            if (is_numeric($value) && ! str_contains($key, 'rate') && ! str_contains($key, 'index') && ! str_contains($key, 'attendance')) {
+            if (is_numeric($value) && ! str_contains($key, 'rate') && ! str_contains($key, 'index') && ! str_contains($key, 'attendance') && ! str_contains($key, 'completion')) {
                 $sum += (float) $value;
             }
         }
