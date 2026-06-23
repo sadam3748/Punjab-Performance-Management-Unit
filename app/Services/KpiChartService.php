@@ -18,27 +18,48 @@ class KpiChartService
 
         $trend = $submissions
             ->sortBy('submission_date')
-            ->groupBy(fn ($item) => $item->submission_date->format('d M Y'))
-            ->map(fn ($group) => round($group->avg(fn ($item) => (float) ($item->achievement_percentage ?? $item->kpiScore?->percentage ?? $item->score)), 1));
+            ->groupBy(fn ($item) => $item->submission_date->format('d M'))
+            ->map(fn ($group) => round($group->avg(fn ($item) => (float) ($item->achievement_percentage ?? $item->kpiScore?->percentage ?? $item->score)), 1))
+            ->take(14);
 
         if ($trend->isEmpty()) {
-            $trend = collect([now()->format('d M Y') => $pct]);
+            $trend = collect([now()->format('d M') => $pct]);
         }
 
-        $donut = $this->formula->donutSplit(
+        $achievedPending = collect($this->formula->donutSplit(
             $totalAchieved ?: $achieved,
             $totalPending ?: max(0, $target - $achieved)
-        );
+        ));
+
+        $statusDonut = collect([
+            'Approved' => (int) ($statusCounts->get('approved', 0)),
+            'Submitted' => (int) ($statusCounts->get('submitted', 0)),
+            'Pending' => (int) ($statusCounts->get('pending', 0) + $statusCounts->get('draft', 0)),
+            'Rejected' => (int) ($statusCounts->get('rejected', 0)),
+        ])->filter(fn ($v) => $v > 0);
+
+        if ($statusDonut->isEmpty()) {
+            $statusDonut = collect(['Approved' => $submissions->count() ?: 1]);
+        }
+
+        $comparisonLabel = match ($user->role?->slug) {
+            'ac', 'field_user' => 'Tehsil performance trend',
+            'dc' => 'Tehsil comparison',
+            'commissioner' => 'District comparison',
+            default => 'Division / district comparison',
+        };
 
         return [
             'status' => $statusCounts->isNotEmpty() ? $statusCounts : collect(['approved' => $submissions->count() ?: 1]),
-            'donut' => collect($donut),
-            'areas' => $areaScores->isNotEmpty() ? $areaScores->sortDesc()->take(12) : collect(['No area data' => $pct]),
+            'donut' => $achievedPending,
+            'status_donut' => $statusDonut,
+            'areas' => $areaScores->isNotEmpty() ? $areaScores->sortDesc()->take(10) : collect(['No area data' => $pct]),
             'trend' => $trend,
             'target_achieved' => collect([
                 'Target' => round($target, 1),
                 'Achieved' => round($achieved, 1),
             ]),
+            'comparison_label' => $comparisonLabel,
         ];
     }
 }

@@ -18,7 +18,9 @@ Route::get('/logout', [AuthController::class, 'logout'])->name('logout');
 
 Route::middleware('auth')->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+    Route::get('/dashboard/data', [DashboardController::class, 'data'])->name('dashboard.data');
     Route::get('/kpi/{kpiCard}/dashboard', [KpiDashboardController::class, 'show'])->name('kpi.dashboard');
+    Route::get('/kpi/{kpiCard}/dashboard/data', [KpiDashboardController::class, 'data'])->name('kpi.dashboard.data');
 
     Route::get('/kpi-submissions', [KpiSubmissionController::class, 'review'])->name('kpi-submissions.index');
     Route::get('/submit-kpi/{kpiCard}', [KpiSubmissionController::class, 'create'])->name('kpi-submissions.create');

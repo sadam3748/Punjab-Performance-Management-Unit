@@ -2,159 +2,157 @@
 
 namespace Database\Seeders;
 
-use App\Services\KpiDemoMetricFactory;
-use App\Services\KpiMetricConfigService;
 use App\Services\KpiPeriodService;
+use App\Services\PpmuDemoMetricFactory;
 use Carbon\Carbon;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 
 class KpiSubmissionSeeder extends Seeder
 {
-    private const AC_USERS = ['ac.lahore', 'ac.layyah'];
-
-    private const OTHER_USERS = [
-        'super_admin', 'cs.pmru', 'com.lahore', 'dc.lahore', 'com.dgkhan', 'dc.layyah',
-    ];
-
     private const STATUSES = ['approved', 'approved', 'approved', 'submitted', 'pending'];
+
+    /** @var array<string, int> */
+    private const USER_COUNTS = [
+        'ac.lahore' => 52,
+        'ac.layyah' => 52,
+        'dc.lahore' => 8,
+        'dc.layyah' => 8,
+        'com.lahore' => 6,
+        'com.dgkhan' => 6,
+        'super_admin' => 7,
+        'cs.pmru' => 7,
+    ];
 
     public function run(): void
     {
+        DB::disableQueryLog();
+
         $period = app(KpiPeriodService::class);
-        $metricConfig = app(KpiMetricConfigService::class);
-        $factory = app(KpiDemoMetricFactory::class);
+        $factory = app(PpmuDemoMetricFactory::class);
+        $testing = app()->environment('testing');
 
-        $allUsernames = array_merge(self::OTHER_USERS, self::AC_USERS);
-        $users = DB::table('users')->whereIn('username', $allUsernames)->where('is_active', true)->get()->keyBy('username');
-        $cards = DB::table('kpi_cards')->where('is_active', true)->orderBy('display_order')->get()->keyBy('slug');
+        $users = DB::table('users')->where('is_active', true)->get()->keyBy('username');
+        $cards = DB::table('kpi_cards')->where('is_active', true)->orderBy('display_order')->get();
+        $fieldsByCard = DB::table('kpi_form_fields')
+            ->orderBy('kpi_card_id')
+            ->orderBy('sort_order')
+            ->get()
+            ->groupBy('kpi_card_id');
 
-        foreach ($cards as $cardSlug => $card) {
-            $fields = $this->ensureFields($card, $metricConfig->cardsFor($cardSlug));
+        $submissionRows = [];
+        $valueRows = [];
+        $meta = [];
 
-            foreach (self::AC_USERS as $uIdx => $username) {
+        foreach ($cards as $card) {
+            $fields = $fieldsByCard->get($card->id, collect())->filter(
+                fn ($f) => $f->field_name !== 'field_observation'
+            );
+
+            foreach (self::USER_COUNTS as $username => $count) {
                 $user = $users->get($username);
                 if (! $user) {
                     continue;
                 }
 
-                $dailyCount = app()->environment('testing') ? 12 : 110;
-
-                for ($day = 0; $day < $dailyCount; $day++) {
-                    $date = Carbon::now()->subDays($day)->subHours($uIdx * 2);
-                    $week = $period->weekRangeForDate($date);
-                    $this->seedRecord($factory, $card, $cardSlug, $user, $fields, $date, 'daily', $week, $day, 'tehsil', $username);
-                }
-
-                for ($w = 0; $w < (app()->environment('testing') ? 3 : 10); $w++) {
-                    $date = Carbon::now()->subWeeks($w)->startOfWeek(Carbon::THURSDAY)->addDays($uIdx);
-                    $week = $period->weekRangeForDate($date);
-                    $this->seedRecord($factory, $card, $cardSlug, $user, $fields, $date, 'weekly', $week, $w + 20, 'tehsil', $username);
-                }
-
-                for ($m = 0; $m < (app()->environment('testing') ? 2 : 8); $m++) {
-                    $date = Carbon::now()->startOfMonth()->subMonths($m)->addDays(5 + $uIdx);
-                    $week = $period->weekRangeForDate($date);
-                    $this->seedRecord($factory, $card, $cardSlug, $user, $fields, $date, 'monthly', $week, $m + 40, 'tehsil', $username);
-                }
-            }
-
-            foreach (self::OTHER_USERS as $uIdx => $username) {
-                $user = $users->get($username);
-                if (! $user) {
-                    continue;
-                }
-
-                $count = app()->environment('testing') ? 4 : 24;
+                $records = $testing ? min(3, $count) : $count;
+                [$divId, $distId, $tehsilId] = $this->scopeIds($user);
                 $areaLevel = $this->areaLevel($user);
 
-                for ($day = 0; $day < $count; $day++) {
-                    $date = Carbon::now()->subDays($day + $uIdx * 2);
+                for ($i = 0; $i < $records; $i++) {
+                    $date = $this->dateForIndex($i, $records, $username);
+                    $periodType = $this->periodTypeForIndex($i);
                     $week = $period->weekRangeForDate($date);
-                    $this->seedRecord($factory, $card, $cardSlug, $user, $fields, $date, 'daily', $week, $day + 60, $areaLevel, $username);
-                }
+                    $demo = $factory->build($card->slug, $date, $username, $i, $periodType);
+                    $snapshot = $demo['snapshot'];
+                    $target = (float) $card->total_marks;
+                    $pct = $demo['achievement_pct'];
+                    $achieved = round($target * $pct / 100, 2);
+                    $reported = $this->reportedTotal($snapshot);
+                    $pending = max(0, round($target - $achieved, 2));
+                    $label = sprintf('demo-c%d-u%d-%03d', $card->id, $user->id, $i);
 
-                for ($w = 0; $w < (app()->environment('testing') ? 2 : 6); $w++) {
-                    $date = Carbon::now()->subWeeks($w)->startOfWeek(Carbon::THURSDAY);
-                    $week = $period->weekRangeForDate($date);
-                    $this->seedRecord($factory, $card, $cardSlug, $user, $fields, $date, 'weekly', $week, $w + 80, $areaLevel, $username);
+                    $submissionRows[] = [
+                        'kpi_card_id' => $card->id,
+                        'user_id' => $user->id,
+                        'division_id' => $divId,
+                        'district_id' => $distId,
+                        'tehsil_id' => $tehsilId,
+                        'area_level' => $areaLevel,
+                        'period_type' => $periodType,
+                        'period_label' => $label,
+                        'week_no' => $week['week_no'],
+                        'week_start_date' => $week['week_start'],
+                        'week_end_date' => $week['week_end'],
+                        'submission_date' => $date->toDateString(),
+                        'status' => self::STATUSES[$i % count(self::STATUSES)],
+                        'score' => $achieved,
+                        'target_value' => $target,
+                        'reported_value' => $reported,
+                        'achieved_value' => $achieved,
+                        'pending_value' => $pending,
+                        'achievement_percentage' => round(min(100, $pct), 1),
+                        'remarks' => $demo['remarks'],
+                        'evidence_count' => 1 + ($i % 4),
+                        'metric_snapshot' => json_encode($snapshot),
+                        'created_at' => $date,
+                        'updated_at' => $date,
+                    ];
+
+                    $meta[] = ['label' => $label, 'snapshot' => $snapshot, 'fields' => $fields, 'ts' => $date];
                 }
             }
         }
 
-        if (! app()->environment('testing')) {
-            $this->seedTehsilComparisons($cards, $users, $period, $metricConfig, $factory);
-        }
+        DB::transaction(function () use ($submissionRows, $meta, $valueRows) {
+            foreach (array_chunk($submissionRows, 500) as $chunk) {
+                DB::table('kpi_submissions')->insert($chunk);
+            }
+
+            $labels = array_column($meta, 'label');
+            $idMap = DB::table('kpi_submissions')->whereIn('period_label', $labels)->pluck('id', 'period_label');
+
+            foreach ($meta as $row) {
+                $submissionId = $idMap[$row['label']] ?? null;
+                if (! $submissionId) {
+                    continue;
+                }
+
+                foreach ($row['fields'] as $field) {
+                    $valueRows[] = [
+                        'submission_id' => $submissionId,
+                        'field_id' => $field->id,
+                        'value' => (string) ($row['snapshot'][$field->field_name] ?? 0),
+                        'created_at' => $row['ts'],
+                        'updated_at' => $row['ts'],
+                    ];
+                }
+            }
+
+            foreach (array_chunk($valueRows, 1000) as $chunk) {
+                DB::table('kpi_submission_values')->insert($chunk);
+            }
+        });
     }
 
-    private function seedRecord(
-        KpiDemoMetricFactory $factory,
-        object $card,
-        string $cardSlug,
-        object $user,
-        $fields,
-        Carbon $date,
-        string $periodType,
-        array $week,
-        int $offset,
-        string $areaLevel,
-        string $username,
-    ): void {
-        $demo = $factory->build($cardSlug, $date, $username, $offset, $periodType);
-        $snapshot = $demo['snapshot'];
-        [$divId, $distId, $tehsilId] = $this->scopeIds($user);
+    private function dateForIndex(int $index, int $total, string $username): Carbon
+    {
+        $lahore = str_contains($username, 'lahore');
+        $base = Carbon::now()->subMonths(11);
+        $spread = (int) floor(330 / max(1, $total - 1));
+        $dayOffset = $index * $spread + ($lahore ? 0 : 3);
 
-        $target = (float) $card->total_marks;
-        $pct = $demo['achievement_pct'];
-        $achieved = round($target * $pct / 100, 2);
-        $reported = $this->reportedTotal($snapshot);
-        $pending = max(0, round($target - $achieved, 2));
-        $achievementPct = round(min(100, $pct), 1);
-        $label = $card->slug.'-u'.$user->id.'-'.$periodType.'-'.$date->format('Ymd');
+        return $base->copy()->addDays(min(364, $dayOffset))->startOfDay();
+    }
 
-        $payload = [
-            'kpi_card_id' => $card->id,
-            'user_id' => $user->id,
-            'division_id' => $divId,
-            'district_id' => $distId,
-            'tehsil_id' => $tehsilId,
-            'area_level' => $areaLevel,
-            'period_type' => $periodType,
-            'period_label' => $label,
-            'week_no' => $week['week_no'],
-            'week_start_date' => $week['week_start'],
-            'week_end_date' => $week['week_end'],
-            'submission_date' => $date->toDateString(),
-            'status' => self::STATUSES[$offset % count(self::STATUSES)],
-            'score' => $achieved,
-            'target_value' => $target,
-            'reported_value' => $reported,
-            'achieved_value' => $achieved,
-            'pending_value' => $pending,
-            'achievement_percentage' => $achievementPct,
-            'remarks' => $demo['remarks'],
-            'evidence_count' => 1 + ($offset % 5),
-            'metric_snapshot' => json_encode($snapshot),
-            'updated_at' => $date,
-        ];
-
-        $subId = DB::table('kpi_submissions')->where('period_label', $label)->value('id');
-        if (! $subId) {
-            $subId = DB::table('kpi_submissions')->insertGetId(array_merge($payload, ['created_at' => $date]));
-        } else {
-            DB::table('kpi_submissions')->where('id', $subId)->update($payload);
-        }
-
-        foreach ($fields as $field) {
-            DB::table('kpi_submission_values')->updateOrInsert(
-                ['submission_id' => $subId, 'field_id' => $field->id],
-                [
-                    'value' => $snapshot[$field->field_name] ?? 0,
-                    'created_at' => $date,
-                    'updated_at' => $date,
-                ]
-            );
-        }
+    private function periodTypeForIndex(int $index): string
+    {
+        return match ($index % 6) {
+            0, 1 => 'daily',
+            2, 3 => 'weekly',
+            4 => 'monthly',
+            default => 'yearly',
+        };
     }
 
     private function reportedTotal(array $snapshot): int
@@ -167,25 +165,6 @@ class KpiSubmissionSeeder extends Seeder
         }
 
         return max(1, (int) round($sum));
-    }
-
-    private function ensureFields(object $card, array $metrics)
-    {
-        foreach ($metrics as $index => $metric) {
-            DB::table('kpi_form_fields')->updateOrInsert(
-                ['kpi_card_id' => $card->id, 'field_name' => $metric['field']],
-                [
-                    'field_label' => $metric['label'],
-                    'field_type' => 'number',
-                    'is_required' => false,
-                    'sort_order' => $index + 1,
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]
-            );
-        }
-
-        return DB::table('kpi_form_fields')->where('kpi_card_id', $card->id)->orderBy('sort_order')->get();
     }
 
     private function scopeIds(object $user): array
@@ -206,36 +185,5 @@ class KpiSubmissionSeeder extends Seeder
             5 => 'district',
             default => 'tehsil',
         };
-    }
-
-    private function seedTehsilComparisons($cards, $users, KpiPeriodService $period, KpiMetricConfigService $metricConfig, KpiDemoMetricFactory $factory): void
-    {
-        $dcLahore = $users->get('dc.lahore');
-        $dcLayyah = $users->get('dc.layyah');
-        $acLahore = $users->get('ac.lahore');
-        $acLayyah = $users->get('ac.layyah');
-        $districtIds = array_filter([$dcLahore?->district_id, $dcLayyah?->district_id]);
-        if (empty($districtIds)) {
-            return;
-        }
-
-        $tehsils = DB::table('tehsils')->whereIn('district_id', $districtIds)->get();
-        foreach ($cards as $cardSlug => $card) {
-            $fields = $this->ensureFields($card, $metricConfig->cardsFor($cardSlug));
-
-            foreach ($tehsils as $tIdx => $tehsil) {
-                $submitter = $tehsil->district_id == ($dcLahore?->district_id ?? 0) ? $acLahore : $acLayyah;
-                if (! $submitter) {
-                    continue;
-                }
-
-                $username = $submitter->username;
-                for ($d = 0; $d < 35; $d++) {
-                    $date = Carbon::now()->subDays($d + $tIdx);
-                    $week = $period->weekRangeForDate($date);
-                    $this->seedRecord($factory, $card, $cardSlug, $submitter, $fields, $date, 'daily', $week, $d + 100 + $tIdx, 'tehsil', $username);
-                }
-            }
-        }
     }
 }

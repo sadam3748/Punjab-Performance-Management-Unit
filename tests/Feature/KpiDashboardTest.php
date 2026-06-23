@@ -20,8 +20,8 @@ class KpiDashboardTest extends TestCase
         $admin = User::where('username', 'super_admin')->firstOrFail();
 
         $this->actingAs($admin)->get('/dashboard')->assertOk()->assertSee('PPMU Main KPI Dashboard');
-        $this->actingAs($admin)->get('/dashboard')->assertSeeInOrder(['Target', 'Reported', 'Achieved', 'View Dashboard']);
-        $this->actingAs($admin)->get('/dashboard')->assertSee('ppmu-kpi-grid', false)->assertSee('ppmu-kpi-image-wrap', false);
+        $this->actingAs($admin)->get('/dashboard')->assertSeeInOrder(['Target', 'Actual', 'View Dashboard']);
+        $this->actingAs($admin)->get('/dashboard')->assertSee('ppmu-kpi-tile', false);
         $this->actingAs($admin)->get("/kpi/{$slug}/dashboard")->assertOk()->assertSee('Water Filtration');
         $this->actingAs($admin)->get('/manage-kpis')->assertOk()->assertSee('Manage KPI Cards');
 
@@ -52,11 +52,11 @@ class KpiDashboardTest extends TestCase
 
             $cardCount = substr_count($response->getContent(), 'data-kpi-card');
             $this->assertSame(23, $cardCount, "User {$login} should see 23 KPI cards");
-            $response->assertSee('View Dashboard')->assertSee('Reported')->assertDontSee('Performance</span>', false);
+            $response->assertSee('View Dashboard')->assertSee('Actual')->assertDontSee('Performance</span>', false);
 
             $this->get('/kpi/functional-and-clean-water-filtration-plants/dashboard')
                 ->assertOk()
-                ->assertSee('KPI Metrics')
+                ->assertSee('Performance Indicators')
                 ->assertSee('statusChart')
                 ->assertSee('targetChart');
         }
@@ -71,5 +71,44 @@ class KpiDashboardTest extends TestCase
             ->get('/dashboard?period_type=monthly&month=1&year='.now()->year)
             ->assertOk()
             ->assertSee('Monthly');
+    }
+
+    public function test_dashboard_defaults_to_active_ppmf_week(): void
+    {
+        $this->seed(PpmuSeeder::class);
+        $admin = User::where('username', 'super_admin')->firstOrFail();
+
+        $this->actingAs($admin)
+            ->get('/dashboard')
+            ->assertOk()
+            ->assertSee('Week W', false)
+            ->assertSee('Today', false)
+            ->assertDontSee('PPMF Week', false);
+
+        $this->actingAs($admin)
+            ->getJson('/dashboard/data')
+            ->assertOk()
+            ->assertJsonStructure(['cards_html', 'cards_count', 'period_description', 'period', 'period_query'])
+            ->assertJsonPath('period.period_type', 'weekly');
+    }
+
+    public function test_kpi_detail_dashboard_ajax_filter_returns_json(): void
+    {
+        $this->seed(PpmuSeeder::class);
+        $slug = 'functional-and-clean-water-filtration-plants';
+        $admin = User::where('username', 'super_admin')->firstOrFail();
+
+        $this->actingAs($admin)
+            ->getJson("/kpi/{$slug}/dashboard/data?period_type=monthly&month=1&year=".now()->year)
+            ->assertOk()
+            ->assertJsonStructure([
+                'header',
+                'summary_html',
+                'metrics_html',
+                'records_html',
+                'charts' => ['status_donut', 'target_achieved', 'trend', 'areas'],
+                'records_total',
+                'period_description',
+            ]);
     }
 }

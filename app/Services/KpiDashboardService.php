@@ -82,10 +82,12 @@ class KpiDashboardService
             ->latest('submission_date')
             ->get();
 
+        $perPage = min(50, max(10, (int) $request->input('per_page', 15)));
+
         $tableSubmissions = (clone $baseQuery)
             ->with(['user:id,name', 'division:id,name', 'district:id,name', 'tehsil:id,name', 'values.field', 'kpiScore'])
             ->latest('submission_date')
-            ->paginate(15)
+            ->paginate($perPage)
             ->withQueryString();
 
         $target = (float) $card->total_marks;
@@ -93,6 +95,7 @@ class KpiDashboardService
         $achieved = round((float) $submissions->avg(fn ($s) => (float) ($s->achieved_value ?? $s->score)), 1);
         $pending = round((float) $submissions->sum(fn ($s) => (float) ($s->pending_value ?? 0)), 1);
         $pct = $this->formula->achievementPercentage($achieved, $target);
+        $score = $this->formula->scoreFromWeightage($pct, (float) $card->total_marks);
         $areaScores = $this->areaScores($submissions, $user);
 
         return [
@@ -108,6 +111,7 @@ class KpiDashboardService
                 'target' => $target,
                 'achieved' => $achieved,
                 'achievement_percentage' => $pct,
+                'score' => $score,
                 'status_label' => $this->formula->performanceLabel($pct),
                 'best_area' => $areaScores->sortDesc()->keys()->first() ?: '—',
                 'weak_area' => $areaScores->sort()->keys()->first() ?: '—',
@@ -117,6 +121,7 @@ class KpiDashboardService
                 'reported' => $reported,
                 'achieved' => $achieved,
                 'pending' => $pending,
+                'score' => $score,
                 'achievement_percentage' => $pct,
                 'status_label' => $this->formula->performanceLabel($pct),
                 'period_label' => $this->periodService->label($request),
@@ -127,6 +132,7 @@ class KpiDashboardService
             'charts' => $this->chartService->build($submissions, $user, $target, $achieved, $areaScores),
             'filters' => $this->filterOptionsForView(),
             'period' => $this->periodState($request),
+            'period_description' => $this->periodService->description($request),
         ];
     }
 
@@ -150,6 +156,16 @@ class KpiDashboardService
         return $this->periodService->state($request);
     }
 
+    public function periodDescription(Request $request): string
+    {
+        return $this->periodService->description($request);
+    }
+
+    public function periodQueryString(Request $request): string
+    {
+        return $this->periodService->queryString($request);
+    }
+
     private function filteredSubmissions(Builder $query, User $user, Request $request): Builder
     {
         return $this->periodService->applyToQuery($this->scopeService->apply($query, $user), $request);
@@ -165,16 +181,41 @@ class KpiDashboardService
 
             return array_merge($metric, [
                 'value' => round($fieldValues->sum(fn ($v) => (float) $v->value), 1),
+                'hint' => $metric['hint'] ?? $this->metricHint($metric['label']),
             ]);
         });
 
         $metrics->push(
-            ['label' => 'Target', 'field' => 'target', 'icon' => 'bi-bullseye', 'tone' => 'blue', 'value' => $target],
-            ['label' => 'Achieved', 'field' => 'achieved', 'icon' => 'bi-graph-up-arrow', 'tone' => 'green', 'value' => $achieved],
-            ['label' => 'Score', 'field' => 'score', 'icon' => 'bi-award', 'tone' => 'green', 'value' => $this->formula->scoreFromWeightage($pct, $target)],
+            ['label' => 'Target', 'field' => 'target', 'icon' => 'bi-bullseye', 'tone' => 'purple', 'value' => $target, 'hint' => 'Period performance goal'],
+            ['label' => 'Achieved', 'field' => 'achieved', 'icon' => 'bi-graph-up-arrow', 'tone' => 'green', 'value' => $achieved, 'hint' => 'Reported achievement total'],
+            ['label' => 'Score', 'field' => 'score', 'icon' => 'bi-award', 'tone' => 'blue', 'value' => $this->formula->scoreFromWeightage($pct, $target), 'hint' => 'Weighted KPI score'],
         );
 
         return $metrics;
+    }
+
+    private function metricHint(string $label): string
+    {
+        $key = strtolower($label);
+
+        return match (true) {
+            str_contains($key, 'compliance') || str_contains($key, '%') => 'Compliance percentage',
+            str_contains($key, 'target') => 'Assigned period target',
+            str_contains($key, 'achieved') || str_contains($key, 'resolved') || str_contains($key, 'completed') => 'Completed in selected period',
+            str_contains($key, 'pending') => 'Outstanding items',
+            str_contains($key, 'visit') => 'Official field visits',
+            str_contains($key, 'inspection') || str_contains($key, 'inspected') => 'Inspection activity count',
+            str_contains($key, 'report') => 'Reports submitted',
+            str_contains($key, 'fine') || str_contains($key, 'violation') => 'Enforcement actions',
+            str_contains($key, 'functional') || str_contains($key, 'clean') => 'Operational status count',
+            str_contains($key, 'non-functional') || str_contains($key, 'open') => 'Issues requiring action',
+            str_contains($key, 'total') || str_contains($key, 'plants') || str_contains($key, 'roads') => 'Baseline operational count',
+            str_contains($key, 'meeting') || str_contains($key, 'council') => 'Governance meetings held',
+            str_contains($key, 'mobility') || str_contains($key, 'index') => 'Coverage mobility index',
+            str_contains($key, 'complaint') => 'Citizen complaint actions',
+            str_contains($key, 'tier') => 'Tier-wise target value',
+            default => 'Operational indicator value',
+        };
     }
 
     private function areaScores(Collection $submissions, User $user): Collection

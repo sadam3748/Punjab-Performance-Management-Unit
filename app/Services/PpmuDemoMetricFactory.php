@@ -7,7 +7,7 @@ use Carbon\Carbon;
 /**
  * Generates realistic KPI metric snapshots for demo seeding (AC Lahore / AC Layyah).
  */
-class KpiDemoMetricFactory
+class PpmuDemoMetricFactory
 {
   /** @return array{snapshot: array<string, int|float>, achievement_pct: float, remarks: string} */
   public function build(string $slug, Carbon $date, string $username, int $dayOffset, string $periodType): array

@@ -50,9 +50,37 @@ class KpiSubmissionController extends Controller
     public function review(Request $request, KpiDashboardService $service)
     {
         abort_if(in_array($request->user()->role?->slug, ['ac', 'field_user']), 403);
+
+        $validated = $request->validate([
+            'period_type' => ['nullable', 'in:daily,weekly,monthly,yearly'],
+            'date' => ['nullable', 'date'],
+            'week_no' => ['nullable', 'string', 'max:10'],
+            'month' => ['nullable', 'integer', 'between:1,12'],
+            'year' => ['nullable', 'integer', 'between:2020,2100'],
+            'per_page' => ['nullable', 'integer', 'in:10,20,50,100'],
+            'page' => ['nullable', 'integer', 'min:1'],
+        ]);
+
         $query = $service->scope(KpiSubmission::with(['kpiCard', 'user', 'district', 'tehsil']), $request->user());
-        $submissions = $query->latest()->paginate(20);
-        return view('submissions.review', compact('submissions'));
+
+        if (! empty($validated['period_type'])) {
+            $query->where('period_type', $validated['period_type']);
+        }
+
+        $query = $service->applyPeriodFilters($query, $request);
+        $perPage = (int) ($validated['per_page'] ?? 20);
+        $submissions = $query->latest('submission_date')->paginate($perPage)->withQueryString();
+        $filters = $service->filterOptionsForView();
+        $period = $service->periodState($request);
+        $perPageOptions = [10, 20, 50, 100];
+
+        if ($request->ajax()) {
+            return response()->json([
+                'html' => view('submissions.partials.review-table', compact('submissions'))->render(),
+            ]);
+        }
+
+        return view('submissions.review', compact('submissions', 'filters', 'period', 'perPage', 'perPageOptions'));
     }
 
     public function updateStatus(Request $request, KpiSubmission $submission, KpiDashboardService $service)

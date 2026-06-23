@@ -7,25 +7,8 @@ use Illuminate\Http\Request;
 
 class DashboardController extends Controller
 {
-    protected KpiDashboardService $dashboardService;
+    public function __construct(private readonly KpiDashboardService $dashboardService) {}
 
-    /*
-    |--------------------------------------------------------------------------
-    | Constructor
-    |--------------------------------------------------------------------------
-    | Dashboard query/calculation logic is handled inside DashboardService.
-    */
-    public function __construct(KpiDashboardService $dashboardService)
-    {
-        $this->dashboardService = $dashboardService;
-    }
-
-    /*
-    |--------------------------------------------------------------------------
-    | Dashboard / Overview Page
-    |--------------------------------------------------------------------------
-    | Shows summary cards, charts, recent inspections and geo-tagging summary.
-    */
     public function index(Request $request)
     {
         $user = $request->user()->loadMissing(['role', 'division', 'district', 'tehsil']);
@@ -33,7 +16,27 @@ class DashboardController extends Controller
         $location = $user->tehsil?->name ?? $user->district?->name ?? $user->division?->name ?? 'Punjab';
         $filters = $this->dashboardService->filterOptionsForView();
         $period = $this->dashboardService->periodState($request);
+        $period_description = $this->dashboardService->periodDescription($request);
+        $periodQuery = $this->dashboardService->periodQueryString($request);
 
-        return view('dashboard.index', compact('user', 'cards', 'location', 'filters', 'period'));
+        return view('dashboard.index', compact('user', 'cards', 'location', 'filters', 'period', 'period_description', 'periodQuery'));
+    }
+
+    public function data(Request $request)
+    {
+        $user = $request->user()->loadMissing(['role', 'division', 'district', 'tehsil']);
+        $cards = $this->dashboardService->assignedCards($user, $request);
+        $periodQuery = $this->dashboardService->periodQueryString($request);
+
+        return response()->json([
+            'cards_html' => view('dashboard.partials.kpi-grid', [
+                'cards' => $cards,
+                'periodQuery' => $periodQuery,
+            ])->render(),
+            'cards_count' => $cards->count(),
+            'period_description' => $this->dashboardService->periodDescription($request),
+            'period' => $this->dashboardService->periodState($request),
+            'period_query' => $periodQuery,
+        ]);
     }
 }
