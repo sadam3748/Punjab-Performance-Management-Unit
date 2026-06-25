@@ -1,5 +1,4 @@
 @php
-    $counts = $inspectionStatusCounts ?? ['total' => 0, 'pending_review' => 0, 'approved' => 0, 'rejected' => 0];
     $filters = $inspectionFilters ?? [];
 @endphp
 
@@ -8,25 +7,6 @@
         <h2><i class="bi bi-clipboard2-check-fill"></i> Inspection List</h2>
         <p>Field inspections with status and quick view access.</p>
     </div>
-</div>
-
-<div class="ppmu-inspection-summary-grid ppmu-inspection-count-grid mb-3">
-    <article class="ppmu-pi-card tone-blue">
-        <div class="ppmu-pi-card-head"><div class="ppmu-pi-icon"><i class="bi bi-collection"></i></div><h4 class="ppmu-pi-title">Total Inspections</h4></div>
-        <div class="ppmu-pi-card-foot"><strong class="ppmu-pi-value">{{ number_format($counts['total']) }}</strong></div>
-    </article>
-    <article class="ppmu-pi-card tone-orange">
-        <div class="ppmu-pi-card-head"><div class="ppmu-pi-icon"><i class="bi bi-hourglass-split"></i></div><h4 class="ppmu-pi-title">Pending Review</h4></div>
-        <div class="ppmu-pi-card-foot"><strong class="ppmu-pi-value">{{ number_format($counts['pending_review']) }}</strong></div>
-    </article>
-    <article class="ppmu-pi-card tone-green">
-        <div class="ppmu-pi-card-head"><div class="ppmu-pi-icon"><i class="bi bi-check-circle"></i></div><h4 class="ppmu-pi-title">Approved</h4></div>
-        <div class="ppmu-pi-card-foot"><strong class="ppmu-pi-value">{{ number_format($counts['approved']) }}</strong></div>
-    </article>
-    <article class="ppmu-pi-card tone-red">
-        <div class="ppmu-pi-card-head"><div class="ppmu-pi-icon"><i class="bi bi-x-circle"></i></div><h4 class="ppmu-pi-title">Rejected</h4></div>
-        <div class="ppmu-pi-card-foot"><strong class="ppmu-pi-value">{{ number_format($counts['rejected']) }}</strong></div>
-    </article>
 </div>
 
 <form id="kpiInspectionFilter" class="ppmu-inspection-filter card-ppmf mb-3" method="GET" action="{{ route('kpi.dashboard', $kpiCard) }}">

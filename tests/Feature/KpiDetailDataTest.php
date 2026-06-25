@@ -97,4 +97,41 @@ class KpiDetailDataTest extends TestCase
             }
         }
     }
+
+    public function test_percentage_cards_and_gauges_never_exceed_one_hundred(): void
+    {
+        $this->seed(PpmuSeeder::class);
+        $admin = User::where('username', 'super_admin')->firstOrFail();
+        $dashboard = app(KpiDashboardService::class);
+
+        KpiCard::where('is_active', true)->each(function (KpiCard $card) use ($admin, $dashboard) {
+            $data = $dashboard->detail($card, $admin, Request::create('/'));
+
+            $this->assertLessThanOrEqual(100, (float) $data['header']['achievement_percentage'], $card->slug);
+
+            foreach ($data['metrics'] as $metric) {
+                $label = strtolower((string) $metric['label']);
+                $isPercentage = str_contains($label, '%')
+                    || str_contains($label, 'rate')
+                    || str_contains($label, 'percentage')
+                    || str_contains($label, 'completion')
+                    || str_contains($label, 'compliance')
+                    || str_contains($label, 'achievement');
+
+                if ($isPercentage && is_numeric($metric['value'])) {
+                    $this->assertLessThanOrEqual(100, (float) $metric['value'], "{$card->slug}: {$metric['label']}");
+                }
+            }
+
+            foreach ($data['charts']['definitions'] as $chart) {
+                if (($chart['type'] ?? null) !== 'gauge') {
+                    continue;
+                }
+
+                foreach ($chart['data']['values'] ?? [] as $value) {
+                    $this->assertLessThanOrEqual(100, (float) $value, "{$card->slug}: {$chart['key']}");
+                }
+            }
+        });
+    }
 }

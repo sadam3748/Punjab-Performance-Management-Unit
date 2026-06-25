@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Data\KpiMetricSections;
 use App\Models\KpiCard;
 use App\Models\KpiSubmission;
 use App\Models\User;
@@ -20,6 +21,7 @@ class KpiDashboardService
         private readonly KpiDashboardConfigService $dashboardConfig,
         private readonly KpiGeoFilterService $geoFilterService,
         private readonly KpiOperationalService $operationalService,
+        private readonly KpiFrequencyService $frequencyService,
     ) {}
 
     public function assignedCards(User $user, ?Request $request = null): Collection
@@ -86,6 +88,8 @@ class KpiDashboardService
 
     public function detail(KpiCard $card, User $user, Request $request): array
     {
+        $request = $this->requestWithKpiPeriodDefaults($card, $request);
+
         [$submissions, $usedFallback] = $this->loadSubmissions($card, $user, $request);
 
         $perPage = min(50, max(10, (int) $request->input('per_page', 15)));
@@ -97,7 +101,7 @@ class KpiDashboardService
         $areaScores = $this->areaScores($submissions, $user);
 
         $kpiConfig = $this->dashboardConfig->forKpi($card->slug);
-        $chartDefinitions = $kpiConfig['charts'];
+        $chartDefinitions = $this->chartsForUser($kpiConfig['charts'], $user, $card->slug);
         $inspectionCollection = $this->inspectionService->getInspectionsCollection($card, $user, $request);
         $inspectionStatusCounts = $this->inspectionService->buildStatusCounts($card, $user, $request);
         $inspectionTableColumns = $this->inspectionService->getTableColumnsForKpi($card->slug);
@@ -134,10 +138,22 @@ class KpiDashboardService
             'metrics' => $this->metrics(
                 $card,
                 $submissions,
+                $user,
+                $request,
                 $headerMetrics['operational_target'],
                 $headerMetrics['completed'],
                 $headerMetrics['achievement_percentage'],
                 $inspectionStatusCounts
+            ),
+            'metricSections' => $this->metricSections(
+                $card,
+                $submissions,
+                $user,
+                $request,
+                $headerMetrics['achievement_percentage'],
+                $inspectionStatusCounts,
+                (float) $headerMetrics['operational_target'],
+                (float) $headerMetrics['completed'],
             ),
             'charts' => $this->chartService->buildForKpi(
                 $card->slug,
@@ -149,7 +165,7 @@ class KpiDashboardService
                 $areaScores,
                 $chartDefinitions,
             ),
-            'filters' => $this->filterOptionsForView(),
+            'filters' => $this->filterOptionsForView($card->slug),
             'geo' => $this->geoFilterService->state($request),
             'period' => $this->periodState($request),
             'period_description' => $this->periodService->description($request),
@@ -170,9 +186,18 @@ class KpiDashboardService
         return $this->periodService->applyToQuery($query, $request);
     }
 
-    public function filterOptionsForView(): array
+    public function filterOptionsForView(?string $kpiSlug = null): array
     {
-        return $this->periodService->filterOptions();
+        $year = (int) (request('year') ?: now()->year);
+        $month = (int) (request('month') ?: now()->month);
+        $options = $this->periodService->filterOptions($year, $month);
+
+        if ($kpiSlug) {
+            $options['period_types'] = $this->frequencyService->periodTypesFor($kpiSlug);
+            $options['defaults'] = $this->frequencyService->defaultParamsFor($kpiSlug);
+        }
+
+        return $options;
     }
 
     public function periodState(Request $request): array
@@ -439,19 +464,391 @@ class KpiDashboardService
     }
 
     /** @param  array<string, int>  $inspectionStatusCounts */
-    private function metrics(KpiCard $card, Collection $submissions, float $target, float $achieved, float $pct, array $inspectionStatusCounts): Collection
-    {
+    private function metrics(
+        KpiCard $card,
+        Collection $submissions,
+        User $user,
+        Request $request,
+        float $target,
+        float $achieved,
+        float $pct,
+        array $inspectionStatusCounts,
+    ): Collection {
         $configured = collect($this->dashboardConfig->dashboardStatsFor($card->slug));
         $allValues = $submissions->flatMap->values;
+        $visitContext = $this->visitMetricContext($card, $user, $request, $submissions, $inspectionStatusCounts);
 
-        return $configured->map(function (array $metric) use ($allValues, $submissions, $inspectionStatusCounts, $pct) {
-            $value = $this->resolveMetricValue($metric['field'], $submissions, $allValues, $inspectionStatusCounts, $pct);
+        return $configured->map(function (array $metric) use ($allValues, $submissions, $inspectionStatusCounts, $pct, $visitContext, $user) {
+            $value = $this->resolveMetricValue(
+                $metric['field'],
+                $submissions,
+                $allValues,
+                $inspectionStatusCounts,
+                $pct,
+                $visitContext,
+                $user,
+            );
 
             return array_merge($metric, [
                 'value' => $value,
                 'hint' => $this->shortCardHint($metric),
             ]);
         });
+    }
+
+    /** @param  array<string, int>  $inspectionStatusCounts */
+    private function metricSections(
+        KpiCard $card,
+        Collection $submissions,
+        User $user,
+        Request $request,
+        float $pct,
+        array $inspectionStatusCounts,
+        float $operationalTarget = 0,
+        float $operationalCompleted = 0,
+    ): array {
+        $configured = collect($this->dashboardConfig->dashboardStatsFor($card->slug))->keyBy('field');
+        $allValues = $submissions->flatMap->values;
+        $visitContext = $this->visitMetricContext($card, $user, $request, $submissions, $inspectionStatusCounts);
+        $sectionDefs = KpiMetricSections::for($card->slug, $user->role?->slug);
+        $operational = [
+            'target' => $operationalTarget,
+            'completed' => $operationalCompleted,
+            'pct' => $pct,
+        ];
+
+        if ($sectionDefs === []) {
+            $flat = $configured->values()->map(function (array $metric) use ($allValues, $submissions, $inspectionStatusCounts, $pct, $visitContext, $user, $card, $operational) {
+                return $this->decorateMetricCard(
+                    $metric,
+                    $this->resolveMetricValue($metric['field'], $submissions, $allValues, $inspectionStatusCounts, $pct, $visitContext, $user, $card->slug, $operational),
+                );
+            })->all();
+
+            return KpiMetricSections::groupGeneric($flat);
+        }
+
+        return collect($sectionDefs)->map(function (array $section) use ($configured, $allValues, $submissions, $inspectionStatusCounts, $pct, $visitContext, $user, $card, $operational) {
+            $metrics = collect($section['metrics'])->map(function (array $item) use ($configured, $allValues, $submissions, $inspectionStatusCounts, $pct, $visitContext, $user, $card, $operational) {
+                $base = $configured->get($item['field'], [
+                    'field' => $item['field'],
+                    'icon' => 'bi-bar-chart',
+                    'tone' => 'blue',
+                    'description' => '',
+                    'formula_text' => '',
+                ]);
+
+                return $this->decorateMetricCard(
+                    array_merge($base, ['label' => $item['label']], array_filter([
+                        'formula_text' => $item['formula_text'] ?? null,
+                    ])),
+                    $this->resolveMetricValue($item['field'], $submissions, $allValues, $inspectionStatusCounts, $pct, $visitContext, $user, $card->slug, $operational),
+                );
+            })->values()->all();
+
+            return ['title' => $section['title'], 'metrics' => $metrics];
+        })->all();
+    }
+
+    private function decorateMetricCard(array $metric, float|string|int $value): array
+    {
+        $field = (string) ($metric['field'] ?? '');
+        $unit = $metric['unit'] ?? null;
+
+        if ($unit === null && is_numeric($value) && $this->isPercentMetricField($field, $metric)) {
+            $unit = '%';
+        }
+
+        return array_merge($metric, [
+            'value' => $value,
+            'unit' => $unit,
+            'hint' => $this->shortCardHint($metric),
+            'formula_text' => $metric['formula_text'] ?? ($metric['formula'] ?? null),
+        ]);
+    }
+
+    private function isPercentMetricField(string $field, array $metric): bool
+    {
+        $label = strtolower((string) ($metric['label'] ?? ''));
+
+        if (str_contains($label, '%') || str_contains($label, 'rate') || str_contains($label, 'achievement')) {
+            return true;
+        }
+
+        return str_ends_with($field, '_rate')
+            || in_array($field, [
+                'achievement_rate',
+                'fine_imposition_rate',
+                'complaint_resolution_rate',
+                'dc_visit_completion',
+                'ac_visit_completion',
+                'ac_visit_achievement',
+                'compliance_rate',
+                'resolution_rate',
+                'plant_coverage_rate',
+                'filter_change_rate',
+            ], true);
+    }
+
+    /** @param  array<string, int>  $inspectionStatusCounts */
+    private function visitMetricContext(
+        KpiCard $card,
+        User $user,
+        Request $request,
+        Collection $submissions,
+        array $inspectionStatusCounts,
+    ): array {
+        if (! in_array($card->slug, [
+            'inspection-of-health-facilities',
+            'inspection-of-educational-institutions',
+        ], true)) {
+            return [];
+        }
+
+        $inspections = $this->inspectionService->getInspectionsCollection($card, $user, $request);
+        $approved = $inspections->where('status', \App\Models\KpiInspection::STATUS_APPROVED)->count();
+        $pending = $inspections->where('status', \App\Models\KpiInspection::STATUS_PENDING)->count();
+        $rejected = $inspections->where('status', \App\Models\KpiInspection::STATUS_REJECTED)->count();
+        $totalVisits = $approved + $pending + $rejected;
+        $achieved = $approved + $pending;
+
+        $totalField = $card->slug === 'inspection-of-health-facilities'
+            ? 'total_health_facilities'
+            : 'total_institutions';
+        $totalInventory = $this->inventoryTotalForUser($user, $card->slug, $submissions, $totalField);
+        $uniqueInspected = $inspections->pluck('entity_name')->filter()->unique()->count();
+        $notInspected = max(0, $totalInventory - $uniqueInspected);
+
+        $validationTarget = $achieved > 0
+            ? max(1, (int) ceil($achieved * $this->validationRateForRole($user)))
+            : 0;
+
+        $issues = $this->issueCountsFromInspections($inspections, $card->slug);
+        $acTarget = 2;
+        $dcTarget = 2;
+        $acVisits = (int) $submissions->sum(fn ($s) => (float) data_get($s->metric_snapshot, 'ac_visits', 0));
+        $dcVisits = (int) $submissions->sum(fn ($s) => (float) data_get($s->metric_snapshot, 'dc_visits', 0));
+        $acVisits = min($acTarget, max($acVisits, min($achieved, $acTarget)));
+        $dcVisits = min($dcTarget, max($dcVisits, 0));
+
+        return [
+            'total_visits' => $totalVisits,
+            'visits_achieved' => $achieved,
+            'inspected' => $totalVisits,
+            'approved' => $approved,
+            'pending' => $pending,
+            'rejected' => $rejected,
+            'total_inventory' => $totalInventory,
+            'not_inspected' => $notInspected,
+            'validation_target' => $validationTarget,
+            'validated' => $approved + $rejected,
+            'dc_visits_display' => sprintf('%d / %d', $dcVisits, $dcTarget),
+            'ac_visits_display' => sprintf('%d / %d', $acVisits, $acTarget),
+            'ac_visit_target' => $acTarget,
+            'ac_visit_achievement' => round(min(100, ($acVisits / max(1, $acTarget)) * 100), 1),
+            'district_visits' => $dcVisits + $acVisits,
+            'districts_reporting' => $submissions->pluck('district_id')->filter()->unique()->count(),
+            'issues' => $issues,
+        ];
+    }
+
+    private function inventoryTotalForUser(User $user, string $slug, Collection $submissions, string $field): int
+    {
+        $demo = match ($user->username) {
+            'ac.lahore' => $slug === 'inspection-of-health-facilities' ? 48 : 156,
+            'ac.layyah' => $slug === 'inspection-of-health-facilities' ? 34 : 112,
+            'ac.karor' => $slug === 'inspection-of-health-facilities' ? 28 : 98,
+            'dc.layyah' => $slug === 'inspection-of-health-facilities' ? 62 : 210,
+            default => 0,
+        };
+
+        if ($demo > 0) {
+            return $demo;
+        }
+
+        return (int) round($this->metricFieldSum($submissions, $submissions->flatMap->values, $field));
+    }
+
+    /** @return array<string, int> */
+    private function issueCountsFromInspections(Collection $inspections, string $slug): array
+    {
+        $isHealth = $slug === 'inspection-of-health-facilities';
+        $keys = $isHealth
+            ? ['cleanliness', 'staff_absence', 'medicine_shortage', 'equipment_utilities']
+            : ['cleanliness', 'teacher_absence', 'tlm_shortage', 'facility_deficiency'];
+
+        $counts = [];
+        foreach ($keys as $key) {
+            $counts[$key] = 0;
+        }
+
+        foreach ($inspections as $inspection) {
+            $detail = is_array($inspection->detail_data)
+                ? $inspection->detail_data
+                : (json_decode($inspection->detail_data ?? '[]', true) ?: []);
+
+            if ($isHealth) {
+                if ($this->isNegativeHealthSignal($detail['cleanliness'] ?? null)) {
+                    $counts['cleanliness']++;
+                }
+                if (($detail['staff_present'] ?? 'Yes') === 'No' || ($detail['staff_absence'] ?? false)) {
+                    $counts['staff_absence']++;
+                }
+                if (($detail['medicines_ok'] ?? 'Yes') === 'No' || ($detail['medicine_shortage'] ?? false)) {
+                    $counts['medicine_shortage']++;
+                }
+            if (($detail['equipment_status'] ?? '') === 'Non-Operational'
+                || ($detail['equipment_ok'] ?? 'Yes') === 'No'
+                || ($detail['utilities_ok'] ?? 'Yes') === 'No') {
+                    $counts['equipment_utilities']++;
+                }
+            } else {
+                if ($this->isNegativeHealthSignal($detail['cleanliness'] ?? $detail['cleanliness_status'] ?? null)) {
+                    $counts['cleanliness']++;
+                }
+                if (($detail['teachers_present'] ?? 'Yes') === 'No') {
+                    $counts['teacher_absence']++;
+                }
+                if (($detail['tlm_shortage'] ?? false) || ($detail['tlm_ok'] ?? 'Yes') === 'No') {
+                    $counts['tlm_shortage']++;
+                }
+                if (! empty($detail['facility_deficiency']) && $detail['facility_deficiency'] !== 'None') {
+                    $counts['facility_deficiency']++;
+                }
+            }
+        }
+
+        return $counts;
+    }
+
+    private function isNegativeHealthSignal(mixed $value): bool
+    {
+        if ($value === null || $value === '') {
+            return false;
+        }
+
+        $text = strtolower((string) $value);
+
+        return in_array($text, ['poor', 'average', 'needs cleaning', 'needs improvement', 'no', 'false', '1'], true)
+            || str_contains($text, 'poor')
+            || str_contains($text, 'needs');
+    }
+
+    private function validationRateForRole(User $user): float
+    {
+        return match ($user->role?->slug) {
+            'ac', 'field_user' => 0.20,
+            'dc', 'commissioner' => 0.05,
+            default => 0.05,
+        };
+    }
+
+    private function requestWithKpiPeriodDefaults(KpiCard $card, Request $request): Request
+    {
+        $defaults = $this->frequencyService->defaultParamsFor($card->slug);
+        $shouldApply = ! $request->has('period_type');
+
+        if (! $shouldApply) {
+            return $request;
+        }
+
+        return $request->duplicate(
+            array_merge($request->query(), $defaults)
+        );
+    }
+
+    /** @param  list<array{type: string, title: string, key: string}>  $definitions */
+    private function chartsForUser(array $definitions, User $user, string $slug): array
+    {
+        $role = $user->role?->slug;
+        $slug = \App\Data\KpiDashboardDefinitions::normalizeSlug($slug);
+
+        if ($slug === 'inspection-of-health-facilities') {
+            return match ($role) {
+                'ac', 'field_user' => [
+                    ['type' => 'bar', 'title' => 'Inspection Status', 'key' => 'inspection_status_breakdown'],
+                    ['type' => 'donut', 'title' => 'Issues Found', 'key' => 'health_issue_breakdown'],
+                ],
+                'dc' => [
+                    ['type' => 'bar', 'title' => 'DC vs AC Visit Completion', 'key' => 'dc_ac_visit_completion'],
+                    ['type' => 'bar', 'title' => 'Tehsil Comparison', 'key' => 'tehsil_comparison'],
+                    ['type' => 'donut', 'title' => 'Issue Category Breakdown', 'key' => 'health_issue_breakdown'],
+                    ['type' => 'donut', 'title' => 'Inspection Status', 'key' => 'status_donut'],
+                ],
+                'commissioner' => [
+                    ['type' => 'bar', 'title' => 'District Comparison', 'key' => 'district_comparison'],
+                    ['type' => 'donut', 'title' => 'Issue Category Breakdown', 'key' => 'health_issue_breakdown'],
+                    ['type' => 'gauge', 'title' => 'Visit Completion', 'key' => 'ac_visit_completion_gauge'],
+                    ['type' => 'donut', 'title' => 'Inspection Status', 'key' => 'status_donut'],
+                ],
+                default => [
+                    ['type' => 'bar', 'title' => 'District Comparison', 'key' => 'district_comparison'],
+                    ['type' => 'donut', 'title' => 'Issue Category Breakdown', 'key' => 'health_issue_breakdown'],
+                    ['type' => 'donut', 'title' => 'Inspection Status', 'key' => 'status_donut'],
+                    ['type' => 'gauge', 'title' => 'Visit Completion', 'key' => 'ac_visit_completion_gauge'],
+                ],
+            };
+        }
+
+        if ($slug === 'inspection-of-educational-institutions') {
+            return match ($role) {
+                'ac', 'field_user' => [
+                    ['type' => 'gauge', 'title' => 'Visit Completion', 'key' => 'ac_visit_completion_gauge'],
+                    ['type' => 'donut', 'title' => 'Issue Category Breakdown', 'key' => 'issue_category_breakdown'],
+                    ['type' => 'donut', 'title' => 'Inspection Status', 'key' => 'status_donut'],
+                ],
+                'dc' => [
+                    ['type' => 'bar', 'title' => 'Tehsil Comparison', 'key' => 'tehsil_comparison'],
+                    ['type' => 'donut', 'title' => 'Issue Category Breakdown', 'key' => 'issue_category_breakdown'],
+                    ['type' => 'donut', 'title' => 'Inspection Status', 'key' => 'status_donut'],
+                    ['type' => 'gauge', 'title' => 'School Council Activation', 'key' => 'school_council_activation'],
+                ],
+                'commissioner' => [
+                    ['type' => 'bar', 'title' => 'District Comparison', 'key' => 'district_comparison'],
+                    ['type' => 'donut', 'title' => 'Issue Category Breakdown', 'key' => 'issue_category_breakdown'],
+                    ['type' => 'donut', 'title' => 'Inspection Status', 'key' => 'status_donut'],
+                ],
+                default => [
+                    ['type' => 'bar', 'title' => 'District Comparison', 'key' => 'district_comparison'],
+                    ['type' => 'donut', 'title' => 'Issue Category Breakdown', 'key' => 'issue_category_breakdown'],
+                    ['type' => 'donut', 'title' => 'Inspection Status', 'key' => 'status_donut'],
+                ],
+            };
+        }
+
+        if ($slug === 'price-of-roti') {
+            return [
+                ['type' => 'line', 'title' => 'Daily Inspections Trend', 'key' => 'daily_inspections_trend'],
+                ['type' => 'donut', 'title' => 'Violation Type Breakdown', 'key' => 'violation_type_breakdown'],
+            ];
+        }
+
+        $filtered = collect($definitions)->filter(function (array $definition) use ($role) {
+            $key = $definition['key'];
+
+            if (in_array($role, ['ac', 'field_user'], true)) {
+                return ! in_array($key, [
+                    'tehsil_comparison', 'district_comparison', 'division_comparison',
+                    'dc_ac_visit_completion', 'dc_ac_inspection_comparison',
+                ], true);
+            }
+
+            if ($role === 'dc') {
+                return ! in_array($key, ['district_comparison', 'division_comparison'], true);
+            }
+
+            if ($role === 'commissioner') {
+                return $key !== 'division_comparison';
+            }
+
+            if (in_array($role, ['chief_secretary', 'super_admin', 'pmru_user', 'viewer'], true)) {
+                return $key !== 'tehsil_comparison';
+            }
+
+            return true;
+        })->values();
+
+        return $filtered->all();
     }
 
     private function shortCardHint(array $metric): ?string
@@ -475,13 +872,86 @@ class KpiDashboardService
     }
 
     /** @param  array<string, int>  $inspectionStatusCounts */
-    private function resolveMetricValue(string $field, Collection $submissions, Collection $allValues, array $inspectionStatusCounts, float $pct): float|string|int
-    {
+    /** @param  array<string, mixed>  $visitContext */
+    private function resolveMetricValue(
+        string $field,
+        Collection $submissions,
+        Collection $allValues,
+        array $inspectionStatusCounts,
+        float $pct,
+        array $visitContext = [],
+        ?User $user = null,
+        ?string $cardSlug = null,
+        array $operational = [],
+    ): float|string|int {
+        if ($cardSlug === 'price-of-roti' && $operational !== []) {
+            $override = match ($field) {
+                'tandoor_inspections' => $operational['completed'] ?? null,
+                'inspections_total_target' => $operational['target'] ?? null,
+                'achievement_rate' => $operational['pct'] ?? null,
+                default => null,
+            };
+            if ($override !== null) {
+                return $override;
+            }
+        }
+
+        if ($visitContext !== []) {
+            $issues = $visitContext['issues'] ?? [];
+
+            return match ($field) {
+                'total_visits' => (int) $visitContext['total_visits'],
+                'visits_achieved' => (int) $visitContext['visits_achieved'],
+                'facilities_inspected', 'institutions_inspected' => (int) $visitContext['total_visits'],
+                'facilities_not_inspected' => (int) $visitContext['not_inspected'],
+                'institutions_not_inspected' => (int) $visitContext['not_inspected'],
+                'total_health_facilities' => (int) $visitContext['total_inventory'],
+                'total_institutions' => (int) $visitContext['total_inventory'],
+                'inspections_pending' => (int) $visitContext['pending'],
+                'inspections_approved' => (int) $visitContext['approved'],
+                'inspections_rejected' => (int) $visitContext['rejected'],
+                'validation_target' => (int) $visitContext['validation_target'],
+                'validations_completed', 'validated_inspections' => (int) $visitContext['validated'],
+                'dc_visits' => $visitContext['dc_visits_display'],
+                'ac_visits' => $visitContext['ac_visits_display'],
+                'ac_visit_target' => (int) ($visitContext['ac_visit_target'] ?? 2),
+                'ac_visit_achievement' => (float) ($visitContext['ac_visit_achievement'] ?? 0),
+                'district_visits' => (int) ($visitContext['district_visits'] ?? 0),
+                'districts_reporting' => (int) ($visitContext['districts_reporting'] ?? 0),
+                'issues_cleanliness' => (int) ($issues['cleanliness'] ?? 0),
+                'issues_staff_absence' => (int) ($issues['staff_absence'] ?? 0),
+                'issues_medicine_shortage' => (int) ($issues['medicine_shortage'] ?? 0),
+                'issues_equipment_utilities' => (int) ($issues['equipment_utilities'] ?? 0),
+                'issues_teacher_absence' => (int) ($issues['teacher_absence'] ?? 0),
+                'issues_tlm_shortage' => (int) ($issues['tlm_shortage'] ?? 0),
+                'issues_facility_deficiency' => (int) ($issues['facility_deficiency'] ?? 0),
+                default => null,
+            } ?? $this->resolveMetricValueCore($field, $submissions, $allValues, $inspectionStatusCounts, $pct);
+        }
+
+        return $this->resolveMetricValueCore($field, $submissions, $allValues, $inspectionStatusCounts, $pct);
+    }
+
+    /** @param  array<string, int>  $inspectionStatusCounts */
+    private function resolveMetricValueCore(
+        string $field,
+        Collection $submissions,
+        Collection $allValues,
+        array $inspectionStatusCounts,
+        float $pct,
+    ): float|string|int {
+        if ($this->isPercentageMetric($field)) {
+            $value = $this->percentageMetricValue($submissions, $allValues, $field);
+
+            return $this->formula->displayPercentage(
+                $field === 'achievement_rate' && $value <= 0 ? $pct : $value
+            );
+        }
+
         return match ($field) {
-            'achievement_rate' => round($this->metricFieldSum($submissions, $allValues, $field) ?: $pct, 1),
-            'complaint_resolution_rate', 'plant_coverage_rate', 'filter_change_rate',
-            'resolution_rate', 'compliance_rate', 'fine_imposition_rate', 'dc_visit_completion', 'ac_visit_completion'
-                => round($this->metricFieldSum($submissions, $allValues, $field), 1),
+            'complaints_resolved' => (int) round($this->metricFieldSum($submissions, $allValues, $field)),
+            'over_price_violations', 'under_weight_violations', 'non_availability_violations'
+                => (int) round($this->metricFieldSum($submissions, $allValues, $field)),
             'approved_validations' => (int) ($inspectionStatusCounts['approved'] ?? 0),
             'rejected_validations' => (int) ($inspectionStatusCounts['rejected'] ?? 0),
             'validated_inspections' => (int) (($inspectionStatusCounts['approved'] ?? 0) + ($inspectionStatusCounts['rejected'] ?? 0)),
@@ -502,6 +972,12 @@ class KpiDashboardService
     private function metricFieldSum(Collection $submissions, Collection $allValues, string $field): float
     {
         if (in_array($field, ['total_health_facilities', 'total_institutions', 'total_institutions_count'], true)) {
+            return (float) $submissions->max(
+                fn ($submission) => (float) data_get($submission->metric_snapshot, $field, 0)
+            );
+        }
+
+        if (in_array($field, ['tier_target', 'total_inspectors', 'inspections_total_target'], true)) {
             return (float) $submissions->max(
                 fn ($submission) => (float) data_get($submission->metric_snapshot, $field, 0)
             );
@@ -539,6 +1015,64 @@ class KpiDashboardService
         });
     }
 
+    private function percentageMetricValue(Collection $submissions, Collection $allValues, string $field): float
+    {
+        if ($field === 'fine_imposition_rate') {
+            $generated = (float) $submissions->sum(
+                fn ($submission) => (float) data_get($submission->metric_snapshot, 'fine_generated', 0)
+            );
+            $deposited = (float) $submissions->sum(
+                fn ($submission) => (float) data_get($submission->metric_snapshot, 'fine_deposited', 0)
+            );
+
+            if ($generated > 0) {
+                return round(($deposited / $generated) * 100, 1);
+            }
+        }
+
+        if ($field === 'complaint_resolution_rate') {
+            $received = (float) $submissions->sum(
+                fn ($submission) => (float) data_get($submission->metric_snapshot, 'citizen_complaints_received', 0)
+            );
+            $resolved = (float) $submissions->sum(
+                fn ($submission) => (float) data_get($submission->metric_snapshot, 'complaints_resolved', 0)
+            );
+
+            if ($received > 0) {
+                return round(($resolved / $received) * 100, 1);
+            }
+        }
+
+        $snapshotValues = $submissions
+            ->map(fn ($submission) => data_get($submission->metric_snapshot, $field))
+            ->filter(fn ($value) => is_numeric($value));
+
+        if ($snapshotValues->isNotEmpty()) {
+            return (float) $snapshotValues->avg();
+        }
+
+        $formValues = $allValues
+            ->filter(fn ($value) => $value->field?->field_name === $field && is_numeric($value->value))
+            ->map(fn ($value) => (float) $value->value);
+
+        return $formValues->isNotEmpty() ? (float) $formValues->avg() : 0.0;
+    }
+
+    private function isPercentageMetric(string $field): bool
+    {
+        return str_ends_with($field, '_rate')
+            || str_ends_with($field, '_percentage')
+            || str_ends_with($field, '_completion')
+            || str_ends_with($field, '_achievement')
+            || str_ends_with($field, '_compliance')
+            || in_array($field, [
+                'hr_attendance',
+                'coverage_mobility_index',
+                'disposal_rate',
+                'school_council_activation',
+            ], true);
+    }
+
     private function metricHint(string $label): string
     {
         return '';
@@ -551,7 +1085,9 @@ class KpiDashboardService
         $scores = $submissions
             ->filter(fn ($item) => $item->{$relation})
             ->groupBy(fn ($item) => $item->{$relation}->name)
-            ->map(fn ($group) => round($group->avg(fn ($item) => (float) ($item->achievement_percentage ?? $item->kpiScore?->percentage ?? $item->score)), 1));
+            ->map(fn ($group) => $this->formula->displayPercentage(
+                (float) $group->avg(fn ($item) => (float) ($item->achievement_percentage ?? $item->kpiScore?->percentage ?? $item->score))
+            ));
 
         if ($scores->isNotEmpty()) {
             return $scores;
@@ -559,6 +1095,8 @@ class KpiDashboardService
 
         return $submissions
             ->groupBy(fn ($item) => $item->submission_date?->format('d M') ?? 'Period')
-            ->map(fn ($group) => round($group->avg(fn ($item) => (float) ($item->achievement_percentage ?? 0)), 1));
+            ->map(fn ($group) => $this->formula->displayPercentage(
+                (float) $group->avg(fn ($item) => (float) ($item->achievement_percentage ?? 0))
+            ));
     }
 }

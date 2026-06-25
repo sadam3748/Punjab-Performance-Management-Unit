@@ -13,7 +13,8 @@ class PpmuDemoUserSeeder extends Seeder
         $lahoreDistrict = DB::table('districts')->whereRaw('LOWER(name) = ?', ['lahore'])->first();
         $layyahDistrict = DB::table('districts')->whereRaw('LOWER(name) = ?', ['layyah'])->first();
         $lahoreTehsil = $lahoreDistrict ? DB::table('tehsils')->where('district_id', $lahoreDistrict->id)->first() : null;
-        $layyahTehsil = $layyahDistrict ? DB::table('tehsils')->where('district_id', $layyahDistrict->id)->first() : null;
+        $layyahTehsil = $layyahDistrict ? DB::table('tehsils')->where('district_id', $layyahDistrict->id)->where('name', 'Layyah')->first() : null;
+        $karorTehsil = $layyahDistrict ? DB::table('tehsils')->where('district_id', $layyahDistrict->id)->where('name', 'Karor Lal Esan')->first() : null;
 
         $users = [];
 
@@ -24,9 +25,13 @@ class PpmuDemoUserSeeder extends Seeder
         }
 
         if ($layyahDistrict) {
+            $karorTehsil = DB::table('tehsils')->where('district_id', $layyahDistrict->id)->where('name', 'Karor Lal Esan')->first();
             $users[] = $this->user('Commissioner Dera Ghazi Khan', 'com.dgkhan', 'commissioner.dgk@ppmf.local', 4, $layyahDistrict->division_id, null, null, 'Commissioner');
             $users[] = $this->user('DC Layyah', 'dc.layyah', 'dc.layyah@ppmf.local', 5, $layyahDistrict->division_id, $layyahDistrict->id, null, 'Deputy Commissioner');
             $users[] = $this->user('AC Layyah', 'ac.layyah', 'ac.layyah@ppmf.local', 6, $layyahDistrict->division_id, $layyahDistrict->id, $layyahTehsil?->id, 'Assistant Commissioner');
+            if ($karorTehsil) {
+                $users[] = $this->user('AC Karor', 'ac.karor', 'ac.karor@ppmf.local', 6, $layyahDistrict->division_id, $layyahDistrict->id, $karorTehsil->id, 'Assistant Commissioner');
+            }
         }
 
         foreach ($users as $user) {

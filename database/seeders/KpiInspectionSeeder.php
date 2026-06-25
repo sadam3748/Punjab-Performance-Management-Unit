@@ -96,6 +96,20 @@ class KpiInspectionSeeder extends Seeder
                 continue;
             }
 
+            if ($card->slug === 'price-of-roti') {
+                [$rotiRows, $rotiAttachments] = $this->buildRotiTehsilInspections(
+                    $card,
+                    $users,
+                    $refCounter,
+                    $now,
+                    $batch
+                );
+                $inspectionRows = array_merge($inspectionRows, $rotiRows);
+                $attachmentPlan = array_merge($attachmentPlan, $rotiAttachments);
+
+                continue;
+            }
+
             $statuses = $this->statusSequence();
             $entities = $this->entitiesForSlug($card->slug, $card->title);
             $perKpi = in_array($card->slug, self::PRIORITY_SLUGS, true) ? self::PRIORITY_PER_KPI : self::PER_KPI;
@@ -374,12 +388,13 @@ class KpiInspectionSeeder extends Seeder
         $statuses = $this->statusSequence();
         $entities = $this->entitiesForSlug($card->slug, $card->title);
         $tehsilPlan = [
-            ['tehsil_id' => 81, 'district_id' => 23, 'division_id' => 6, 'count' => 14, 'tehsil_name' => 'Lahore City', 'district_name' => 'Lahore', 'lat' => 31.5204, 'lng' => 74.3587],
+            ['tehsil_id' => 81, 'district_id' => 23, 'division_id' => 6, 'count' => 10, 'tehsil_name' => 'Lahore City', 'district_name' => 'Lahore', 'lat' => 31.5204, 'lng' => 74.3587],
             ['tehsil_id' => 82, 'district_id' => 23, 'division_id' => 6, 'count' => 8, 'tehsil_name' => 'Lahore Cantonment', 'district_name' => 'Lahore', 'lat' => 31.5320, 'lng' => 74.3420],
             ['tehsil_id' => 83, 'district_id' => 23, 'division_id' => 6, 'count' => 5, 'tehsil_name' => 'Model Town', 'district_name' => 'Lahore', 'lat' => 31.4834, 'lng' => 74.3250],
             ['tehsil_id' => 84, 'district_id' => 23, 'division_id' => 6, 'count' => 4, 'tehsil_name' => 'Raiwind', 'district_name' => 'Lahore', 'lat' => 31.2484, 'lng' => 74.2203],
             ['tehsil_id' => 85, 'district_id' => 23, 'division_id' => 6, 'count' => 4, 'tehsil_name' => 'Shalimar', 'district_name' => 'Lahore', 'lat' => 31.5870, 'lng' => 74.3805],
-            ['tehsil_id' => 24, 'district_id' => 7, 'division_id' => 2, 'count' => 11, 'tehsil_name' => 'Layyah', 'district_name' => 'Layyah', 'lat' => 30.9617, 'lng' => 70.9397],
+            ['tehsil_id' => 24, 'district_id' => 7, 'division_id' => 2, 'count' => 12, 'tehsil_name' => 'Layyah', 'district_name' => 'Layyah', 'lat' => 30.9617, 'lng' => 70.9397, 'inspector' => 'ac.layyah'],
+            ['tehsil_id' => 25, 'district_id' => 7, 'division_id' => 2, 'count' => 10, 'tehsil_name' => 'Karor Lal Esan', 'district_name' => 'Layyah', 'lat' => 30.9520, 'lng' => 70.9280, 'inspector' => 'ac.karor'],
         ];
 
         $rows = [];
@@ -396,17 +411,23 @@ class KpiInspectionSeeder extends Seeder
                 'lat' => $plan['lat'],
                 'lng' => $plan['lng'],
             ];
-            $inspectorUsername = $plan['tehsil_id'] === 24 ? 'ac.layyah' : 'ac.lahore';
-            $reviewerUsername = $plan['tehsil_id'] === 24 ? 'dc.layyah' : 'dc.lahore';
+            $inspectorUsername = $plan['inspector'] ?? ($plan['tehsil_id'] === 24 ? 'ac.layyah' : 'ac.lahore');
+            $reviewerUsername = in_array($plan['tehsil_id'], [24, 25], true) ? 'dc.layyah' : 'dc.lahore';
             $inspector = $users->get($inspectorUsername);
             $reviewer = $users->get($reviewerUsername);
 
             for ($i = 0; $i < $plan['count']; $i++) {
-                $status = $statuses[$globalIndex % count($statuses)];
-                $inspectedAt = $this->visitInspectionDateForIndex($globalIndex, $plan['count']);
+                $demoStatuses = $this->demoTehsilStatusPlan($plan['tehsil_id']);
+                $status = $demoStatuses[$i] ?? $statuses[$globalIndex % count($statuses)];
+                $inspectedAt = $demoStatuses !== null && isset($demoStatuses[$i])
+                    ? $this->activeWeekDateForIndex($i)
+                    : $this->visitInspectionDateForIndex($globalIndex, $plan['count']);
                 $entity = $entities[$globalIndex % count($entities)];
                 $reference = sprintf('INSP-%s-%06d', $now->format('Y'), $refCounter++);
                 $detailData = \Database\Seeders\Support\KpiInspectionDetailFactory::forSlug($card->slug, $globalIndex);
+                if ($card->slug === 'inspection-of-health-facilities') {
+                    $detailData = $this->healthDetailWithIssues($detailData, $globalIndex, $plan['tehsil_id']);
+                }
                 $location = $this->locationFor($side, $globalIndex);
                 $fullAddress = $this->fullAddress($side, $entity, $location);
 
@@ -481,5 +502,146 @@ class KpiInspectionSeeder extends Seeder
         }
 
         return $now->copy()->subMonths(1 + ($index % 3))->subDays($index % 10)->setTime(9 + ($index % 5), 20 * ($index % 3), 0);
+    }
+
+    /** @return list<string>|null */
+    private function demoTehsilStatusPlan(int $tehsilId): ?array
+    {
+        return match ($tehsilId) {
+            24 => ['approved', 'approved', 'approved', 'approved', 'approved', 'approved', 'pending_review', 'pending_review', 'rejected', 'approved', 'approved', 'pending_review'],
+            25 => ['approved', 'approved', 'approved', 'approved', 'pending_review', 'rejected', 'approved', 'approved', 'pending_review', 'approved'],
+            81 => ['approved', 'approved', 'approved', 'approved', 'approved', 'approved', 'approved', 'pending_review', 'pending_review', 'rejected'],
+            default => null,
+        };
+    }
+
+    /**
+     * @return array{0: list<array<string, mixed>>, 1: list<array<string, mixed>>}
+     */
+    private function buildRotiTehsilInspections(object $card, $users, int &$refCounter, Carbon $now, string $batch): array
+    {
+        $statuses = $this->statusSequence();
+        $entities = $this->entitiesForSlug($card->slug, $card->title);
+        $tehsilPlan = [
+            ['tehsil_id' => 81, 'district_id' => 23, 'division_id' => 6, 'count' => 14, 'tehsil_name' => 'Lahore City', 'district_name' => 'Lahore', 'lat' => 31.5204, 'lng' => 74.3587, 'inspector' => 'ac.lahore'],
+            ['tehsil_id' => 24, 'district_id' => 7, 'division_id' => 2, 'count' => 12, 'tehsil_name' => 'Layyah', 'district_name' => 'Layyah', 'lat' => 30.9617, 'lng' => 70.9397, 'inspector' => 'ac.layyah'],
+            ['tehsil_id' => 25, 'district_id' => 7, 'division_id' => 2, 'count' => 10, 'tehsil_name' => 'Karor Lal Esan', 'district_name' => 'Layyah', 'lat' => 30.9520, 'lng' => 70.9280, 'inspector' => 'ac.karor'],
+        ];
+
+        $rows = [];
+        $attachments = [];
+        $globalIndex = 0;
+
+        foreach ($tehsilPlan as $plan) {
+            $side = [
+                'division_id' => $plan['division_id'],
+                'district_id' => $plan['district_id'],
+                'tehsil_id' => $plan['tehsil_id'],
+                'tehsil_name' => $plan['tehsil_name'],
+                'district_name' => $plan['district_name'],
+                'lat' => $plan['lat'],
+                'lng' => $plan['lng'],
+            ];
+            $inspector = $users->get($plan['inspector']);
+            $reviewer = $users->get(in_array($plan['tehsil_id'], [24, 25], true) ? 'dc.layyah' : 'dc.lahore');
+
+            for ($i = 0; $i < $plan['count']; $i++) {
+                $status = $statuses[$globalIndex % count($statuses)];
+                $inspectedAt = $i < 7
+                    ? ($i === 0 ? now()->copy()->setTime(10, 30) : $this->activeWeekDateForIndex($i))
+                    : $this->inspectionDateForIndex($globalIndex, $plan['count'], true);
+                $entity = $entities[$globalIndex % count($entities)];
+                $reference = sprintf('INSP-%s-%06d', $now->format('Y'), $refCounter++);
+                $detailData = \Database\Seeders\Support\KpiInspectionDetailFactory::forSlug($card->slug, $globalIndex);
+                $location = $this->locationFor($side, $globalIndex);
+                $fullAddress = $this->fullAddress($side, $entity, $location);
+
+                $rows[] = [
+                    'uuid' => (string) Str::uuid(),
+                    'reference_no' => $reference,
+                    'kpi_card_id' => $card->id,
+                    'kpi_submission_id' => null,
+                    'division_id' => $side['division_id'],
+                    'district_id' => $side['district_id'],
+                    'tehsil_id' => $side['tehsil_id'],
+                    'inspected_by' => $inspector?->id,
+                    'reviewed_by' => $status === 'pending_review' ? null : $reviewer?->id,
+                    'inspection_title' => $entity['title'],
+                    'entity_name' => $entity['name'].' #'.($i + 1),
+                    'entity_type' => $entity['type'],
+                    'identifier' => $entity['id'].'-'.$plan['tehsil_id'].'-'.$i,
+                    'address' => $fullAddress,
+                    'latitude' => $location['lat'],
+                    'longitude' => $location['lng'],
+                    'inspection_datetime' => $inspectedAt,
+                    'status' => $status,
+                    'observations' => json_encode(['Tandoor price and weight verified on site.']),
+                    'actions_required' => json_encode($status === 'rejected' ? ['Re-inspection required.'] : ['Continue routine monitoring.']),
+                    'actions_taken' => json_encode(['Photographic evidence captured.']),
+                    'detail_data' => json_encode($detailData),
+                    'review_remarks' => $status === 'approved' ? 'Inspection evidence verified and accepted.' : null,
+                    'rejection_reason' => $status === 'rejected' ? 'Evidence incomplete.' : null,
+                    'reviewed_at' => $status === 'pending_review' ? null : $inspectedAt->copy()->addHours(4),
+                    'is_demo' => true,
+                    'seed_batch' => $batch,
+                    'created_at' => $inspectedAt,
+                    'updated_at' => $status === 'pending_review' ? $inspectedAt : $inspectedAt->copy()->addHours(4),
+                ];
+
+                $attachments[] = [
+                    'reference_no' => $reference,
+                    'slug' => $card->slug,
+                    'count' => 1 + ($globalIndex % 2),
+                    'ts' => $inspectedAt,
+                ];
+
+                $globalIndex++;
+            }
+        }
+
+        return [$rows, $attachments];
+    }
+
+    /** @param  array<string, mixed>  $detail */
+    private function healthDetailWithIssues(array $detail, int $index, int $tehsilId): array
+    {
+        if ($index % 4 === 0) {
+            $detail['cleanliness'] = 'Poor';
+        }
+        if ($index % 5 === 1) {
+            $detail['staff_present'] = 'No';
+        }
+        if ($index % 6 === 2) {
+            $detail['medicines_ok'] = 'No';
+        }
+        if ($index % 7 === 3) {
+            $detail['equipment_status'] = 'Non-Operational';
+        }
+
+        if ($tehsilId === 24 && $index < 8) {
+            $patterns = [
+                ['cleanliness' => 'Poor'],
+                ['cleanliness' => 'Average', 'staff_present' => 'No'],
+                ['medicines_ok' => 'No'],
+                ['equipment_status' => 'Non-Operational'],
+                ['cleanliness' => 'Poor', 'medicines_ok' => 'No'],
+                ['staff_present' => 'Partial'],
+                ['cleanliness' => 'Average'],
+                ['medicines_ok' => 'Partial'],
+            ];
+            $detail = array_merge($detail, $patterns[$index] ?? []);
+        }
+
+        return $detail;
+    }
+
+    private function activeWeekDateForIndex(int $index): Carbon
+    {
+        $period = app(\App\Services\KpiPeriodService::class);
+        $range = $period->getWeekDateRange($period->currentWeekNo());
+        $start = $range['start'] ?? now()->startOfDay();
+        $dayOffset = min(6, $index % 7);
+
+        return $start->copy()->addDays($dayOffset)->setTime(9 + ($index % 4), 15 * ($index % 4), 0);
     }
 }

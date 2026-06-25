@@ -1,10 +1,15 @@
-@props(['geoFilters', 'kpiCard', 'geo' => []])
+@props(['geoFilters', 'kpiCard' => null, 'geo' => [], 'action' => null])
 
 @php
     $selected = $geoFilters['selected'] ?? [];
+    $showFilter = $geoFilters['show_filter'] ?? false;
+    $hasGeoControls = !empty($geoFilters['show_division']) || !empty($geoFilters['show_district']) || !empty($geoFilters['show_tehsil']);
+    $formAction = $action ?? ($kpiCard ? route('kpi.dashboard', $kpiCard) : route('inspections.index'));
+    $resetUrl = $kpiCard ? route('kpi.dashboard', $kpiCard) : route('inspections.index');
 @endphp
 
-<form id="kpiGeoFilter" class="ppmu-geo-filter card-ppmf mb-3" method="GET" action="{{ route('kpi.dashboard', $kpiCard) }}">
+@if($showFilter && $hasGeoControls)
+<form id="kpiGeoFilter" class="ppmu-geo-filter card-ppmf mb-3" method="GET" action="{{ $formAction }}">
     @foreach(request()->except(['geo_division', 'geo_district', 'geo_tehsil', 'geo_date_from', 'geo_date_to', 'insp_page']) as $key => $value)
         @if(is_scalar($value))
             <input type="hidden" name="{{ $key }}" value="{{ $value }}">
@@ -48,17 +53,8 @@
             </label>
         @endif
 
-        <label>
-            <span>Date From</span>
-            <input type="date" name="geo_date_from" value="{{ $selected['date_from'] ?? request('geo_date_from') }}" class="form-control form-control-sm" data-geo-filter="geo_date_from">
-        </label>
-
-        <label>
-            <span>Date To</span>
-            <input type="date" name="geo_date_to" value="{{ $selected['date_to'] ?? request('geo_date_to') }}" class="form-control form-control-sm" data-geo-filter="geo_date_to">
-        </label>
-
         <button type="submit" class="btn btn-sm btn-success">Apply</button>
-        <a href="{{ route('kpi.dashboard', $kpiCard) }}" class="btn btn-sm btn-outline-secondary">Reset</a>
+        <a href="{{ $resetUrl }}" class="btn btn-sm btn-outline-secondary">Reset</a>
     </div>
 </form>
+@endif

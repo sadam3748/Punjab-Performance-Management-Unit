@@ -18,7 +18,7 @@ class PpmuDemoMetricFactory
     $pct = $this->boundedPerformance($base + $trend, $dayOffset);
 
     $snapshot = match ($slug) {
-      'price-of-roti' => $this->roti($pct, $dayOffset, $date, $lahore),
+      'price-of-roti' => $this->roti($pct, $dayOffset, $date, $lahore, $username, $periodType),
       'price-of-plain-bakery-bread' => $this->bread($pct, $dayOffset),
       'price-control-of-essential-commodities' => $this->priceControl($pct, $dayOffset),
       'repair-of-small-roads-in-both-urban-and-rural-areas' => $this->roads($pct, $dayOffset),
@@ -26,8 +26,8 @@ class PpmuDemoMetricFactory
       'dysfunctional-streetlights' => $this->streetlights($pct, $dayOffset),
       'covering-of-manholes' => $this->manholes($pct, $dayOffset),
       'functional-and-clean-water-filtration-plants' => $this->waterPlants($pct, $dayOffset),
-      'inspection-of-educational-institutions' => $this->schools($pct, $dayOffset, $lahore, $date),
-      'inspection-of-health-facilities' => $this->health($pct, $dayOffset, $lahore, $date),
+      'inspection-of-educational-institutions' => $this->schools($pct, $dayOffset, $lahore, $date, $username),
+      'inspection-of-health-facilities' => $this->health($pct, $dayOffset, $lahore, $date, $username),
       'violation-of-marriage-functions-act' => $this->marriage($pct, $dayOffset),
       'anti-encroachment-campaign' => $this->encroachment($pct, $dayOffset),
       'regulation-of-shops-and-handcarts' => $this->shops($pct, $dayOffset),
@@ -43,6 +43,8 @@ class PpmuDemoMetricFactory
       'chief-ministers-complaint-cell' => $this->complaints($pct, $dayOffset, $lahore),
       default => $this->generic($pct, $dayOffset),
     };
+
+    $snapshot = $this->normalizeSnapshot($slug, $snapshot);
 
     return [
       'snapshot' => $this->withScopeScale(
@@ -125,21 +127,82 @@ class PpmuDemoMetricFactory
     };
   }
 
-  private function roti(float $pct, int $d, Carbon $date, bool $lahore): array
+  private function roti(float $pct, int $d, Carbon $date, bool $lahore, string $username, string $periodType = 'daily'): array
   {
-    $tiers = [10, 8, 6];
-    $tier = $tiers[$d % 3];
-    $inspectors = $lahore ? (6 + ($d % 3)) : (4 + ($d % 2));
+    $karor = str_contains($username, 'karor');
+    $layyah = str_contains($username, 'layyah') && ! $karor;
+
+    $tier = $lahore ? 10 : 8;
+    $inspectors = match (true) {
+      $lahore => 6,
+      $karor => 3,
+      $layyah => 4,
+      default => 4,
+    };
     $totalTarget = $inspectors * $tier;
-    $inspections = max(8, (int) round($totalTarget * max(45, $pct) / 100));
-    $violations = max(2, (int) round($inspections * 0.22));
+
+    $baseConducted = match (true) {
+      $lahore => 52,
+      $karor => 21,
+      $layyah => 30,
+      default => max(8, (int) round($totalTarget * max(45, $pct) / 100)),
+    };
+
+    // Keep daily activity below target while giving weekly charts visible variation.
+    $dailyConducted = match (true) {
+      $lahore => max(45, min($totalTarget, [47, 50, 53, 49, 55, 51, 46][$d % 7])),
+      $karor => max(18, min($totalTarget, [19, 21, 23, 20, 24, 22, 18][$d % 7])),
+      $layyah => max(24, min($totalTarget, [27, 30, 33, 29, 35, 32, 26][$d % 7])),
+      default => max(6, (int) round($totalTarget * max(70, min(98, $pct)) / 100)),
+    };
+
+    $inspections = $periodType === 'daily' ? $baseConducted : $dailyConducted;
+    $inspections = min($totalTarget, max(0, $inspections));
+    $violations = match (true) {
+      $lahore => 11,
+      $karor => 4,
+      $layyah => 6,
+      default => max(2, (int) round($inspections * 0.22)),
+    };
+    $overPrice = max(1, (int) round($violations * 0.5));
+    $underWeight = max(1, (int) round($violations * 0.33));
+    $nonAvailability = max(0, $violations - $overPrice - $underWeight);
     $fines = max(2, (int) round($violations * 0.72));
-    $complaints = max(3, (int) round($inspections * 0.12));
-    $resolved = max(2, (int) round($complaints * 0.86));
-    $validationTarget = 10 + ($d % 5);
-    $validated = max(6, (int) round($validationTarget * max(70, $pct) / 100));
-    $approved = max(4, (int) round($validated * 0.8));
-    $rejected = max(1, (int) round($validated * 0.12));
+    $complaints = match (true) {
+      $lahore => 15,
+      $karor => 5,
+      $layyah => 7,
+      default => max(3, (int) round($inspections * 0.12)),
+    };
+    $resolved = match (true) {
+      $lahore => 13,
+      $karor => 4,
+      $layyah => 6,
+      default => max(2, (int) round($complaints * 0.86)),
+    };
+    $validationTarget = max(1, (int) ceil($inspections * 0.20));
+    $validated = match (true) {
+      $lahore => 11,
+      $karor => 4,
+      $layyah => 6,
+      default => max(4, (int) round($validationTarget * max(70, $pct) / 100)),
+    };
+    $approved = match (true) {
+      $layyah => 5,
+      $karor => 3,
+      $lahore => max(1, $validated - 1),
+      default => max(1, $validated - 1),
+    };
+    $rejected = match (true) {
+      $layyah => 1,
+      $karor => 1,
+      default => max(0, $validated - $approved),
+    };
+    $fineGenerated = $fines * 5000;
+    $fineDeposited = match (true) {
+      $layyah => (int) round($fineGenerated * 0.72),
+      default => (int) round($fineGenerated * 0.72),
+    };
 
     return [
       'dc_weekly_review' => ($date->dayOfWeek === Carbon::THURSDAY || $d % 7 === 0) ? 1 : 0,
@@ -147,13 +210,19 @@ class PpmuDemoMetricFactory
       'total_inspectors' => $inspectors,
       'inspections_total_target' => $totalTarget,
       'tandoor_inspections' => $inspections,
-      'achievement_rate' => round(min(100, ($inspections / max(1, $totalTarget)) * 100), 1),
+      'achievement_rate' => $this->percentage($inspections, $totalTarget),
       'coverage_mobility_index' => round(72 + ($pct - 70) * 0.45, 1),
       'violations_found' => $violations,
+      'over_price_violations' => $overPrice,
+      'under_weight_violations' => $underWeight,
+      'non_availability_violations' => $nonAvailability,
       'fine_imposed' => $fines,
-      'fine_imposition_rate' => round(($fines / max(1, $inspections)) * 100, 1),
+      'fine_generated' => $fineGenerated,
+      'fine_deposited' => $fineDeposited,
+      'fine_imposition_rate' => $this->percentage($fineDeposited, $fineGenerated),
       'citizen_complaints_received' => $complaints,
-      'complaint_resolution_rate' => round(($resolved / max(1, $complaints)) * 100, 1),
+      'complaints_resolved' => $resolved,
+      'complaint_resolution_rate' => $this->percentage($resolved, $complaints),
       'validation_target' => $validationTarget,
       'validated_inspections' => $validated,
       'approved_validations' => $approved,
@@ -283,9 +352,14 @@ class PpmuDemoMetricFactory
     ];
   }
 
-  private function schools(float $pct, int $d, bool $lahore, Carbon $date): array
+  private function schools(float $pct, int $d, bool $lahore, Carbon $date, string $username): array
   {
-    $total = $lahore ? 156 : 112;
+    $karor = str_contains($username, 'karor');
+    $total = match (true) {
+      $lahore => 156,
+      $karor => 98,
+      default => 112,
+    };
     $required = $lahore ? 36 : 28;
     $dcTarget = 2;
     $dcVisits = min($dcTarget, 1 + ($d % 2));
@@ -329,11 +403,26 @@ class PpmuDemoMetricFactory
     ];
   }
 
-  private function health(float $pct, int $d, bool $lahore, Carbon $date): array
+  private function health(float $pct, int $d, bool $lahore, Carbon $date, string $username): array
   {
-    $total = $lahore ? 48 : 34;
-    $required = $lahore ? 28 : 20;
-    $dailyVisits = max(2, (int) round(($required / 22) * max(55, $pct) / 100));
+    $karor = str_contains($username, 'karor');
+    $layyah = str_contains($username, 'layyah') && ! $karor;
+    $total = match (true) {
+      $lahore => 48,
+      $karor => 28,
+      default => 34,
+    };
+    $required = match (true) {
+      $lahore => 28,
+      $karor => 16,
+      default => 20,
+    };
+    $dailyVisits = match (true) {
+      $lahore => [3, 4, 3, 5, 4, 3, 2][$d % 7],
+      $karor => [2, 2, 3, 2, 3, 2, 1][$d % 7],
+      $layyah => [2, 3, 3, 2, 4, 3, 2][$d % 7],
+      default => max(2, (int) round(($required / 7) * max(55, $pct) / 100)),
+    };
     $dcTarget = 2;
     $dcVisits = min($dcTarget, 1 + ($d % 2));
     $acTarget = 2;
@@ -619,6 +708,93 @@ class PpmuDemoMetricFactory
   private function targetFromCompleted(int|float $completed, float $pct): int
   {
     return max(1, (int) ceil($completed / max(.45, min(.95, $pct / 100))));
+  }
+
+  /** @param array<string, int|float> $snapshot */
+  private function normalizeSnapshot(string $slug, array $snapshot): array
+  {
+    if ($slug === 'price-of-roti') {
+      $target = max(0, (int) ($snapshot['inspections_total_target'] ?? 0));
+      $snapshot['tandoor_inspections'] = min($target, max(0, (int) ($snapshot['tandoor_inspections'] ?? 0)));
+      $snapshot['achievement_rate'] = $this->percentage($snapshot['tandoor_inspections'], $target);
+    }
+
+    $receivedField = array_key_exists('complaints_received', $snapshot)
+      ? 'complaints_received'
+      : (array_key_exists('citizen_complaints_received', $snapshot) ? 'citizen_complaints_received' : null);
+    if ($receivedField !== null && array_key_exists('complaints_resolved', $snapshot)) {
+      $received = max(0, (int) $snapshot[$receivedField]);
+      $snapshot['complaints_resolved'] = min($received, max(0, (int) $snapshot['complaints_resolved']));
+
+      if (array_key_exists('complaint_resolution_rate', $snapshot)) {
+        $snapshot['complaint_resolution_rate'] = $this->percentage($snapshot['complaints_resolved'], $received);
+      }
+      if (array_key_exists('resolution_rate', $snapshot)) {
+        $snapshot['resolution_rate'] = $this->percentage($snapshot['complaints_resolved'], $received);
+      }
+      if (array_key_exists('pending_complaints', $snapshot)) {
+        $snapshot['pending_complaints'] = max(0, $received - $snapshot['complaints_resolved']);
+      }
+    }
+
+    if (array_key_exists('fine_generated', $snapshot) && array_key_exists('fine_deposited', $snapshot)) {
+      $generated = max(0, (int) $snapshot['fine_generated']);
+      $snapshot['fine_deposited'] = min($generated, max(0, (int) $snapshot['fine_deposited']));
+      $snapshot['fine_imposition_rate'] = $this->percentage($snapshot['fine_deposited'], $generated);
+    }
+
+    if (array_key_exists('validation_target', $snapshot)) {
+      $target = max(0, (int) $snapshot['validation_target']);
+      $validatedField = array_key_exists('validated_inspections', $snapshot)
+        ? 'validated_inspections'
+        : (array_key_exists('validations_completed', $snapshot) ? 'validations_completed' : null);
+
+      if ($validatedField !== null) {
+        $validated = min($target, max(0, (int) $snapshot[$validatedField]));
+        $snapshot[$validatedField] = $validated;
+        if (array_key_exists('validated_inspections', $snapshot)) {
+          $snapshot['validated_inspections'] = $validated;
+        }
+        if (array_key_exists('validations_completed', $snapshot)) {
+          $snapshot['validations_completed'] = $validated;
+        }
+
+        $approved = min($validated, max(0, (int) ($snapshot['approved_validations'] ?? 0)));
+        $rejected = min(max(0, $validated - $approved), max(0, (int) ($snapshot['rejected_validations'] ?? 0)));
+        if (array_key_exists('approved_validations', $snapshot)) {
+          $snapshot['approved_validations'] = $approved;
+        }
+        if (array_key_exists('rejected_validations', $snapshot)) {
+          $snapshot['rejected_validations'] = $rejected;
+        }
+        $snapshot['validation_rate'] = $this->percentage($validated, $target);
+      }
+    }
+
+    foreach ($snapshot as $field => $value) {
+      if (is_numeric($value) && $this->isPercentageField($field)) {
+        $snapshot[$field] = round(max(0, min(100, (float) $value)), 1);
+      }
+    }
+
+    return $snapshot;
+  }
+
+  private function percentage(int|float $numerator, int|float $denominator): float
+  {
+    return $denominator > 0
+      ? round(max(0, min(100, ($numerator / $denominator) * 100)), 1)
+      : 0.0;
+  }
+
+  private function isPercentageField(string $field): bool
+  {
+    return str_ends_with($field, '_rate')
+      || str_ends_with($field, '_percentage')
+      || str_ends_with($field, '_completion')
+      || str_ends_with($field, '_achievement')
+      || str_ends_with($field, '_compliance')
+      || in_array($field, ['hr_attendance', 'coverage_mobility_index', 'disposal_rate'], true);
   }
 
   /** @param array<string, int|float> $snapshot */

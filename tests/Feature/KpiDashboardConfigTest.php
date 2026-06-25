@@ -55,6 +55,17 @@ class KpiDashboardConfigTest extends TestCase
         $this->assertSame('Visits Completed', $labels['completed']);
     }
 
+    public function test_price_of_roti_uses_two_management_charts(): void
+    {
+        $charts = KpiDashboardDefinitions::config('price-of-roti')['charts'];
+
+        $this->assertCount(2, $charts);
+        $this->assertSame(
+            ['daily_inspections_trend', 'violation_type_breakdown'],
+            array_column($charts, 'key')
+        );
+    }
+
     public function test_short_road_slug_alias_opens_existing_kpi_dashboard(): void
     {
         $this->seed(PpmuSeeder::class);

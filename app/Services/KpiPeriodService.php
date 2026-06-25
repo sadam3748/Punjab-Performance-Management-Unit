@@ -8,25 +8,30 @@ use Illuminate\Http\Request;
 
 class KpiPeriodService
 {
-    public function weekRangeForDate(Carbon $date): array
+    public function weekRangeForDate(Carbon $date, ?int $monthIndex = null): array
     {
         $start = $this->thursdayWeekStart($date);
         $end = $start->copy()->addDays(6)->endOfDay();
         $weekNo = sprintf('%d%02d', (int) $start->isoFormat('GGGG'), (int) $start->isoWeek());
-        $weekNum = (int) $start->isoWeek();
 
         return [
             'week_no' => $weekNo,
-            'week_num' => $weekNum,
+            'week_num' => (int) $start->isoWeek(),
             'week_start' => $start->toDateString(),
             'week_end' => $end->toDateString(),
-            'week_label' => sprintf(
-                'W%02d · Thu %s – Wed %s',
-                $weekNum,
-                $start->format('d M'),
-                $end->format('d M Y')
-            ),
+            'week_label' => $this->formatWeekLabel($start, $end, $monthIndex),
         ];
+    }
+
+    public function formatWeekLabel(Carbon $start, Carbon $end, ?int $monthIndex = null): string
+    {
+        $prefix = $monthIndex !== null ? sprintf('Week %d · ', $monthIndex) : 'Week · ';
+
+        return $prefix.sprintf(
+            '%s – %s',
+            $start->format('d M'),
+            $end->format('d M Y')
+        );
     }
 
     public function getWeekDateRange(string $weekNo): array
@@ -115,14 +120,18 @@ class KpiPeriodService
         return $query;
     }
 
-    public function filterOptions(): array
+    public function filterOptions(?int $year = null, ?int $month = null): array
     {
-        $weeks = [];
-        $cursor = $this->thursdayWeekStart(now());
+        $year = $year ?: (int) now()->year;
+        $month = $month ?: (int) now()->month;
+        $weeks = $this->weeksForMonth($year, $month);
 
-        for ($i = 0; $i < 12; $i++) {
-            $range = $this->weekRangeForDate($cursor->copy()->subWeeks($i));
-            $weeks[$range['week_no']] = $range['week_label'];
+        if ($weeks === []) {
+            $cursor = $this->thursdayWeekStart(now());
+            for ($i = 0; $i < 12; $i++) {
+                $range = $this->weekRangeForDate($cursor->copy()->subWeeks($i));
+                $weeks[$range['week_no']] = $range['week_label'];
+            }
         }
 
         return [
@@ -133,6 +142,55 @@ class KpiPeriodService
             'default_week_no' => $this->currentWeekNo(),
             'defaults' => $this->defaultParams(),
         ];
+    }
+
+    /** @return array<string, string> */
+    public function weeksForMonth(int $year, int $month): array
+    {
+        $weeks = [];
+        $monthStart = Carbon::create($year, $month, 1)->startOfDay();
+        $monthEnd = $monthStart->copy()->endOfMonth();
+        $cursor = $this->thursdayWeekStart($monthStart->copy());
+        $weekIndex = 1;
+
+        while ($cursor->lte($monthEnd->copy()->addDays(7))) {
+            $range = $this->weekRangeForDate($cursor);
+            $weekStart = Carbon::parse($range['week_start']);
+            $weekEnd = Carbon::parse($range['week_end']);
+
+            if ($weekEnd->gte($monthStart) && $weekStart->lte($monthEnd)) {
+                $displayStart = $weekStart->lt($monthStart) ? $monthStart->copy() : $weekStart->copy();
+                $displayEnd = $weekEnd->gt($monthEnd) ? $monthEnd->copy() : $weekEnd->copy();
+                $weeks[$range['week_no']] = $this->formatWeekLabel($displayStart, $displayEnd, $weekIndex);
+                $weekIndex++;
+            }
+
+            $cursor->addWeek();
+            if ($cursor->gt($monthEnd->copy()->addMonth())) {
+                break;
+            }
+        }
+
+        return $weeks;
+    }
+
+    public function weekDisplayLabel(string $weekNo, ?int $year = null, ?int $month = null): string
+    {
+        $year = $year ?: (int) now()->year;
+        $month = $month ?: (int) now()->month;
+        $weeks = $this->weeksForMonth($year, $month);
+
+        if (isset($weeks[$weekNo])) {
+            return $weeks[$weekNo];
+        }
+
+        $range = $this->getWeekDateRange($weekNo);
+
+        if ($range['start'] && $range['end']) {
+            return $this->formatWeekLabel($range['start'], $range['end']);
+        }
+
+        return 'Week · —';
     }
 
     public function state(Request $request): array
@@ -168,11 +226,11 @@ class KpiPeriodService
         }
 
         if ($type === 'weekly') {
+            $year = (int) ($params['year'] ?: now()->year);
+            $month = ! empty($params['month']) ? (int) $params['month'] : now()->month;
             $weekNo = (string) ($params['week_no'] ?: $this->currentWeekNo());
-            $range = $this->getWeekDateRange($weekNo);
-            $weekNum = $this->weekNumberFromCode($weekNo);
 
-            return sprintf('Week W%02d · %s', $weekNum, $range['label_with_year']);
+            return $this->weekDisplayLabel($weekNo, $year, $month);
         }
 
         if ($type === 'monthly') {

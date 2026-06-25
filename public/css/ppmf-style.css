@@ -62,7 +62,16 @@ body {
   image-rendering: auto;
 }
 .login-logo { height: 84px; width: auto; }
-.header-logo { height: 30px; width: auto; }
+.header-logo {
+  width: 40px;
+  height: 40px;
+  padding: 4px;
+  object-fit: contain;
+  background: #fff;
+  border: 1px solid #b9d9c6;
+  border-radius: 8px;
+  box-shadow: 0 3px 9px rgba(6,77,49,.1);
+}
 .sidebar-logo { height: 28px; width: auto; }
 .footer-logo { height: 18px; width: auto; opacity: .95; }
 
@@ -71,9 +80,20 @@ body {
   display: flex;
   align-items: center;
   gap: 10px;
+  padding: 3px 7px 3px 3px;
+  border-radius: 9px;
   min-width: 0;
   text-decoration: none;
   color: inherit;
+  transition: var(--transition);
+}
+.header-brand:hover {
+  color: inherit;
+  background: #f4faf6;
+}
+.header-brand:hover .header-logo {
+  border-color: #83b99b;
+  box-shadow: 0 4px 11px rgba(6,77,49,.15);
 }
 .header-brand .brand-text { line-height: 1.1; min-width: 0; }
 .header-brand .brand-title {
@@ -203,8 +223,9 @@ body {
   border-radius: 8px;
 }
 .nav-link.active i {
-  background: rgba(214, 162, 30, .16);
-  box-shadow: 0 0 0 1.5px var(--gold);
+  color: #075f3a;
+  background: #f4fbf7;
+  box-shadow: 0 0 0 1px rgba(255,255,255,.7), 0 3px 8px rgba(3,39,24,.18);
 }
 .nav-link:hover {
   color: #fff;
@@ -212,9 +233,10 @@ body {
 }
 .nav-link.active {
   color: #fff;
-  background: rgba(255,255,255,.18);
-  font-weight: 600;
-  box-shadow: inset 4px 0 0 var(--gold);
+  background: rgba(255,255,255,.14);
+  border: 1px solid rgba(255,255,255,.2);
+  font-weight: 700;
+  box-shadow: inset 3px 0 0 #7dd3a7;
 }
 .nav-link .badge-pill {
   margin-left: auto;

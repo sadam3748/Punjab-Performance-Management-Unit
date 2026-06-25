@@ -1,11 +1,29 @@
 <div class="ppmu-section-head mt-4" id="kpiRecordsHead">
+@php
+    $periodService = app(\App\Services\KpiPeriodService::class);
+    $submissionWeekLabel = function ($item) use ($periodService): string {
+        if ($item->week_no) {
+            return $periodService->weekDisplayLabel(
+                (string) $item->week_no,
+                (int) ($item->week_start_date?->year ?? $item->submission_date->year),
+                (int) ($item->week_start_date?->month ?? $item->submission_date->month),
+            );
+        }
+
+        return $item->submission_date->format('d M Y');
+    };
+@endphp
     <div>
-        <h2><i class="bi bi-table"></i> Detailed Records</h2>
+        <h2><i class="bi bi-file-earmark-text-fill"></i> Submission Reports</h2>
         <p id="kpiRecordsCount">
-            <strong>{{ number_format($tableSubmissions->total()) }}</strong> record{{ $tableSubmissions->total() === 1 ? '' : 's' }}
+            <strong>{{ number_format($tableSubmissions->total()) }}</strong> submission report{{ $tableSubmissions->total() === 1 ? '' : 's' }}
             @if(!empty($periodDescription))
                 <span class="ppmu-records-period">· {{ $periodDescription }}</span>
             @endif
+            <span class="ppmu-pi-hint d-block mt-1" title="Submission Reports are KPI summary rows from kpi_submissions. Field inspections are counted separately from kpi_inspections.">
+                <i class="bi bi-info-circle text-muted"></i>
+                KPI summary rows from submissions — field inspections are tracked separately.
+            </span>
         </p>
     </div>
     <div class="ppmu-table-toolbar">
@@ -50,7 +68,7 @@
                         $itemReported = (float) ($item->reported_value ?? 0);
                         $itemAchieved = (float) ($item->achieved_value ?? $item->score);
                         $itemPending = (float) ($item->pending_value ?? max(0, $itemTarget - $itemAchieved));
-                        $itemPct = (float) ($item->achievement_percentage ?? ($itemTarget > 0 ? round(min(100, ($itemAchieved / $itemTarget) * 100), 1) : 0));
+                        $itemPct = max(0, min(100, (float) ($item->achievement_percentage ?? ($itemTarget > 0 ? round(($itemAchieved / $itemTarget) * 100, 1) : 0))));
                         $pctClass = $itemPct >= 85 ? 'ppmu-pct-excellent'
                                   : ($itemPct >= 70 ? 'ppmu-pct-good'
                                   : ($itemPct >= 50 ? 'ppmu-pct-warn'
@@ -59,9 +77,7 @@
                             ?? $item->district?->name
                             ?? $item->division?->name
                             ?? 'Punjab';
-                        $weekLabel = $item->week_start_date && $item->week_end_date
-                            ? 'W'.$item->week_no.' · '.$item->week_start_date->format('d M').'–'.$item->week_end_date->format('d M')
-                            : ($item->week_no ? 'W'.$item->week_no : $item->submission_date->format('d M Y'));
+                        $weekLabel = $submissionWeekLabel($item);
                         $searchStr = strtolower($item->period_label.' '.$item->status.' '.($item->user?->name ?? '').' '.$itemArea.' '.$weekLabel);
                     @endphp
                     <tr data-search="{{ $searchStr }}">
@@ -118,12 +134,11 @@
         $mReported = (float) ($item->reported_value ?? 0);
         $mAchieved = (float) ($item->achieved_value ?? $item->score);
         $mPending = (float) ($item->pending_value ?? max(0, $mTarget - $mAchieved));
-        $mPct = (float) ($item->achievement_percentage ?? ($mTarget > 0 ? round(min(100, ($mAchieved / $mTarget) * 100), 1) : 0));
+        $mPct = max(0, min(100, (float) ($item->achievement_percentage ?? ($mTarget > 0 ? round(($mAchieved / $mTarget) * 100, 1) : 0))));
         $mWeek = $item->week_start_date && $item->week_end_date
             ? $item->week_start_date->format('d M Y').' – '.$item->week_end_date->format('d M Y')
             : '—';
-        $mWeekNum = $item->week_no && preg_match('/\d{4}(\d{2})$/', (string) $item->week_no, $wm) ? (int) $wm[1] : null;
-        $mWeekLabel = $mWeekNum ? sprintf('W%02d · %s', $mWeekNum, $mWeek) : $mWeek;
+        $mWeekLabel = $item->week_no ? $submissionWeekLabel($item) : ($mWeek !== '—' ? $mWeek : '—');
         $mArea = $item->tehsil?->name ?? $item->district?->name ?? $item->division?->name ?? 'Punjab';
         $snapshot = is_array($item->metric_snapshot) ? $item->metric_snapshot : json_decode($item->metric_snapshot ?? '[]', true);
     @endphp

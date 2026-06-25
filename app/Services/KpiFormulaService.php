@@ -4,18 +4,28 @@ namespace App\Services;
 
 class KpiFormulaService
 {
-    public function achievementPercentage(float $achieved, float $target): float
+    public function displayPercentage(float $rawPercentage): float
     {
-        if ($target <= 0) {
-            return 0;
+        return round(max(0, min(100, $rawPercentage)), 1);
+    }
+
+    public function percentage(float $numerator, float $denominator): float
+    {
+        if ($denominator <= 0) {
+            return 0.0;
         }
 
-        return round(min(100, ($achieved / $target) * 100), 1);
+        return $this->displayPercentage(($numerator / $denominator) * 100);
+    }
+
+    public function achievementPercentage(float $achieved, float $target): float
+    {
+        return $this->percentage($achieved, $target);
     }
 
     public function scoreFromWeightage(float $achievedPercentage, float $weightage): float
     {
-        return round(($achievedPercentage / 100) * $weightage, 2);
+        return round(($this->displayPercentage($achievedPercentage) / 100) * $weightage, 2);
     }
 
     public function pending(float $target, float $reported, float $achieved): float
@@ -25,6 +35,8 @@ class KpiFormulaService
 
     public function performanceLabel(float $percentage): string
     {
+        $percentage = $this->displayPercentage($percentage);
+
         return match (true) {
             $percentage >= 85 => 'excellent',
             $percentage >= 70 => 'good',

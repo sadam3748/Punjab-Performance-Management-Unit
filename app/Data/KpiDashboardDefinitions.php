@@ -195,9 +195,6 @@ class KpiDashboardDefinitions
             'price-of-roti' => [
                 self::chart('line', 'Daily Inspections Trend', 'daily_inspections_trend'),
                 self::chart('donut', 'Violation Type Breakdown', 'violation_type_breakdown'),
-                self::chart('gauge', 'Fine-to-Inspection Ratio', 'fine_to_inspection_ratio'),
-                self::chart('bar', 'Tehsil Comparison', 'tehsil_comparison'),
-                self::chart('bar', 'District Comparison', 'district_comparison'),
             ],
             'price-of-plain-bakery-bread' => [
                 self::chart('line', 'Daily Inspections Trend', 'daily_inspections_trend'),

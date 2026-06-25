@@ -207,6 +207,37 @@ class KpiInspectionService
         ];
     }
 
+    /** @return \Illuminate\Support\Collection<int, KpiCard> */
+    public function accessibleKpiCards(User $user): Collection
+    {
+        return KpiCard::query()
+            ->where('is_active', true)
+            ->orderBy('title')
+            ->get(['id', 'title', 'slug']);
+    }
+
+    public function getAllInspectionsList(User $user, Request $request): LengthAwarePaginator
+    {
+        $query = KpiInspection::query()
+            ->with(['kpiCard:id,title,slug,image_path', 'district:id,name', 'tehsil:id,name', 'inspectedBy:id,name'])
+            ->withCount('attachments')
+            ->tap(fn (Builder $q) => $this->applyInspectionScope($q, $user));
+
+        if ($request->filled('kpi_card_id')) {
+            $query->where('kpi_card_id', (int) $request->input('kpi_card_id'));
+        }
+
+        $this->applyListFilters($query, $request, $user);
+
+        $perPage = min(50, max(10, (int) $request->input('insp_per_page', 25)));
+
+        return $query
+            ->orderByDesc('inspection_datetime')
+            ->orderByDesc('id')
+            ->paginate($perPage, ['*'], 'insp_page')
+            ->withQueryString();
+    }
+
     public function getInspectionDetail(KpiCard $card, KpiInspection $inspection, User $user): array
     {
         abort_if($inspection->kpi_card_id !== $card->id, 404);

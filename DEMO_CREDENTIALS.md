@@ -12,6 +12,7 @@ All demo accounts use password `123456` and log in at `http://ppmu.test/login`.
 | Commissioner | Commissioner Dera Ghazi Khan | `com.dgkhan` | `123456` | Dera Ghazi Khan Division | Yes |
 | Deputy Commissioner | DC Layyah | `dc.layyah` | `123456` | Layyah District | Yes |
 | Assistant Commissioner | AC Layyah | `ac.layyah` | `123456` | Assigned Layyah tehsil | Yes |
+| Assistant Commissioner | AC Karor | `ac.karor` | `123456` | Karor Lal Esan tehsil, Layyah District | Yes |
 
 ## Verified Flow
 

@@ -2,8 +2,17 @@
 
 @php
     $tooltip = trim((string) ($formula ?: $description ?: $hint ?: ''));
-    $displayValue = is_numeric($value)
-        ? number_format((float) $value, is_float($value + 0) && floor($value) != $value ? 1 : 0)
+    $percentageMetric = str_contains(strtolower($label), '%')
+        || str_contains(strtolower($label), 'rate')
+        || str_contains(strtolower($label), 'percentage')
+        || str_contains(strtolower($label), 'completion')
+        || str_contains(strtolower($label), 'compliance')
+        || str_contains(strtolower($label), 'achievement');
+    $safeValue = is_numeric($value) && $percentageMetric
+        ? max(0, min(100, (float) $value))
+        : $value;
+    $displayValue = is_numeric($safeValue)
+        ? number_format((float) $safeValue, is_float($safeValue + 0) && floor($safeValue) != $safeValue ? 1 : 0)
         : $value;
 @endphp
 

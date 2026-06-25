@@ -8,7 +8,7 @@
 @section('content')
 @php
     $imageUrl  = asset($kpiCard->resolvedImagePath());
-    $pct       = (float) $header['achievement_percentage'];
+    $pct       = max(0, min(100, (float) $header['achievement_percentage']));
     $score     = (float) ($header['score'] ?? 0);
     $marks     = (float) ($header['total_marks'] ?? $kpiCard->total_marks);
     $labels    = $header['labels'] ?? app(\App\Services\KpiDashboardConfigService::class)->headerLabelsFor($kpiCard->slug);
@@ -20,6 +20,7 @@
     $areaChartColors = $charts['areas']->values()->map(fn ($v) =>
         $v >= 85 ? '#087443' : ($v >= 70 ? '#2563eb' : ($v >= 50 ? '#e07b00' : '#dc2626'))
     );
+    $periodTypesForJs = $filters['period_types'] ?? ['daily', 'weekly', 'monthly', 'yearly'];
 @endphp
 
 <div class="ppmu-detail-hero card-ppmf" id="kpiDetailHero">
@@ -27,11 +28,6 @@
         <a href="{{ route('dashboard') }}" class="ppmu-back">
             <i class="bi bi-arrow-left-circle-fill"></i> Main Dashboard
         </a>
-        @if(in_array($user->role?->slug, ['ac', 'field_user', 'super_admin']))
-            <a href="{{ route('kpi-submissions.create', $kpiCard) }}" class="btn btn-success btn-sm ppmu-submit-btn">
-                <i class="bi bi-plus-circle-fill me-1"></i>Submit Data
-            </a>
-        @endif
     </div>
 
     <div class="ppmu-detail-hero-main">
@@ -65,10 +61,6 @@
                 <span>Progress</span>
                 <strong>{{ $pct }}%</strong>
             </div>
-            <div class="ppmu-ds-item" data-stat="score" title="KPI marks based on progress and weightage">
-                <span>KPI Score</span>
-                <strong>{{ number_format($score, 1) }} / {{ rtrim(rtrim(number_format($marks, 1), '0'), '.') }}</strong>
-            </div>
             <div class="ppmu-ds-item ppmu-ds-status" data-stat="status" title="Performance status from progress">
                 <span>Status</span>
                 <x-status-badge :status="$header['status_label']"/>
@@ -82,6 +74,7 @@
     :period="$period"
     :action="route('kpi.dashboard.data', $kpiCard)"
     :ajax="true"
+    :hide-all="true"
     :period-description="$period_description ?? ''"/>
 
 <x-kpi-geo-filter :geo-filters="$geoFilters" :kpi-card="$kpiCard" :geo="$geo ?? []"/>
@@ -101,7 +94,7 @@
         </div>
     </div>
     <div id="kpiDetailMetrics">
-        @include('dashboard.partials.kpi-detail-metrics', ['metrics' => $metrics])
+        @include('dashboard.partials.kpi-detail-metrics', ['metrics' => $metrics, 'metricSections' => $metricSections ?? []])
     </div>
 
     <div class="ppmu-section-head mt-4">
@@ -119,14 +112,13 @@
         @endforeach
     </div>
 
-    <div id="kpiDetailInspections">
-        @include('dashboard.partials.kpi-detail-inspections', [
+    <div id="kpiDetailRecords">
+        @include('dashboard.partials.kpi-detail-records', [
             'kpiCard' => $kpiCard,
-            'inspectionRecords' => $inspectionRecords,
-            'inspectionStatusCounts' => $inspectionStatusCounts,
-            'inspectionFilters' => $inspectionFilters,
-            'inspectionTableColumns' => $inspectionTableColumns,
-            'canReviewInspections' => $canReviewInspections,
+            'summary' => $summary,
+            'tableSubmissions' => $tableSubmissions,
+            'imageUrl' => $imageUrl,
+            'periodDescription' => $period_description ?? '',
         ])
     </div>
 </div>
@@ -138,6 +130,7 @@
 window.PPMU_KPI_DETAIL = {
     ajaxUrl: @json(route('kpi.dashboard.data', $kpiCard)),
     defaults: @json($filters['defaults'] ?? []),
+    periodTypes: @json($periodTypesForJs),
     period: @json($period),
     chartDefinitions: @json($charts['definitions'] ?? []),
     charts: {

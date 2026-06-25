@@ -13,7 +13,70 @@ class KpiInspectionTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_kpi_detail_dashboard_shows_inspection_records_section(): void
+    public function test_inspections_sidebar_and_index_page(): void
+    {
+        $this->seed(PpmuSeeder::class);
+        $admin = User::where('username', 'super_admin')->firstOrFail();
+        $healthCard = KpiCard::where('slug', 'inspection-of-health-facilities')->firstOrFail();
+
+        $this->actingAs($admin)
+            ->get('/dashboard')
+            ->assertOk()
+            ->assertSee('Inspections', false);
+
+        $this->actingAs($admin)
+            ->get(route('inspections.index'))
+            ->assertRedirect();
+
+        $this->actingAs($admin)
+            ->get(route('inspections.index', [
+                'kpi_card_id' => $healthCard->id,
+                'period_type' => 'weekly',
+                'week_no' => app(\App\Services\KpiPeriodService::class)->currentWeekNo(),
+                'month' => (string) now()->month,
+                'year' => (string) now()->year,
+                'insp_per_page' => 25,
+            ]))
+            ->assertOk()
+            ->assertSee('Inspection List')
+            ->assertSee('ppmu-inspection-view-icon', false)
+            ->assertSee('Inspection of Health Facilities', false);
+    }
+
+    public function test_inspections_index_defaults_redirect_and_ajax_pagination(): void
+    {
+        $this->seed(PpmuSeeder::class);
+        $admin = User::where('username', 'super_admin')->firstOrFail();
+        $healthCard = KpiCard::where('slug', 'inspection-of-health-facilities')->firstOrFail();
+        $periodService = app(\App\Services\KpiPeriodService::class);
+
+        $this->actingAs($admin)
+            ->followingRedirects()
+            ->get(route('inspections.index'))
+            ->assertOk()
+            ->assertSee('Inspection of Health Facilities', false)
+            ->assertSee('Weekly', false);
+
+        $response = $this->actingAs($admin)->getJson(route('inspections.data', [
+            'kpi_card_id' => $healthCard->id,
+            'period_type' => 'weekly',
+            'week_no' => $periodService->currentWeekNo(),
+            'month' => (string) now()->month,
+            'year' => (string) now()->year,
+            'insp_per_page' => 10,
+            'insp_page' => 2,
+        ]));
+
+        $response->assertOk()
+            ->assertJsonStructure(['table_html', 'total', 'from', 'to', 'period_description']);
+
+        $this->assertGreaterThan(10, (int) $response->json('total'));
+
+        $this->assertStringContainsString('pagination', $response->json('table_html'));
+        $this->assertStringContainsString('ppmu-inspection-pagination', $response->json('table_html'));
+    }
+
+    public function test_kpi_detail_dashboard_does_not_duplicate_inspections_module_link(): void
     {
         $this->seed(PpmuSeeder::class);
         $slug = 'inspection-of-health-facilities';
@@ -22,11 +85,8 @@ class KpiInspectionTest extends TestCase
         $this->actingAs($admin)
             ->get("/kpi/{$slug}/dashboard")
             ->assertOk()
-            ->assertSee('Inspection List')
-            ->assertSee('kpiInspectionFilter', false)
-            ->assertSee('ppmu-inspection-view-icon', false)
-            ->assertSee('bi-eye', false)
-            ->assertSee('Pending Review', false);
+            ->assertDontSee('View Inspections')
+            ->assertDontSee('ppmu-inspections-link-section', false);
     }
 
     public function test_inspection_detail_page_and_approve_reject_workflow(): void
@@ -107,7 +167,7 @@ class KpiInspectionTest extends TestCase
 
         KpiCard::where('is_active', true)->each(function (KpiCard $card) {
             $expected = match ($card->slug) {
-                'inspection-of-educational-institutions', 'inspection-of-health-facilities' => 46,
+                'inspection-of-educational-institutions', 'inspection-of-health-facilities' => 45,
                 'price-of-roti',
                 'functional-and-clean-water-filtration-plants',
                 'chief-ministers-complaint-cell',
@@ -122,7 +182,7 @@ class KpiInspectionTest extends TestCase
             );
         });
 
-        $this->assertSame(475, KpiInspection::count());
+        $this->assertSame(473, KpiInspection::count());
 
         $total = KpiInspection::count();
         $this->assertEqualsWithDelta(.60, KpiInspection::where('status', 'approved')->count() / $total, .03);

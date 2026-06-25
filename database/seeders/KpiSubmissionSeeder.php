@@ -26,6 +26,7 @@ class KpiSubmissionSeeder extends Seeder
     private const USER_COUNTS = [
         'ac.lahore' => 18,
         'ac.layyah' => 18,
+        'ac.karor' => 18,
         'dc.lahore' => 6,
         'dc.layyah' => 6,
         'com.lahore' => 3,
@@ -38,6 +39,7 @@ class KpiSubmissionSeeder extends Seeder
     private const PRIORITY_USER_COUNTS = [
         'ac.lahore' => 28,
         'ac.layyah' => 28,
+        'ac.karor' => 28,
         'dc.lahore' => 12,
         'dc.layyah' => 12,
         'com.lahore' => 8,
@@ -95,7 +97,7 @@ class KpiSubmissionSeeder extends Seeder
                     $snapshot = $demo['snapshot'];
                     $target = (float) ($snapshot['operational_target'] ?? $card->total_marks);
                     $achieved = (float) ($snapshot['operational_completed'] ?? 0);
-                    $pct = $target > 0 ? round(($achieved / $target) * 100, 1) : 0;
+                    $pct = app(\App\Services\KpiFormulaService::class)->percentage($achieved, $target);
                     $reported = $this->reportedTotal($snapshot);
                     $pending = max(0, round($target - $achieved, 2));
                     $label = sprintf('demo-c%d-u%d-%03d', $card->id, $user->id, $i);
@@ -207,12 +209,8 @@ class KpiSubmissionSeeder extends Seeder
         $monthStart = $today->copy()->startOfMonth();
         $yearStart = $today->copy()->startOfYear();
 
-        if ($index === 0) {
-            return $today->copy();
-        }
-
         if ($index <= 6) {
-            return $weekStart->copy()->addDays($index - 1)->startOfDay();
+            return $weekStart->copy()->addDays($index)->startOfDay();
         }
 
         $monthRecords = max(3, (int) floor($total * .4));

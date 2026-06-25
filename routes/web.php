@@ -23,6 +23,9 @@ Route::middleware('auth')->group(function () {
     Route::get('/kpi/{kpiCard}/dashboard', [KpiDashboardController::class, 'show'])->name('kpi.dashboard');
     Route::get('/kpi/{kpiCard}/dashboard/data', [KpiDashboardController::class, 'data'])->name('kpi.dashboard.data');
 
+    Route::get('/inspections', [KpiInspectionController::class, 'index'])->name('inspections.index');
+    Route::get('/inspections/data', [KpiInspectionController::class, 'data'])->name('inspections.data');
+
     Route::get('/kpi/{kpiCard}/inspections/{inspection}/detail', [KpiInspectionController::class, 'show'])->name('kpi.inspections.show');
     Route::post('/kpi/{kpiCard}/inspections/{inspection}/approve', [KpiInspectionController::class, 'approve'])->name('kpi.inspections.approve');
     Route::post('/kpi/{kpiCard}/inspections/{inspection}/reject', [KpiInspectionController::class, 'reject'])->name('kpi.inspections.reject');

@@ -16,6 +16,16 @@ class KpiOperationalService
         'inspection-of-educational-institutions',
     ];
 
+    /** @var list<string> */
+    private const DAILY_ACTIVITY_KPIS = [
+        'price-of-roti',
+        'price-of-plain-bakery-bread',
+        'price-control-of-essential-commodities',
+        'anti-encroachment-campaign',
+        'stray-dogs',
+        'regulation-of-shops-and-handcarts',
+    ];
+
     public function __construct(private readonly KpiPeriodService $periodService) {}
 
     /** @return array{target: float, completed: float} */
@@ -37,9 +47,46 @@ class KpiOperationalService
             return ['target' => $target, 'completed' => $completed];
         }
 
+        if (in_array($card->slug, self::DAILY_ACTIVITY_KPIS, true)) {
+            return $this->dailyActivityTotals($operationalSubmissions, $request, $fields);
+        }
+
         return [
             'target' => $this->snapshotSum($operationalSubmissions, $fields['target']),
             'completed' => $this->snapshotSum($operationalSubmissions, $fields['completed']),
+        ];
+    }
+
+    /** @return array{target: float, completed: float} */
+    private function dailyActivityTotals(Collection $submissions, Request $request, array $fields): array
+    {
+        $params = $this->periodService->resolvedParams($request);
+        $completed = $this->snapshotSum($submissions, $fields['completed']);
+        $dailyTarget = (float) $submissions->max(
+            fn ($submission) => (float) data_get($submission->metric_snapshot, $fields['target'], 0)
+        );
+
+        if ($dailyTarget <= 0) {
+            $dailyTarget = (float) $submissions->avg(
+                fn ($submission) => (float) data_get($submission->metric_snapshot, $fields['target'], 0)
+            );
+        }
+
+        $days = match ($params['period_type']) {
+            'daily' => 1,
+            'weekly' => 7,
+            'monthly' => (int) Carbon::create(
+                (int) ($params['year'] ?: now()->year),
+                (int) ($params['month'] ?: now()->month),
+                1
+            )->daysInMonth,
+            'yearly' => 365,
+            default => max(1, $submissions->count()),
+        };
+
+        return [
+            'target' => round($dailyTarget * $days, 1),
+            'completed' => round($completed, 1),
         ];
     }
 

@@ -4252,9 +4252,193 @@ body:has(.ppmu-main-dashboard) {
 }
 
 /* KPI detail cards - stronger dashboard and inspection detail presentation */
-.ppmu-detail-page #kpiDetailMetrics .ppmu-pi-grid {
+.ppmu-detail-page #kpiDetailMetrics .ppmu-pi-grid,
+.ppmu-detail-page #kpiDetailMetrics .ppmu-pi-grid-section {
     grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 14px;
+}
+
+.ppmu-detail-page #kpiDetailMetrics .ppmu-metric-section {
+    margin-bottom: 1.25rem;
+}
+
+.ppmu-detail-page #kpiDetailMetrics .ppmu-pi-grid-section.ppmu-pi-grid-count-3 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.ppmu-detail-page #kpiDetailMetrics .ppmu-pi-grid-section.ppmu-pi-grid-count-5 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.ppmu-detail-page #kpiDetailMetrics .ppmu-pi-grid-section.ppmu-pi-grid-count-6 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.ppmu-inspections-link-section {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.ppmu-view-inspections-btn {
+    white-space: nowrap;
+    font-weight: 600;
+    padding: 0.45rem 1rem;
+    box-shadow: 0 4px 14px rgba(8, 116, 67, 0.18);
+}
+
+.ppmu-inspections-page .ppmu-inspections-page-inner {
+    padding: 8px 14px 24px;
+    max-width: 100%;
+}
+
+.ppmu-inspections-page .ppmu-detail-hero,
+.ppmu-inspections-page .ppmu-period-filter,
+.ppmu-inspections-page .ppmu-inspection-page-filters,
+.ppmu-inspections-page .ppmu-geo-filter,
+.ppmu-inspections-page .ppmu-inspection-list-head,
+.ppmu-inspections-page .ppmu-inspection-list-card {
+    margin-right: 0;
+}
+
+.ppmu-inspections-page .ppmu-inspection-index-hero {
+    min-height: 0;
+    margin-bottom: 10px;
+    padding: 10px 14px 12px;
+    overflow: visible;
+    border: 1px solid #d4e7dc;
+    border-radius: 10px;
+    box-shadow: 0 5px 16px rgba(15, 61, 46, .06);
+}
+
+.ppmu-inspections-page .ppmu-inspection-index-hero .ppmu-detail-hero-bar {
+    min-height: 28px;
+    margin-bottom: 6px;
+}
+
+.ppmu-inspections-page .ppmu-inspection-index-hero .ppmu-detail-hero-main {
+    display: block;
+    padding: 0;
+}
+
+.ppmu-inspections-page .ppmu-inspection-index-hero .ppmu-detail-category {
+    margin-bottom: 5px;
+    padding: 4px 10px;
+    font-size: 10px;
+}
+
+.ppmu-inspections-page .ppmu-inspection-index-hero .ppmu-detail-info h1 {
+    margin-bottom: 7px;
+    font-size: 24px;
+    line-height: 1.12;
+}
+
+.ppmu-inspections-page .ppmu-detail-meta.ppmu-inspection-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 18px;
+    font-size: 12px;
+}
+
+.ppmu-inspections-page .ppmu-detail-meta span {
+    white-space: normal;
+    word-break: break-word;
+    max-width: 100%;
+}
+
+.ppmu-inspections-page .ppmu-inspection-filter-row {
+    display: grid;
+    grid-template-columns: minmax(220px, 1fr) minmax(190px, 1fr) minmax(150px, 1fr);
+    gap: 10px 18px;
+    align-items: flex-end;
+}
+
+.ppmu-inspections-page .ppmu-inspection-filter-row label {
+    min-width: 0;
+    margin: 0;
+}
+
+.ppmu-inspections-page .ppmu-inspection-page-filters {
+    margin-bottom: 10px !important;
+    padding: 8px 12px 10px;
+    border: 1px solid #d9e9e0;
+    border-radius: 10px;
+    box-shadow: 0 4px 14px rgba(15, 61, 46, .05);
+}
+
+.ppmu-inspections-page .ppmu-inspection-filter-row label > span {
+    display: block;
+    margin-bottom: 5px;
+    color: #0f5132;
+    font-size: 10px;
+    font-weight: 800;
+    line-height: 1;
+    text-transform: uppercase;
+}
+
+.ppmu-inspections-page .ppmu-inspection-filter-row .form-select {
+    min-height: 38px;
+    border-color: #d6e3dc;
+    border-radius: 7px;
+    font-size: 13px;
+}
+
+.ppmu-inspections-page .ppmu-period-filter {
+    margin-bottom: 12px;
+    padding: 10px 14px;
+    border-radius: 10px;
+}
+
+.ppmu-inspections-page .ppmu-inspection-list-head {
+    margin-top: 8px;
+    margin-bottom: 8px;
+    padding: 0 2px;
+}
+
+.ppmu-inspections-page .ppmu-inspection-list-head h2 {
+    margin-bottom: 3px;
+    font-size: 18px;
+}
+
+.ppmu-inspections-page .ppmu-inspection-list-head p {
+    margin: 0;
+    font-size: 12px;
+}
+
+.ppmu-inspections-page #inspectionListWrap.is-loading {
+    opacity: 0.55;
+    pointer-events: none;
+}
+
+@media (min-width: 1200px) {
+    .ppmu-detail-page #kpiDetailMetrics .ppmu-pi-grid-section.ppmu-pi-grid-count-5 {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 768px) {
+    .ppmu-inspections-page .ppmu-inspections-page-inner {
+        padding: 6px 8px 18px;
+    }
+
+    .ppmu-inspections-page .ppmu-inspection-filter-row {
+        grid-template-columns: 1fr;
+        gap: 9px;
+    }
+
+    .ppmu-inspections-page .ppmu-inspection-index-hero .ppmu-detail-info h1 {
+        font-size: 21px;
+    }
+}
+
+.ppmu-detail-page #kpiDetailMetrics .ppmu-metric-section-title {
+    margin: 0 0 0.65rem;
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #0f3d2e;
+    letter-spacing: 0.01em;
 }
 
 .ppmu-detail-page #kpiDetailMetrics .ppmu-pi-card {
@@ -6011,5 +6195,263 @@ body:has(.ppmu-main-dashboard),
 
     .ppmu-review-buttons .ppmu-review-btn {
         width: 100%;
+    }
+}
+
+/* Home KPI cards: compact image-first board without desktop page scrolling */
+.ppmu-main-dashboard > .ppmu-period-filter,
+.ppmu-main-dashboard > #kpiPeriodFilter {
+    display: none !important;
+}
+
+@media (min-width: 1200px) {
+    body:has(.ppmu-main-dashboard) {
+        overflow-y: auto;
+    }
+
+    .ppmf-main:has(.ppmu-main-dashboard) {
+        height: auto;
+        min-height: 100vh;
+        max-height: none;
+        overflow: visible;
+    }
+
+    .ppmf-content.ppmu-main-dashboard {
+        flex: 1 1 auto;
+        min-height: auto;
+        padding: 5px 10px 22px !important;
+        overflow: visible;
+        overflow-x: clip;
+    }
+
+    .ppmu-main-dashboard .ppmu-main-refreshable {
+        flex: 1 1 auto;
+        min-height: auto;
+        overflow: visible;
+        padding-bottom: 4px;
+    }
+
+    .ppmu-main-dashboard .ppmu-kpi-grid {
+        height: auto;
+        min-height: 0;
+        grid-template-columns: repeat(6, minmax(0, 1fr));
+        grid-template-rows: none;
+        grid-auto-rows: 215px;
+        gap: 10px;
+        align-content: start;
+        overflow: visible;
+        overflow-x: clip;
+    }
+
+    .ppmu-main-dashboard .ppmu-kpi-tile {
+        height: 100%;
+        min-height: 215px;
+        max-height: 215px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        padding: 6px 8px 8px;
+        gap: 0;
+        border: 1px solid #d5e6dc;
+        border-radius: 8px;
+        background: #fff;
+        box-shadow: 0 5px 14px rgba(15, 23, 42, .065);
+        overflow: hidden;
+    }
+
+    .ppmu-main-dashboard .ppmu-kpi-tile:hover {
+        transform: translateY(-1px);
+        border-color: #a9d0ba;
+        box-shadow: 0 9px 20px rgba(8, 116, 67, .13);
+    }
+
+    .ppmu-main-dashboard .ppmu-kpi-tile-hero {
+        position: static;
+        flex: 0 0 125px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 125px;
+        height: 125px;
+        width: 100%;
+        margin: 0;
+        padding: 4px 6px;
+        overflow: visible;
+    }
+
+    .ppmu-main-dashboard .ppmu-kpi-tile-png,
+    .ppmu-main-dashboard .ppmu-kpi-tile .ppmu-kpi-tile-png {
+        position: static;
+        display: block;
+        width: auto;
+        height: auto;
+        max-width: 100%;
+        max-height: 100%;
+        margin: 0;
+        object-fit: contain;
+        object-position: center;
+        transform: none;
+        filter: drop-shadow(0 5px 9px rgba(8, 116, 67, .12));
+    }
+
+    .ppmu-main-dashboard .ppmu-kpi-tile:hover .ppmu-kpi-tile-png {
+        transform: none;
+        filter: drop-shadow(0 7px 11px rgba(8, 116, 67, .16));
+    }
+
+    .ppmu-main-dashboard .ppmu-kpi-tile-foot {
+        flex: 0 0 auto;
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+        width: 100%;
+        padding: 0;
+    }
+
+    .ppmu-main-dashboard .ppmu-kpi-tile-title {
+        min-height: 34px;
+        max-height: 36px;
+        margin: 0;
+        padding: 0 2px;
+        font-size: 13px;
+        font-weight: 700;
+        line-height: 1.15;
+        text-align: center;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+
+    .ppmu-main-dashboard .ppmu-kpi-tile-btn {
+        flex: 0 0 30px;
+        width: 100%;
+        height: 30px;
+        min-height: 30px;
+        margin: 5px 0 0;
+        padding: 0 8px;
+        border-radius: 5px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 5px;
+        font-size: 12px;
+        font-weight: 700;
+        line-height: 1;
+        box-shadow: 0 4px 10px rgba(4, 120, 87, .17);
+    }
+
+    .ppmu-main-dashboard .ppmu-kpi-tile-btn .bi {
+        font-size: 12px;
+    }
+
+    .ppmu-main-dashboard .ppmu-page-head-compact {
+        min-height: 28px;
+        padding: 0 1px;
+    }
+
+    .ppmu-main-dashboard .ppmu-page-head-compact h1 {
+        font-size: 17px;
+        font-weight: 850;
+    }
+
+    .ppmu-main-dashboard .ppmu-page-head-meta {
+        color: #40584c;
+        font-size: 11.5px;
+        font-weight: 750;
+    }
+}
+
+@media (min-width: 1500px) {
+    .ppmu-main-dashboard .ppmu-kpi-grid {
+        grid-auto-rows: 215px;
+    }
+
+    .ppmu-main-dashboard .ppmu-kpi-tile {
+        min-height: 215px;
+        max-height: 215px;
+    }
+
+    .ppmu-main-dashboard .ppmu-kpi-tile-hero {
+        flex-basis: 125px;
+        min-height: 125px;
+        height: 125px;
+    }
+
+    .ppmu-main-dashboard .ppmu-kpi-tile-png,
+    .ppmu-main-dashboard .ppmu-kpi-tile .ppmu-kpi-tile-png {
+        width: auto;
+        height: auto;
+        max-width: 100%;
+        max-height: 100%;
+        transform: none;
+    }
+}
+
+@media (max-width: 1199.98px) {
+    body:has(.ppmu-main-dashboard),
+    .ppmf-main:has(.ppmu-main-dashboard) {
+        height: auto;
+        min-height: 100vh;
+        max-height: none;
+        overflow-y: auto;
+    }
+
+    .ppmf-content.ppmu-main-dashboard,
+    .ppmu-main-dashboard .ppmu-main-refreshable,
+    .ppmu-main-dashboard .ppmu-kpi-grid {
+        height: auto;
+        overflow: visible;
+    }
+
+    .ppmu-main-dashboard .ppmu-kpi-tile {
+        min-height: 215px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        padding: 6px 8px 8px;
+    }
+
+    .ppmu-main-dashboard .ppmu-kpi-tile-hero {
+        position: static;
+        flex: 0 0 125px;
+        width: 100%;
+        min-height: 125px;
+        height: 125px;
+        padding: 4px 6px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: visible;
+    }
+
+    .ppmu-main-dashboard .ppmu-kpi-tile-png,
+    .ppmu-main-dashboard .ppmu-kpi-tile .ppmu-kpi-tile-png,
+    .ppmu-main-dashboard .ppmu-kpi-tile:hover .ppmu-kpi-tile-png {
+        position: static;
+        display: block;
+        width: auto;
+        height: auto;
+        max-width: 100%;
+        max-height: 100%;
+        margin: 0;
+        object-fit: contain;
+        object-position: center;
+        transform: none;
+    }
+
+    .ppmu-main-dashboard .ppmu-kpi-tile-title {
+        min-height: 34px;
+        max-height: 36px;
+        font-size: 13px;
+        line-height: 1.15;
+    }
+
+    .ppmu-main-dashboard .ppmu-kpi-tile-btn {
+        width: 100%;
+        height: 30px;
+        min-height: 30px;
+        margin-top: 5px;
+        font-size: 12px;
     }
 }

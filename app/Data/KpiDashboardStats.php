@@ -130,7 +130,7 @@ class KpiDashboardStats
                 'fine_imposed',
                 'bi-currency-rupee',
                 'yellow',
-                'Number of fines imposed on violators during inspections.',
+                'Count of fines/challans imposed (not rupee amount).',
                 '',
                 'daily'
             ),
@@ -139,8 +139,8 @@ class KpiDashboardStats
                 'fine_imposition_rate',
                 'bi-graph-up',
                 'orange',
-                'Proportion of inspections resulting in a fine.',
-                'Fines imposed ÷ total inspections conducted × 100',
+                'Share of generated fine amount recovered in treasury.',
+                'Fine deposited (Rs) ÷ fine generated (Rs) × 100',
                 'daily'
             ),
             self::card(

@@ -35,9 +35,15 @@ class KpiChartService
                 $definition['comparison_label'] = $this->comparisonLabel($user, $key);
             }
 
-            return array_merge($definition, [
-                'data' => $datasets[$key] ?? ['labels' => [], 'values' => []],
-            ]);
+            $data = $datasets[$key] ?? ['labels' => [], 'values' => []];
+            if (($definition['type'] ?? null) === 'gauge') {
+                $data['values'] = collect($data['values'] ?? [])
+                    ->map(fn ($value) => $this->formula->displayPercentage((float) $value))
+                    ->values()
+                    ->all();
+            }
+
+            return array_merge($definition, ['data' => $data]);
         })->values()->all();
 
         return array_merge($legacy, [
@@ -56,7 +62,9 @@ class KpiChartService
         $trend = $submissions
             ->sortBy('submission_date')
             ->groupBy(fn ($item) => $item->submission_date->format('d M'))
-            ->map(fn ($group) => round($group->avg(fn ($item) => (float) ($item->achievement_percentage ?? $item->kpiScore?->percentage ?? $item->score)), 1))
+            ->map(fn ($group) => $this->formula->displayPercentage(
+                (float) $group->avg(fn ($item) => (float) ($item->achievement_percentage ?? $item->kpiScore?->percentage ?? $item->score))
+            ))
             ->take(14);
 
         if ($trend->isEmpty()) {
@@ -139,7 +147,10 @@ class KpiChartService
 
         $gaugeValue = $inspections->isEmpty()
             ? $pct
-            : round(($inspections->where('status', KpiInspection::STATUS_APPROVED)->count() / max(1, $inspections->count())) * 100, 1);
+            : $this->formula->percentage(
+                $inspections->where('status', KpiInspection::STATUS_APPROVED)->count(),
+                $inspections->count()
+            );
 
         $fineTotal = $inspections->sum(fn (KpiInspection $item) => (float) data_get($item->detail_data, 'fine', 0));
         $fineRatio = $inspections->isEmpty() ? 0 : round(min(100, ($fineTotal / max(1, $inspections->count())) / 100), 1);
@@ -167,16 +178,24 @@ class KpiChartService
         $schoolCouncilActivated = $inspections->filter(
             fn (KpiInspection $item) => in_array(strtolower((string) data_get($item->detail_data, 'school_council_activated', '')), ['yes', '1', 'true'], true)
         )->count();
-        $schoolCouncilFromSubmissions = round(
+        $schoolCouncilFromSubmissions = $this->formula->displayPercentage(
             (float) $submissions->avg(fn ($s) => (float) data_get($s->metric_snapshot, 'school_council_activated', 0)) * 100,
-            1
         );
         $schoolCouncilGauge = $inspections->isEmpty()
             ? $schoolCouncilFromSubmissions
-            : round(($schoolCouncilActivated / max(1, $inspections->count())) * 100, 1);
+            : $this->formula->percentage($schoolCouncilActivated, $inspections->count());
         if ($schoolCouncilGauge <= 0 && $schoolCouncilFromSubmissions > 0) {
             $schoolCouncilGauge = $schoolCouncilFromSubmissions;
         }
+
+        $acVisitTarget = max(1, (int) $submissions->max(fn ($s) => (float) data_get($s->metric_snapshot, 'ac_visit_target', 2)));
+        $acVisitsDone = (int) $submissions->sum(fn ($s) => (float) data_get($s->metric_snapshot, 'ac_visits', 0));
+        $acVisitGauge = $this->formula->percentage($acVisitsDone, $acVisitTarget);
+        if ($acVisitsDone === 0 && $target > 0) {
+            $acVisitGauge = $this->formula->percentage($achieved, $target);
+        }
+
+        $healthIssues = $this->healthIssueBreakdownFromInspections($inspections);
 
         return [
             'plant_inspections_trend' => $toChart($inspectionTrend),
@@ -223,6 +242,8 @@ class KpiChartService
             'overall_terminal_score' => ['labels' => ['Score'], 'values' => [$gaugeValue]],
             'cleaned_status_rate' => ['labels' => ['Cleaned'], 'values' => [$gaugeValue]],
             'status_donut' => $toChart($inspectionStatus),
+            'inspection_status_breakdown' => $toChart($inspectionStatus),
+            'ac_visit_completion_gauge' => ['labels' => ['Completion'], 'values' => [$acVisitGauge]],
             'target_achieved' => $toChart($legacy['target_achieved']),
             'performance_trend' => $toChart($legacy['trend']),
             'dc_ac_inspection_comparison' => $toChart($this->detailFieldBreakdown($inspections, ['dc_inspected', 'ac_inspected'])),
@@ -238,7 +259,7 @@ class KpiChartService
                 'TLM Shortage' => $submissions->sum(fn ($i) => (float) data_get($i->metric_snapshot, 'issues_tlm_shortage', 0)),
                 'Facility Deficiency' => $submissions->sum(fn ($i) => (float) data_get($i->metric_snapshot, 'issues_facility_deficiency', 0)),
             ])->filter(fn ($v) => $v > 0)),
-            'health_issue_breakdown' => $toChart(collect([
+            'health_issue_breakdown' => $toChart($healthIssues->isNotEmpty() ? $healthIssues : collect([
                 'Cleanliness' => $submissions->sum(fn ($i) => (float) data_get($i->metric_snapshot, 'issues_cleanliness', 0)),
                 'Staff Absence' => $submissions->sum(fn ($i) => (float) data_get($i->metric_snapshot, 'issues_staff_absence', 0)),
                 'Medicine Shortage' => $submissions->sum(fn ($i) => (float) data_get($i->metric_snapshot, 'issues_medicine_shortage', 0)),
@@ -296,5 +317,49 @@ class KpiChartService
             'commissioner' => 'District comparison',
             default => 'Division / district comparison',
         };
+    }
+
+    private function healthIssueBreakdownFromInspections(Collection $inspections): Collection
+    {
+        $counts = [
+            'Cleanliness' => 0,
+            'Staff Absence' => 0,
+            'Medicine Shortage' => 0,
+            'Equipment / Utilities' => 0,
+        ];
+
+        foreach ($inspections as $inspection) {
+            $detail = is_array($inspection->detail_data)
+                ? $inspection->detail_data
+                : (json_decode($inspection->detail_data ?? '[]', true) ?: []);
+
+            if ($this->isNegativeSignal($detail['cleanliness'] ?? null)) {
+                $counts['Cleanliness']++;
+            }
+            if (($detail['staff_present'] ?? 'Yes') === 'No') {
+                $counts['Staff Absence']++;
+            }
+            if (($detail['medicines_ok'] ?? 'Yes') === 'No') {
+                $counts['Medicine Shortage']++;
+            }
+            if (($detail['equipment_status'] ?? '') === 'Non-Operational'
+                || ($detail['equipment_ok'] ?? 'Yes') === 'No'
+                || ($detail['utilities_ok'] ?? 'Yes') === 'No') {
+                $counts['Equipment / Utilities']++;
+            }
+        }
+
+        return collect($counts)->filter(fn ($v) => $v > 0);
+    }
+
+    private function isNegativeSignal(mixed $value): bool
+    {
+        if ($value === null || $value === '') {
+            return false;
+        }
+
+        $text = strtolower((string) $value);
+
+        return str_contains($text, 'poor') || str_contains($text, 'needs') || in_array($text, ['average', 'no'], true);
     }
 }

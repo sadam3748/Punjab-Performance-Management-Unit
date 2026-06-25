@@ -14,6 +14,11 @@
         <i class="bi bi-house-door-fill"></i><span class="nav-text">{{ $mainNavLabel }}</span>
       </a>
     </div>
+    <div class="nav-item">
+      <a href="{{ route('inspections.index') }}" class="nav-link {{ request()->routeIs('inspections.*', 'kpi.inspections.*') ? 'active' : '' }}" title="Inspections">
+        <i class="bi bi-clipboard2-check-fill"></i><span class="nav-text">Inspections</span>
+      </a>
+    </div>
     @if($isAdmin)
     <div class="nav-group-label">Administration</div>
     <div class="nav-item">

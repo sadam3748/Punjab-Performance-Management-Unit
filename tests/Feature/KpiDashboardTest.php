@@ -21,8 +21,8 @@ class KpiDashboardTest extends TestCase
         $admin = User::where('username', 'super_admin')->firstOrFail();
 
         $this->actingAs($admin)->get('/dashboard')->assertOk()->assertSee('Home');
-        $this->actingAs($admin)->get('/dashboard')->assertSeeInOrder(['Target', 'Achieved', 'Progress']);
-        $this->actingAs($admin)->get('/dashboard')->assertSee('ppmu-kpi-percent-badge', false);
+        $this->actingAs($admin)->get('/dashboard')->assertDontSee('ppmu-kpi-tile-stats', false);
+        $this->actingAs($admin)->get('/dashboard')->assertDontSee('ppmu-kpi-percent-badge', false);
         $this->actingAs($admin)->get('/dashboard')->assertDontSee('ppmu-kpi-tile-status', false);
         $this->actingAs($admin)->get('/dashboard')->assertSee('ppmu-main-dashboard', false);
         $this->actingAs($admin)->get("/kpi/{$slug}/dashboard")->assertOk()->assertSee('Water Filtration');
@@ -55,7 +55,7 @@ class KpiDashboardTest extends TestCase
 
             $cardCount = substr_count($response->getContent(), 'data-kpi-card');
             $this->assertSame(23, $cardCount, "User {$login} should see 23 KPI cards");
-            $response->assertSee('View Dashboard')->assertSee('Achieved')->assertSee('Progress')->assertSee('ppmu-kpi-percent-badge', false)->assertDontSee('Reported')->assertDontSee('ppmu-kpi-tile-status', false)->assertDontSee('Performance</span>', false);
+            $response->assertSee('View Dashboard')->assertDontSee('ppmu-kpi-tile-stats', false)->assertDontSee('ppmu-kpi-percent-badge', false)->assertDontSee('Reported')->assertDontSee('ppmu-kpi-tile-status', false)->assertDontSee('Performance</span>', false);
 
             $this->get('/kpi/functional-and-clean-water-filtration-plants/dashboard')
                 ->assertOk()
@@ -85,9 +85,10 @@ class KpiDashboardTest extends TestCase
         $this->actingAs($admin)
             ->get('/dashboard')
             ->assertOk()
-            ->assertSee('Week W', false)
+            ->assertSee('Week 1', false)
             ->assertSee('Today', false)
-            ->assertDontSee('PPMF Week', false);
+            ->assertDontSee('PPMF Week', false)
+            ->assertDontSee('W26', false);
 
         $this->actingAs($admin)
             ->getJson('/dashboard/data')
@@ -246,6 +247,321 @@ class KpiDashboardTest extends TestCase
                 'records_total',
                 'inspections_total',
                 'period_description',
+                'period_filters',
             ]);
+    }
+
+    public function test_health_detail_defaults_to_weekly_and_hides_today_period_type(): void
+    {
+        $this->seed(PpmuSeeder::class);
+        $user = User::where('username', 'ac.lahore')->firstOrFail();
+
+        $this->actingAs($user)
+            ->get('/kpi/inspection-of-health-facilities/dashboard')
+            ->assertOk()
+            ->assertSee('Weekly', false)
+            ->assertDontSee('data-period-type="daily"', false);
+
+        $detail = app(\App\Services\KpiDashboardService::class)->detail(
+            KpiCard::where('slug', 'inspection-of-health-facilities')->firstOrFail(),
+            $user,
+            \Illuminate\Http\Request::create('/kpi/inspection-of-health-facilities/dashboard', 'GET')
+        );
+
+        $this->assertSame('weekly', $detail['period']['period_type']);
+    }
+
+    public function test_roti_detail_defaults_to_today(): void
+    {
+        $this->seed(PpmuSeeder::class);
+        $user = User::where('username', 'ac.lahore')->firstOrFail();
+
+        $detail = app(\App\Services\KpiDashboardService::class)->detail(
+            KpiCard::where('slug', 'price-of-roti')->firstOrFail(),
+            $user,
+            \Illuminate\Http\Request::create('/kpi/price-of-roti/dashboard', 'GET')
+        );
+
+        $this->assertSame('daily', $detail['period']['period_type']);
+        $this->assertSame(now()->toDateString(), $detail['period']['date']);
+    }
+
+    public function test_kpi_score_is_hidden_from_detail_header(): void
+    {
+        $this->seed(PpmuSeeder::class);
+        $user = User::where('username', 'ac.lahore')->firstOrFail();
+
+        $this->actingAs($user)
+            ->get('/kpi/inspection-of-health-facilities/dashboard')
+            ->assertOk()
+            ->assertDontSee('data-stat="score"', false)
+            ->assertDontSee('KPI Score');
+    }
+
+    public function test_ac_karor_only_sees_karor_scoped_data(): void
+    {
+        $this->seed(PpmuSeeder::class);
+        $card = KpiCard::where('slug', 'inspection-of-health-facilities')->firstOrFail();
+        $karor = User::where('username', 'ac.karor')->firstOrFail();
+        $layyah = User::where('username', 'ac.layyah')->firstOrFail();
+        $period = app(\App\Services\KpiPeriodService::class);
+        $request = \Illuminate\Http\Request::create('/', 'GET', [
+            'period_type' => 'weekly',
+            'week_no' => $period->currentWeekNo(),
+        ]);
+
+        $karorInspection = \App\Models\KpiInspection::where('kpi_card_id', $card->id)
+            ->where('tehsil_id', $karor->tehsil_id)
+            ->firstOrFail();
+        $layyahInspection = \App\Models\KpiInspection::where('kpi_card_id', $card->id)
+            ->where('tehsil_id', $layyah->tehsil_id)
+            ->firstOrFail();
+
+        $this->actingAs($karor)
+            ->get(route('kpi.inspections.show', [$card, $karorInspection]))
+            ->assertOk();
+
+        $this->actingAs($karor)
+            ->get(route('kpi.inspections.show', [$card, $layyahInspection]))
+            ->assertForbidden();
+    }
+
+    public function test_dc_layyah_health_dashboard_has_tehsil_comparison_chart(): void
+    {
+        $this->seed(PpmuSeeder::class);
+        $user = User::where('username', 'dc.layyah')->firstOrFail();
+        $card = KpiCard::where('slug', 'inspection-of-health-facilities')->firstOrFail();
+        $period = app(\App\Services\KpiPeriodService::class);
+        $detail = app(\App\Services\KpiDashboardService::class)->detail(
+            $card,
+            $user,
+            \Illuminate\Http\Request::create('/', 'GET', [
+                'period_type' => 'weekly',
+                'week_no' => $period->currentWeekNo(),
+            ])
+        );
+
+        $keys = collect($detail['charts']['definitions'])->pluck('key');
+        $this->assertTrue($keys->contains('tehsil_comparison'));
+        $comparison = collect($detail['charts']['definitions'])->firstWhere('key', 'tehsil_comparison');
+        $this->assertNotEmpty($comparison['data']['labels'] ?? []);
+    }
+
+    public function test_inspection_list_section_has_no_duplicate_summary_cards(): void
+    {
+        $this->seed(PpmuSeeder::class);
+        $user = User::where('username', 'ac.lahore')->firstOrFail();
+
+        $this->actingAs($user)
+            ->get('/kpi/inspection-of-health-facilities/dashboard')
+            ->assertOk()
+            ->assertSee('View Inspections')
+            ->assertDontSee('kpiInspectionFilter', false)
+            ->assertDontSee('ppmu-inspection-count-grid', false);
+    }
+
+    public function test_kpi_detail_hides_all_period_tab(): void
+    {
+        $this->seed(PpmuSeeder::class);
+        $user = User::where('username', 'ac.lahore')->firstOrFail();
+
+        $this->actingAs($user)
+            ->get('/kpi/inspection-of-health-facilities/dashboard')
+            ->assertOk()
+            ->assertDontSee('data-period-type=""', false)
+            ->assertSee('Weekly', false)
+            ->assertSee('Monthly', false);
+    }
+
+    public function test_weekly_dropdown_uses_month_wise_labels_not_w26(): void
+    {
+        $this->seed(PpmuSeeder::class);
+
+        $period = app(\App\Services\KpiPeriodService::class);
+        $filters = $period->filterOptions((int) now()->year, (int) now()->month);
+        $labels = array_values($filters['weeks'] ?? []);
+
+        $this->assertNotEmpty($labels);
+        $this->assertStringStartsWith('Week 1', $labels[0]);
+        $this->assertStringNotContainsString('W26', $labels[0]);
+
+        $user = User::where('username', 'ac.lahore')->firstOrFail();
+        $this->actingAs($user)
+            ->get('/kpi/inspection-of-health-facilities/dashboard')
+            ->assertOk()
+            ->assertDontSee('W26', false);
+    }
+
+    public function test_dc_sees_only_tehsil_geo_filter(): void
+    {
+        $this->seed(PpmuSeeder::class);
+        $user = User::where('username', 'dc.layyah')->firstOrFail();
+
+        $this->actingAs($user)
+            ->get('/kpi/inspection-of-health-facilities/dashboard')
+            ->assertOk()
+            ->assertSee('kpiGeoFilter', false)
+            ->assertSee('All tehsils', false)
+            ->assertDontSee('All divisions', false)
+            ->assertDontSee('All districts', false);
+    }
+
+    public function test_submission_reports_section_on_detail_dashboard(): void
+    {
+        $this->seed(PpmuSeeder::class);
+        $user = User::where('username', 'ac.lahore')->firstOrFail();
+
+        $this->actingAs($user)
+            ->get('/kpi/inspection-of-health-facilities/dashboard')
+            ->assertOk()
+            ->assertSee('Submission Reports')
+            ->assertSee('KPI summary rows from submissions', false);
+    }
+
+    public function test_health_metric_sections_are_grouped(): void
+    {
+        $this->seed(PpmuSeeder::class);
+        $user = User::where('username', 'dc.lahore')->firstOrFail();
+        $card = KpiCard::where('slug', 'inspection-of-health-facilities')->firstOrFail();
+        $detail = app(\App\Services\KpiDashboardService::class)->detail(
+            $card,
+            $user,
+            \Illuminate\Http\Request::create('/', 'GET', ['period_type' => 'weekly'])
+        );
+
+        $titles = collect($detail['metricSections'])->pluck('title');
+        $this->assertTrue($titles->contains('Inspection Coverage'));
+        $this->assertTrue($titles->contains('Issues Found'));
+    }
+
+    public function test_health_achieved_counts_approved_and_pending_excludes_rejected(): void
+    {
+        $this->seed(PpmuSeeder::class);
+
+        $card = KpiCard::where('slug', 'inspection-of-health-facilities')->firstOrFail();
+        $user = User::where('username', 'ac.lahore')->firstOrFail();
+        $inspections = app(\App\Services\KpiInspectionService::class);
+        $request = \Illuminate\Http\Request::create('/', 'GET', [
+            'period_type' => 'monthly',
+            'month' => (string) now()->month,
+            'year' => (string) now()->year,
+        ]);
+
+        $scoped = $inspections->getInspectionsCollection($card, $user, $request);
+        $expected = $scoped->whereIn('status', [
+            \App\Models\KpiInspection::STATUS_APPROVED,
+            \App\Models\KpiInspection::STATUS_PENDING,
+        ])->count();
+        $rejected = $scoped->where('status', \App\Models\KpiInspection::STATUS_REJECTED)->count();
+        $achieved = $inspections->countOperationalAchieved($card, $user, $request);
+
+        $this->assertSame($expected, $achieved);
+        $this->assertGreaterThan(0, $expected);
+        $this->assertGreaterThan(0, $rejected);
+        $this->assertLessThan($scoped->count(), $achieved);
+    }
+
+    public function test_weekly_dropdown_week_no_controls_detail_period_range(): void
+    {
+        $this->seed(PpmuSeeder::class);
+
+        $period = app(\App\Services\KpiPeriodService::class);
+        $weekNo = $period->currentWeekNo();
+        $range = $period->getWeekDateRange($weekNo);
+        $filters = $period->filterOptions((int) now()->year, (int) now()->month);
+
+        $this->assertArrayHasKey($weekNo, $filters['weeks']);
+        $this->assertStringStartsWith('Week ', $filters['weeks'][$weekNo]);
+
+        $detail = app(\App\Services\KpiDashboardService::class)->detail(
+            KpiCard::where('slug', 'inspection-of-health-facilities')->firstOrFail(),
+            User::where('username', 'dc.layyah')->firstOrFail(),
+            \Illuminate\Http\Request::create('/', 'GET', [
+                'period_type' => 'weekly',
+                'week_no' => $weekNo,
+                'month' => (string) now()->month,
+                'year' => (string) now()->year,
+            ])
+        );
+
+        $this->assertSame($weekNo, $detail['period']['week_no']);
+        $this->assertSame($filters['weeks'][$weekNo], $detail['period_description']);
+        $this->assertNotNull($range['start']);
+        $this->assertNotNull($range['end']);
+    }
+
+    public function test_roti_detail_respects_explicit_weekly_period(): void
+    {
+        $this->seed(PpmuSeeder::class);
+        $user = User::where('username', 'ac.layyah')->firstOrFail();
+        $period = app(\App\Services\KpiPeriodService::class);
+
+        $detail = app(\App\Services\KpiDashboardService::class)->detail(
+            KpiCard::where('slug', 'price-of-roti')->firstOrFail(),
+            $user,
+            \Illuminate\Http\Request::create('/kpi/price-of-roti/dashboard', 'GET', [
+                'period_type' => 'weekly',
+                'week_no' => $period->currentWeekNo(),
+            ])
+        );
+
+        $this->assertSame('weekly', $detail['period']['period_type']);
+        $this->assertSame($period->currentWeekNo(), $detail['period']['week_no']);
+        $this->assertCount(2, $detail['chartDefinitions']);
+        $this->assertCount(7, $detail['charts']['definitions'][0]['data']['labels']);
+    }
+
+    public function test_ac_health_dashboard_excludes_dc_ac_visit_chart(): void
+    {
+        $this->seed(PpmuSeeder::class);
+        $user = User::where('username', 'ac.layyah')->firstOrFail();
+        $detail = app(\App\Services\KpiDashboardService::class)->detail(
+            KpiCard::where('slug', 'inspection-of-health-facilities')->firstOrFail(),
+            $user,
+            \Illuminate\Http\Request::create('/', 'GET', ['period_type' => 'weekly'])
+        );
+
+        $keys = collect($detail['chartDefinitions'])->pluck('key');
+        $this->assertFalse($keys->contains('dc_ac_visit_completion'));
+        $this->assertFalse($keys->contains('tehsil_comparison'));
+        $this->assertTrue($keys->contains('inspection_status_breakdown'));
+        $this->assertTrue($keys->contains('health_issue_breakdown'));
+    }
+
+    public function test_ac_user_does_not_see_geo_location_filters(): void
+    {
+        $this->seed(PpmuSeeder::class);
+        $user = User::where('username', 'ac.layyah')->firstOrFail();
+
+        $this->actingAs($user)
+            ->get('/kpi/inspection-of-health-facilities/dashboard')
+            ->assertOk()
+            ->assertDontSee('kpiGeoFilter', false)
+            ->assertDontSee('All tehsils', false);
+    }
+
+    public function test_health_visit_counts_obey_status_invariant(): void
+    {
+        $this->seed(PpmuSeeder::class);
+        $user = User::where('username', 'ac.layyah')->firstOrFail();
+        $card = KpiCard::where('slug', 'inspection-of-health-facilities')->firstOrFail();
+        $period = app(\App\Services\KpiPeriodService::class);
+        $request = \Illuminate\Http\Request::create('/', 'GET', [
+            'period_type' => 'weekly',
+            'week_no' => $period->currentWeekNo(),
+        ]);
+
+        $detail = app(\App\Services\KpiDashboardService::class)->detail($card, $user, $request);
+        $coverage = collect($detail['metricSections'])->firstWhere('title', 'Inspection Coverage');
+        $values = collect($coverage['metrics'])->mapWithKeys(fn ($m) => [$m['label'] => $m['value']]);
+
+        $total = (int) $values['Inspected'];
+        $approved = (int) $values['Approved'];
+        $pending = (int) $values['Pending'];
+        $rejected = (int) $values['Rejected'];
+
+        $this->assertSame($approved + $pending + $rejected, $total);
+        $this->assertFalse($values->has('Total Visits'));
+        $this->assertFalse($values->has('Achieved'));
     }
 }

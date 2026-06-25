@@ -59,37 +59,25 @@ html.ppmf-sidebar-pinned .nav-link.active,
 html.ppmf-sidebar-collapsed .nav-link.active,
 html.ppmu-sidebar-peek .nav-link.active {
   color: #fff;
-  background: linear-gradient(90deg, rgba(255,255,255,.24), rgba(255,255,255,.11));
-  border: 1px solid rgba(255,255,255,.18);
-  box-shadow: inset 2px 0 0 #e8bd4a, 0 4px 12px rgba(3,39,24,.16);
+  background: linear-gradient(90deg, rgba(255,255,255,.19), rgba(255,255,255,.1));
+  border: 1px solid rgba(255,255,255,.2);
+  box-shadow: inset 3px 0 0 #7dd3a7, 0 4px 12px rgba(3,39,24,.16);
   font-weight: 800;
 }
 
 html.ppmf-sidebar-pinned .nav-link.active i,
 html.ppmf-sidebar-collapsed .nav-link.active i,
 html.ppmu-sidebar-peek .nav-link.active i {
-  color: #ffe6a3;
-  background: rgba(232,189,74,.13);
-  box-shadow: none;
+  color: #075f3a;
+  background: #f4fbf7;
+  box-shadow: 0 0 0 1px rgba(255,255,255,.72), 0 3px 8px rgba(3,39,24,.2);
 }
 
 html.ppmf-sidebar-pinned .nav-link.active::after,
 html.ppmf-sidebar-collapsed .nav-link.active::after,
 html.ppmu-sidebar-peek .nav-link.active::after {
-  content: '';
-  width: 5px;
-  height: 5px;
-  margin-left: auto;
-  border-radius: 50%;
-  background: #f4cc67;
-  box-shadow: 0 0 0 3px rgba(244,204,103,.12);
-}
-
-html.ppmf-sidebar-collapsed .nav-link.active::after {
-  position: absolute;
-  right: 4px;
-  width: 4px;
-  height: 4px;
+  display: none;
+  content: none;
 }
 
 html.ppmf-sidebar-pinned .nav-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

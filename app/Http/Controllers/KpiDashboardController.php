@@ -34,6 +34,7 @@ class KpiDashboardController extends Controller
             'header' => $data['header'],
             'metrics_html' => view('dashboard.partials.kpi-detail-metrics', [
                 'metrics' => $data['metrics'],
+                'metricSections' => $data['metricSections'],
             ])->render(),
             'records_html' => view('dashboard.partials.kpi-detail-records', [
                 'kpiCard' => $kpiCard,
@@ -42,13 +43,11 @@ class KpiDashboardController extends Controller
                 'imageUrl' => $imageUrl,
                 'periodDescription' => $data['period_description'],
             ])->render(),
-            'inspections_html' => view('dashboard.partials.kpi-detail-inspections', [
+            'inspections_html' => view('dashboard.partials.kpi-detail-inspections-link', [
                 'kpiCard' => $kpiCard,
                 'inspectionRecords' => $data['inspectionRecords'],
-                'inspectionStatusCounts' => $data['inspectionStatusCounts'],
-                'inspectionFilters' => $data['inspectionFilters'],
-                'inspectionTableColumns' => $data['inspectionTableColumns'],
-                'canReviewInspections' => $data['canReviewInspections'],
+                'period' => $data['period'],
+                'geo' => $data['geo'] ?? [],
             ])->render(),
             'charts' => [
                 'definitions' => $data['charts']['definitions'] ?? [],
@@ -63,6 +62,7 @@ class KpiDashboardController extends Controller
             'inspections_total' => $data['inspectionRecords']->total(),
             'period_description' => $data['period_description'],
             'period_query' => $service->periodQueryString($request),
+            'period_filters' => $service->filterOptionsForView($kpiCard->slug),
         ]);
     }
 }

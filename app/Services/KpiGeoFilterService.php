@@ -49,8 +49,9 @@ class KpiGeoFilterService
             'districts' => $districts,
             'tehsils' => $tehsils,
             'show_division' => $divisions->isNotEmpty(),
-            'show_district' => $districts->isNotEmpty() && $role !== 'ac' && $role !== 'field_user',
+            'show_district' => $districts->isNotEmpty() && ! in_array($role, ['ac', 'field_user', 'dc'], true),
             'show_tehsil' => $tehsils->isNotEmpty() && ! in_array($role, ['ac', 'field_user'], true),
+            'show_filter' => in_array($role, ['super_admin', 'chief_secretary', 'pmru_user', 'viewer', 'commissioner', 'dc'], true),
             'selected' => [
                 'division_id' => request('geo_division'),
                 'district_id' => request('geo_district'),

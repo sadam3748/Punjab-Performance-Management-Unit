@@ -28,6 +28,10 @@
         return Number(n).toLocaleString(undefined, { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
     }
 
+    function clampPercent(value) {
+        return Math.max(0, Math.min(100, Number(value) || 0));
+    }
+
     function destroyCharts() {
         Object.keys(charts).forEach(k => { if (charts[k]) { charts[k].destroy(); charts[k] = null; } });
     }
@@ -61,7 +65,7 @@
                 const chartType = def.type === 'donut' ? 'doughnut' : (def.type === 'pie' ? 'pie' : def.type);
 
                 if (chartType === 'gauge') {
-                    const value = values[0] ?? 0;
+                    const value = clampPercent(values[0] ?? 0);
                     charts['kpiChart_' + index] = new Chart(canvas, {
                         type: 'doughnut',
                         data: {
@@ -165,6 +169,21 @@
         }
     }
 
+    function updateWeekOptions(filters) {
+        if (!filters?.weeks) return;
+        const select = document.querySelector('#kpiPeriodFilter [data-filter="week_no"]');
+        if (!select) return;
+        const current = select.value;
+        select.innerHTML = '';
+        Object.entries(filters.weeks).forEach(([value, label]) => {
+            const opt = document.createElement('option');
+            opt.value = value;
+            opt.textContent = label;
+            if (value === current) opt.selected = true;
+            select.appendChild(opt);
+        });
+    }
+
     function updatePeriodRange(description) {
         const el = document.getElementById('kpiPeriodRangeLabel');
         if (el) {
@@ -206,8 +225,7 @@
 
         stats.querySelector('[data-stat="target"] strong').textContent = fmtNum(header.operational_target ?? header.target, 1);
         stats.querySelector('[data-stat="achieved"] strong').textContent = fmtNum(header.completed ?? header.achieved, 1);
-        stats.querySelector('[data-stat="pct"] strong').textContent = header.achievement_percentage + '%';
-        stats.querySelector('[data-stat="score"] strong').textContent = fmtNum(header.score, 1) + ' / ' + fmtNum(marks, marks % 1 ? 1 : 0);
+        stats.querySelector('[data-stat="pct"] strong').textContent = clampPercent(header.achievement_percentage) + '%';
 
         const statusEl = stats.querySelector('[data-stat="status"]');
         if (statusEl) {
@@ -299,12 +317,17 @@
 
             updateHeader(data.header);
             updatePeriodRange(data.period_description);
+            updateWeekOptions(data.period_filters);
             document.getElementById('kpiDetailMetrics').innerHTML = data.metrics_html;
 
             const inspEl = document.getElementById('kpiDetailInspections');
             if (inspEl && data.inspections_html) {
                 inspEl.innerHTML = data.inspections_html;
-                bindInspectionFilters();
+            }
+
+            const recordsEl = document.getElementById('kpiDetailRecords');
+            if (recordsEl && data.records_html) {
+                recordsEl.innerHTML = data.records_html;
             }
 
             buildCharts({
