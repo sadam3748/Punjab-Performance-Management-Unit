@@ -5878,3 +5878,138 @@ body:has(.ppmu-main-dashboard),
         grid-template-columns: 1fr;
     }
 }
+
+/* Inspection detail: shared decision remarks and count-aware KPI fields */
+.ppmu-detail-page .ppmu-coordinate-info-item {
+    min-width: 0;
+}
+
+.ppmu-detail-page .ppmu-coordinate-values {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.ppmu-detail-page .ppmu-coordinate-values span {
+    min-width: 0;
+    color: #102a1f;
+    overflow-wrap: anywhere;
+}
+
+.ppmu-detail-page .ppmu-coordinate-values small {
+    display: block;
+    margin-bottom: 2px;
+    color: #6a7f74;
+    font-size: 9px;
+    font-weight: 800;
+    text-transform: uppercase;
+}
+
+.ppmu-detail-page .ppmu-kpi-specific-grid-count-1 {
+    grid-template-columns: minmax(0, 1fr);
+}
+
+.ppmu-detail-page .ppmu-kpi-specific-grid-count-2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.ppmu-detail-page .ppmu-kpi-specific-grid-count-3,
+.ppmu-detail-page .ppmu-kpi-specific-grid-count-5,
+.ppmu-detail-page .ppmu-kpi-specific-grid-count-6 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.ppmu-detail-page .ppmu-kpi-specific-grid-count-4 {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.ppmu-review-form-shared {
+    padding: 18px;
+    border: 1px solid #dbe9e1;
+    border-radius: 12px;
+    background: #fbfefd;
+}
+
+.ppmu-review-form-shared .form-label {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    color: #183a2a;
+    font-weight: 850;
+}
+
+.ppmu-review-form-shared .form-label span {
+    color: #6b7f75;
+    font-size: 10.5px;
+    font-weight: 700;
+}
+
+.ppmu-review-form-shared textarea {
+    min-height: 92px;
+    border-color: #cfe0d6;
+    background: #fff;
+    color: #102a1f;
+    resize: vertical;
+}
+
+.ppmu-review-buttons {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 12px;
+}
+
+.ppmu-review-buttons .ppmu-review-btn,
+.ppmu-review-buttons .ppmu-review-btn:hover,
+.ppmu-review-buttons .ppmu-review-btn:focus,
+.ppmu-review-buttons .ppmu-review-btn:focus-visible,
+.ppmu-review-buttons .ppmu-review-btn:active {
+    color: #fff !important;
+    border-color: transparent !important;
+}
+
+.ppmu-review-buttons .ppmu-review-btn-approve,
+.ppmu-review-buttons .ppmu-review-btn-approve:hover,
+.ppmu-review-buttons .ppmu-review-btn-approve:focus,
+.ppmu-review-buttons .ppmu-review-btn-approve:active {
+    background: #087443 !important;
+}
+
+.ppmu-review-buttons .ppmu-review-btn-reject,
+.ppmu-review-buttons .ppmu-review-btn-reject:hover,
+.ppmu-review-buttons .ppmu-review-btn-reject:focus,
+.ppmu-review-buttons .ppmu-review-btn-reject:active {
+    background: #c62828 !important;
+}
+
+.ppmu-review-buttons .ppmu-review-btn:hover,
+.ppmu-review-buttons .ppmu-review-btn:focus-visible {
+    filter: brightness(.92);
+    transform: translateY(-1px);
+}
+
+@media (max-width: 991.98px) {
+    .ppmu-detail-page .ppmu-kpi-specific-grid-count-3,
+    .ppmu-detail-page .ppmu-kpi-specific-grid-count-4,
+    .ppmu-detail-page .ppmu-kpi-specific-grid-count-5,
+    .ppmu-detail-page .ppmu-kpi-specific-grid-count-6 {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 575.98px) {
+    .ppmu-detail-page [class*="ppmu-kpi-specific-grid-count-"] {
+        grid-template-columns: 1fr;
+    }
+
+    .ppmu-review-form-shared .form-label,
+    .ppmu-review-buttons {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .ppmu-review-buttons .ppmu-review-btn {
+        width: 100%;
+    }
+}

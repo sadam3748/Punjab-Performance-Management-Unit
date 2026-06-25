@@ -205,7 +205,6 @@
         if (completedSpan) completedSpan.textContent = completedLabel;
 
         stats.querySelector('[data-stat="target"] strong').textContent = fmtNum(header.operational_target ?? header.target, 1);
-        stats.querySelector('[data-stat="reported"] strong').textContent = fmtNum(header.records ?? header.reported, 0);
         stats.querySelector('[data-stat="achieved"] strong').textContent = fmtNum(header.completed ?? header.achieved, 1);
         stats.querySelector('[data-stat="pct"] strong').textContent = header.achievement_percentage + '%';
         stats.querySelector('[data-stat="score"] strong').textContent = fmtNum(header.score, 1) + ' / ' + fmtNum(marks, marks % 1 ? 1 : 0);

@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\KpiCard;
+use App\Models\KpiSubmission;
 use App\Models\User;
 use Database\Seeders\PpmuSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -93,6 +94,138 @@ class KpiDashboardTest extends TestCase
             ->assertOk()
             ->assertJsonStructure(['cards_html', 'cards_count', 'period_description', 'period', 'period_query'])
             ->assertJsonPath('period.period_type', 'weekly');
+    }
+
+    public function test_main_dashboard_uses_period_totals_for_target_and_achieved(): void
+    {
+        $this->seed(PpmuSeeder::class);
+
+        $user = User::where('username', 'ac.lahore')->firstOrFail();
+        $period = app(\App\Services\KpiPeriodService::class);
+        $dashboard = app(\App\Services\KpiDashboardService::class);
+
+        $daily = $dashboard->assignedCards($user, \Illuminate\Http\Request::create('/', 'GET', [
+            'period_type' => 'daily',
+            'date' => now()->toDateString(),
+        ]));
+        $weekly = $dashboard->assignedCards($user, \Illuminate\Http\Request::create('/', 'GET', [
+            'period_type' => 'weekly',
+            'week_no' => $period->currentWeekNo(),
+        ]));
+        $monthly = $dashboard->assignedCards($user, \Illuminate\Http\Request::create('/', 'GET', [
+            'period_type' => 'monthly',
+            'month' => (string) now()->month,
+            'year' => (string) now()->year,
+        ]));
+
+        $dailyRoti = $daily->firstWhere('slug', 'price-of-roti');
+        $weeklyRoti = $weekly->firstWhere('slug', 'price-of-roti');
+        $monthlyRoti = $monthly->firstWhere('slug', 'price-of-roti');
+
+        $this->assertNotNull($dailyRoti);
+        $this->assertNotNull($weeklyRoti);
+        $this->assertNotNull($monthlyRoti);
+
+        $this->assertGreaterThan((float) $dailyRoti->target, (float) $weeklyRoti->target);
+        $this->assertGreaterThan((float) $dailyRoti->achieved, (float) $weeklyRoti->achieved);
+        $this->assertGreaterThanOrEqual((float) $weeklyRoti->target, (float) $monthlyRoti->target);
+
+        $expectedWeeklyProgress = round(((float) $weeklyRoti->achieved / (float) $weeklyRoti->target) * 100, 1);
+        $this->assertEquals($expectedWeeklyProgress, (float) $weeklyRoti->achievement_percentage);
+    }
+
+    public function test_health_targets_follow_role_scope_and_period_formula(): void
+    {
+        $this->seed(PpmuSeeder::class);
+
+        $dashboard = app(\App\Services\KpiDashboardService::class);
+        $inspections = app(\App\Services\KpiInspectionService::class);
+        $period = app(\App\Services\KpiPeriodService::class);
+        $card = KpiCard::where('slug', 'inspection-of-health-facilities')->firstOrFail();
+        $weeklyRequest = \Illuminate\Http\Request::create('/', 'GET', [
+            'period_type' => 'weekly',
+            'week_no' => $period->currentWeekNo(),
+        ]);
+        $monthlyRequest = \Illuminate\Http\Request::create('/', 'GET', [
+            'period_type' => 'monthly',
+            'month' => (string) now()->month,
+            'year' => (string) now()->year,
+        ]);
+
+        $users = collect(['ac.lahore', 'dc.lahore', 'com.lahore', 'cs.pmru'])
+            ->mapWithKeys(fn (string $username) => [
+                $username => User::where('username', $username)->firstOrFail(),
+            ]);
+
+        $weekly = $users->map(fn (User $user) => $dashboard
+            ->assignedCards($user, $weeklyRequest)
+            ->firstWhere('slug', 'inspection-of-health-facilities'));
+        $monthly = $users->map(fn (User $user) => $dashboard
+            ->assignedCards($user, $monthlyRequest)
+            ->firstWhere('slug', 'inspection-of-health-facilities'));
+
+        $this->assertSame(2.0, (float) $weekly['ac.lahore']->target);
+        $this->assertSame(12.0, (float) $weekly['dc.lahore']->target);
+        $this->assertGreaterThan((float) $weekly['dc.lahore']->target, (float) $weekly['com.lahore']->target);
+        $this->assertGreaterThan((float) $weekly['com.lahore']->target, (float) $weekly['cs.pmru']->target);
+
+        $weeksInMonth = (int) ceil(now()->daysInMonth / 7);
+        foreach ($users->keys() as $username) {
+            $user = $users[$username];
+            $this->assertSame(
+                (float) $weekly[$username]->target * $weeksInMonth,
+                (float) $monthly[$username]->target
+            );
+            $expectedAchieved = (float) $inspections->countOperationalAchieved($card, $user, $weeklyRequest);
+            $this->assertSame($expectedAchieved, (float) $weekly[$username]->achieved, $username);
+            $this->assertGreaterThan((float) $weekly['ac.lahore']->achieved, (float) $weekly['dc.lahore']->achieved);
+        }
+    }
+
+    public function test_health_and_education_achieved_matches_detail_header_and_inspection_rows(): void
+    {
+        $this->seed(PpmuSeeder::class);
+
+        $dashboard = app(\App\Services\KpiDashboardService::class);
+        $inspections = app(\App\Services\KpiInspectionService::class);
+        $period = app(\App\Services\KpiPeriodService::class);
+        $user = User::where('username', 'ac.lahore')->firstOrFail();
+        $request = \Illuminate\Http\Request::create('/', 'GET', [
+            'period_type' => 'weekly',
+            'week_no' => $period->currentWeekNo(),
+        ]);
+
+        foreach (['inspection-of-health-facilities', 'inspection-of-educational-institutions'] as $slug) {
+            $card = KpiCard::where('slug', $slug)->firstOrFail();
+            $home = $dashboard->assignedCards($user, $request)->firstWhere('slug', $slug);
+            $detail = $dashboard->detail($card, $user, $request);
+            $expected = (float) $inspections->countOperationalAchieved($card, $user, $request);
+
+            $this->assertSame($expected, (float) $home->achieved, $slug.' home achieved');
+            $this->assertSame((float) $home->target, (float) $detail['header']['operational_target'], $slug.' target parity');
+            $this->assertSame((float) $home->achieved, (float) $detail['header']['completed'], $slug.' achieved parity');
+            $this->assertSame($detail['summary']['total'], $detail['header']['records'], $slug.' records are submission count');
+        }
+    }
+
+    public function test_every_seeded_kpi_has_operational_target_and_completed_values(): void
+    {
+        $this->seed(PpmuSeeder::class);
+
+        KpiCard::where('is_active', true)->each(function (KpiCard $card) {
+            $submission = KpiSubmission::where('kpi_card_id', $card->id)->firstOrFail();
+            $snapshot = $submission->metric_snapshot;
+
+            $this->assertArrayHasKey('operational_target', $snapshot, $card->slug);
+            $this->assertArrayHasKey('operational_completed', $snapshot, $card->slug);
+            $this->assertGreaterThan(0, $snapshot['operational_target'], $card->slug);
+            $this->assertGreaterThanOrEqual(0, $snapshot['operational_completed'], $card->slug);
+            $this->assertLessThanOrEqual(
+                $snapshot['operational_target'],
+                $snapshot['operational_completed'],
+                $card->slug
+            );
+        });
     }
 
     public function test_kpi_detail_dashboard_ajax_filter_returns_json(): void

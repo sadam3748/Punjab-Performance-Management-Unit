@@ -29,6 +29,10 @@ class KpiInspectionController extends Controller
         abort_unless($dashboardService->canAccess($user, $kpiCard), 403);
         abort_if($inspection->kpi_card_id !== $kpiCard->id, 404);
 
+        $request->merge([
+            'review_remarks' => $request->input('remarks', $request->input('review_remarks')),
+        ]);
+
         $validated = $request->validate([
             'review_remarks' => ['nullable', 'string', 'max:2000'],
         ]);
@@ -45,6 +49,10 @@ class KpiInspectionController extends Controller
         $user = $request->user()->loadMissing(['role', 'division', 'district', 'tehsil']);
         abort_unless($dashboardService->canAccess($user, $kpiCard), 403);
         abort_if($inspection->kpi_card_id !== $kpiCard->id, 404);
+
+        $request->merge([
+            'rejection_reason' => $request->input('remarks', $request->input('rejection_reason')),
+        ]);
 
         $validated = $request->validate([
             'rejection_reason' => ['required', 'string', 'min:5', 'max:2000'],

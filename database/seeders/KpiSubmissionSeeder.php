@@ -12,6 +12,16 @@ class KpiSubmissionSeeder extends Seeder
 {
     private const STATUSES = ['approved', 'approved', 'approved', 'submitted', 'pending'];
 
+    /** @var list<string> */
+    private const PRIORITY_SLUGS = [
+        'price-of-roti',
+        'inspection-of-educational-institutions',
+        'inspection-of-health-facilities',
+        'functional-and-clean-water-filtration-plants',
+        'chief-ministers-complaint-cell',
+        'e-biz',
+    ];
+
     /** @var array<string, int> Per-user share; totals 56 submissions per KPI */
     private const USER_COUNTS = [
         'ac.lahore' => 18,
@@ -22,6 +32,18 @@ class KpiSubmissionSeeder extends Seeder
         'com.dgkhan' => 3,
         'super_admin' => 1,
         'cs.pmru' => 1,
+    ];
+
+    /** @var array<string, int> Rich demo data for priority KPIs (~105 per KPI) */
+    private const PRIORITY_USER_COUNTS = [
+        'ac.lahore' => 28,
+        'ac.layyah' => 28,
+        'dc.lahore' => 12,
+        'dc.layyah' => 12,
+        'com.lahore' => 8,
+        'com.dgkhan' => 8,
+        'cs.pmru' => 14,
+        'super_admin' => 14,
     ];
 
     public function run(): void
@@ -48,25 +70,32 @@ class KpiSubmissionSeeder extends Seeder
                 fn ($f) => $f->field_name !== 'field_observation'
             );
 
-            foreach (self::USER_COUNTS as $username => $count) {
+            $isPriority = in_array($card->slug, self::PRIORITY_SLUGS, true);
+            $userCounts = $isPriority ? self::PRIORITY_USER_COUNTS : self::USER_COUNTS;
+
+            foreach ($userCounts as $username => $count) {
                 $user = $users->get($username);
                 if (! $user) {
                     continue;
                 }
 
-                $records = $testing ? min(4, $count) : $count;
+                $records = $testing
+                    ? ($isPriority ? min(14, $count) : min(4, $count))
+                    : $count;
                 [$divId, $distId, $tehsilId] = $this->scopeIds($user);
                 $areaLevel = $this->areaLevel($user);
 
                 for ($i = 0; $i < $records; $i++) {
-                    $date = $this->dateForIndex($i, $records);
-                    $periodType = $this->periodTypeForIndex($i);
+                    $date = $isPriority
+                        ? $this->priorityDateForIndex($i, $records)
+                        : $this->dateForIndex($i, $records);
+                    $periodType = $this->periodTypeForIndex($i, $date);
                     $week = $period->weekRangeForDate($date);
                     $demo = $factory->build($card->slug, $date, $username, $i, $periodType);
                     $snapshot = $demo['snapshot'];
-                    $target = (float) $card->total_marks;
-                    $pct = max(55, min(98, $demo['achievement_pct']));
-                    $achieved = round($target * $pct / 100, 2);
+                    $target = (float) ($snapshot['operational_target'] ?? $card->total_marks);
+                    $achieved = (float) ($snapshot['operational_completed'] ?? 0);
+                    $pct = $target > 0 ? round(($achieved / $target) * 100, 1) : 0;
                     $reported = $this->reportedTotal($snapshot);
                     $pending = max(0, round($target - $achieved, 2));
                     $label = sprintf('demo-c%d-u%d-%03d', $card->id, $user->id, $i);
@@ -138,31 +167,68 @@ class KpiSubmissionSeeder extends Seeder
     private function dateForIndex(int $index, int $total): Carbon
     {
         $period = app(KpiPeriodService::class);
+        $today = now()->startOfDay();
         $weekStart = Carbon::parse($period->weekRangeForDate(now())['week_start']);
 
-        if ($index < (int) ceil($total * 0.65)) {
-            $dayOffset = $index % 7;
-
-            return $weekStart->copy()->addDays($dayOffset)->startOfDay();
-        }
-
-        if ($index < (int) ceil($total * 0.9)) {
-            $weeksBack = 1 + (($index - (int) ceil($total * 0.65)) % 4);
-
-            return $weekStart->copy()->subWeeks($weeksBack)->addDays($index % 5)->startOfDay();
-        }
-
-        return Carbon::now()->subMonths(2 + ($index % 4))->addDays($index % 20)->startOfDay();
+        return match ($index % 4) {
+            0 => $today->copy(),
+            1 => $weekStart->copy()->addDays(($index + 1) % 7)->startOfDay(),
+            2 => $today->copy()->startOfMonth()->addDays(min($today->day - 1, 7 + ($index % 14)))->startOfDay(),
+            default => $today->copy()->startOfYear()->addMonths(max(0, $today->month - 2))->addDays($index % 20)->startOfDay(),
+        };
     }
 
-    private function periodTypeForIndex(int $index): string
+    private function periodTypeForIndex(int $index, Carbon $date): string
     {
-        return match ($index % 6) {
-            0, 1 => 'daily',
-            2, 3 => 'weekly',
-            4 => 'monthly',
-            default => 'yearly',
-        };
+        if ($date->isToday()) {
+            return 'daily';
+        }
+
+        $period = app(KpiPeriodService::class);
+        $weekStart = Carbon::parse($period->weekRangeForDate(now())['week_start']);
+        $weekEnd = Carbon::parse($period->weekRangeForDate(now())['week_end']);
+
+        if ($date->between($weekStart, $weekEnd)) {
+            return 'weekly';
+        }
+
+        if ($date->isSameMonth(now())) {
+            return 'monthly';
+        }
+
+        return 'yearly';
+    }
+
+    private function priorityDateForIndex(int $index, int $total): Carbon
+    {
+        $period = app(KpiPeriodService::class);
+        $today = now()->startOfDay();
+        $weekStart = Carbon::parse($period->weekRangeForDate($today)['week_start']);
+        $monthStart = $today->copy()->startOfMonth();
+        $yearStart = $today->copy()->startOfYear();
+
+        if ($index === 0) {
+            return $today->copy();
+        }
+
+        if ($index <= 6) {
+            return $weekStart->copy()->addDays($index - 1)->startOfDay();
+        }
+
+        $monthRecords = max(3, (int) floor($total * .4));
+        if ($index < 7 + $monthRecords) {
+            $monthDay = min(max(0, $today->day - 8), $index - 7);
+
+            return $monthStart->copy()->addDays($monthDay)->startOfDay();
+        }
+
+        if ($index < $total - 2) {
+            $monthsBack = 1 + ($index % max(1, (int) $today->month - 1));
+
+            return $yearStart->copy()->addMonths($monthsBack - 1)->addDays(($index % 20) + 1)->startOfDay();
+        }
+
+        return $today->copy()->subMonths(2 + ($index % 3))->subDays($index % 15)->startOfDay();
     }
 
     private function reportedTotal(array $snapshot): int

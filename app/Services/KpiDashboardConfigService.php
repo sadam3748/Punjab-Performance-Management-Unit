@@ -98,48 +98,10 @@ class KpiDashboardConfigService
     /** @return array{target: string, completed: string} */
     public function operationalFieldsFor(string $slug): array
     {
-        return match ($this->normalizeSlug($slug)) {
-            'inspection-of-health-facilities' => [
-                'target' => 'required_visits',
-                'completed' => 'facility_visits',
-            ],
-            'inspection-of-educational-institutions' => [
-                'target' => 'required_visits',
-                'completed' => 'institution_visits',
-            ],
-            'repair-of-small-roads-in-both-urban-and-rural-areas' => [
-                'target' => 'weekly_road_target',
-                'completed' => 'repair_completed',
-            ],
-            'functional-and-clean-water-filtration-plants' => [
-                'target' => 'plants_to_inspect',
-                'completed' => 'inspected_plants',
-            ],
-            'chief-ministers-complaint-cell' => [
-                'target' => 'complaints_received',
-                'completed' => 'complaints_resolved',
-            ],
-            'e-biz' => [
-                'target' => 'applications_target',
-                'completed' => 'applications_completed',
-            ],
-            'price-of-roti' => [
-                'target' => 'inspections_total_target',
-                'completed' => 'tandoor_inspections',
-            ],
-            'price-of-plain-bakery-bread' => [
-                'target' => 'tier_target',
-                'completed' => 'bread_inspections',
-            ],
-            'price-control-of-essential-commodities' => [
-                'target' => 'tier_target',
-                'completed' => 'market_inspections',
-            ],
-            default => [
-                'target' => 'inspections',
-                'completed' => 'inspections',
-            ],
-        };
+        return [
+            'target' => 'operational_target',
+            'completed' => 'operational_completed',
+        ];
     }
 
     /** @return array<string, mixed> */

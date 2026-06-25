@@ -61,10 +61,6 @@
                 <span data-label="completed">{{ $labels['completed'] }}</span>
                 <strong>{{ number_format($header['completed'] ?? $header['achieved'], 1) }}</strong>
             </div>
-            <div class="ppmu-ds-item" data-stat="reported" title="Submitted inspection and report records in scope">
-                <span>Records</span>
-                <strong>{{ number_format($header['records'] ?? $header['reported']) }}</strong>
-            </div>
             <div class="ppmu-ds-item ppmu-ds-pct" data-stat="pct" title="Completed ÷ Operational Target × 100">
                 <span>Progress</span>
                 <strong>{{ $pct }}%</strong>

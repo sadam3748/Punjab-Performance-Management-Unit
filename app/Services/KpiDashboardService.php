@@ -19,6 +19,7 @@ class KpiDashboardService
         private readonly KpiInspectionService $inspectionService,
         private readonly KpiDashboardConfigService $dashboardConfig,
         private readonly KpiGeoFilterService $geoFilterService,
+        private readonly KpiOperationalService $operationalService,
     ) {}
 
     public function assignedCards(User $user, ?Request $request = null): Collection
@@ -53,11 +54,20 @@ class KpiDashboardService
                     $user,
                     $request
                 )
-                    ->get(['kpi_card_id', 'metric_snapshot', 'reported_value', 'achieved_value', 'achievement_percentage', 'target_value'])
+                    ->get([
+                        'kpi_card_id', 'user_id', 'area_level', 'submission_date', 'metric_snapshot',
+                        'reported_value', 'achieved_value', 'achievement_percentage', 'target_value',
+                    ])
                     ->groupBy('kpi_card_id');
 
-                return $cards->map(function (KpiCard $card) use ($submissionsByCard) {
-                    $header = $this->resolveOperationalHeader($card, $submissionsByCard->get($card->id, collect()));
+                return $cards->map(function (KpiCard $card) use ($submissionsByCard, $user, $request) {
+                    $header = $this->resolveOperationalHeader(
+                        $card,
+                        $submissionsByCard->get($card->id, collect()),
+                        $user,
+                        $request,
+                        periodTotals: true,
+                    );
 
                     $card->target = $header['operational_target'];
                     $card->achieved = $header['completed'];
@@ -82,7 +92,7 @@ class KpiDashboardService
 
         $tableSubmissions = $this->paginateSubmissions($card, $user, $request, $perPage, $usedFallback);
 
-        $headerMetrics = $this->resolveOperationalHeader($card, $submissions);
+        $headerMetrics = $this->resolveOperationalHeader($card, $submissions, $user, $request, periodTotals: true);
         $headerLabels = $this->dashboardConfig->headerLabelsFor($card->slug);
         $areaScores = $this->areaScores($submissions, $user);
 
@@ -284,6 +294,10 @@ class KpiDashboardService
             return 0.0;
         }
 
+        if ($target <= 0) {
+            return 0.0;
+        }
+
         if ($target > 0) {
             return $this->formula->achievementPercentage($achieved, $target);
         }
@@ -293,26 +307,76 @@ class KpiDashboardService
         return $pct > 0 ? $pct : 0.0;
     }
 
+    private function resolveAchievedSum(Collection $submissions): float
+    {
+        if ($submissions->isEmpty()) {
+            return 0.0;
+        }
+
+        $sum = round((float) $submissions->sum(fn ($s) => (float) ($s->achieved_value ?? $s->score ?? 0)), 1);
+        if ($sum > 0) {
+            return $sum;
+        }
+
+        $targetSum = round((float) $submissions->sum('target_value'), 1);
+        $pctAvg = round((float) $submissions->avg(fn ($s) => (float) ($s->achievement_percentage ?? 0)), 1);
+        if ($pctAvg > 0 && $targetSum > 0) {
+            return round($targetSum * $pctAvg / 100, 1);
+        }
+
+        return $sum;
+    }
+
     /** @return array<string, float|int|string> */
-    private function resolveOperationalHeader(KpiCard $card, Collection $submissions): array
+    private function resolveOperationalHeader(
+        KpiCard $card,
+        Collection $submissions,
+        User $user,
+        Request $request,
+        bool $periodTotals = false,
+    ): array
     {
         $fields = $this->dashboardConfig->operationalFieldsFor($card->slug);
         $marks = (float) $card->total_marks;
+        $hasCalculatedVisitTarget = in_array($card->slug, [
+            'inspection-of-health-facilities',
+            'inspection-of-educational-institutions',
+        ], true);
 
-        $operationalTarget = $this->snapshotAverage($submissions, $fields['target']);
-        $completed = $this->snapshotAverage($submissions, $fields['completed']);
+        $inspectionAchieved = $hasCalculatedVisitTarget && $periodTotals
+            ? $this->inspectionService->countOperationalAchieved($card, $user, $request)
+            : null;
 
-        if ($operationalTarget <= 0) {
-            $operationalTarget = round((float) $submissions->avg('target_value'), 1);
+        if ($periodTotals) {
+            $operational = $this->operationalService->totals(
+                $card,
+                $submissions,
+                $user,
+                $request,
+                $fields,
+                $inspectionAchieved,
+            );
+            $operationalTarget = $operational['target'];
+            $completed = $operational['completed'];
+        } else {
+            $operationalTarget = $this->snapshotAverage($submissions, $fields['target']);
+            $completed = $this->snapshotAverage($submissions, $fields['completed']);
         }
-        if ($completed <= 0) {
-            $completed = $this->resolveAchieved($submissions, max($operationalTarget, $marks));
+
+        if ($operationalTarget <= 0 && ! $hasCalculatedVisitTarget) {
+            $operationalTarget = $periodTotals
+                ? round((float) $submissions->sum('target_value'), 1)
+                : round((float) $submissions->avg('target_value'), 1);
+        }
+        if ($completed <= 0 && ! $hasCalculatedVisitTarget) {
+            $completed = $periodTotals
+                ? $this->resolveAchievedSum($submissions)
+                : $this->resolveAchieved($submissions, max($operationalTarget, $marks));
         }
 
-        $records = max(
-            $submissions->count(),
-            (int) round((float) $submissions->sum(fn ($s) => (float) ($s->reported_value ?? 0)))
-        );
+        // Records = submitted KPI reports only (not summed activity-volume fields).
+        $records = $submissions->count();
+        $inspectionsCount = $this->inspectionService->countScopedInspections($card, $user, $request);
 
         $pct = $this->resolveAchievementPct($submissions, $completed, $operationalTarget);
         $score = $this->formula->scoreFromWeightage($pct, $marks);
@@ -321,6 +385,8 @@ class KpiDashboardService
             'operational_target' => $operationalTarget,
             'completed' => $completed,
             'records' => $records,
+            'submitted_reports' => $records,
+            'inspections_count' => $inspectionsCount,
             'achievement_percentage' => $pct,
             'score' => $score,
             'total_marks' => $marks,
@@ -348,6 +414,26 @@ class KpiDashboardService
         }
 
         return round((float) $submissions->avg(
+            fn ($submission) => (float) data_get($submission->metric_snapshot, $field, 0)
+        ), 1);
+    }
+
+    private function snapshotSum(Collection $submissions, string $field): float
+    {
+        if ($submissions->isEmpty()) {
+            return 0.0;
+        }
+
+        if ($field === 'applications_target') {
+            return round((float) $submissions->sum(function ($submission) {
+                $snapshot = $submission->metric_snapshot ?? [];
+
+                return (float) ($snapshot['pending_applications'] ?? 0)
+                    + (float) ($snapshot['applications_completed'] ?? 0);
+            }), 1);
+        }
+
+        return round((float) $submissions->sum(
             fn ($submission) => (float) data_get($submission->metric_snapshot, $field, 0)
         ), 1);
     }
@@ -415,6 +501,26 @@ class KpiDashboardService
 
     private function metricFieldSum(Collection $submissions, Collection $allValues, string $field): float
     {
+        if (in_array($field, ['total_health_facilities', 'total_institutions', 'total_institutions_count'], true)) {
+            return (float) $submissions->max(
+                fn ($submission) => (float) data_get($submission->metric_snapshot, $field, 0)
+            );
+        }
+
+        if ($field === 'facilities_not_inspected') {
+            $total = (float) $submissions->max(fn ($s) => (float) data_get($s->metric_snapshot, 'total_health_facilities', 0));
+            $visited = (float) $submissions->sum(fn ($s) => (float) data_get($s->metric_snapshot, 'facility_visits', 0));
+
+            return max(0, $total - min($total, $visited));
+        }
+
+        if ($field === 'institutions_not_inspected') {
+            $total = (float) $submissions->max(fn ($s) => (float) data_get($s->metric_snapshot, 'total_institutions', 0));
+            $visited = (float) $submissions->sum(fn ($s) => (float) data_get($s->metric_snapshot, 'institution_visits', 0));
+
+            return max(0, $total - min($total, $visited));
+        }
+
         $fromValues = (float) $allValues
             ->filter(fn ($v) => $v->field?->field_name === $field)
             ->sum(fn ($v) => (float) $v->value);

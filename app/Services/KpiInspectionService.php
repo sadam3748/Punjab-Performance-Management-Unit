@@ -13,10 +13,17 @@ use Illuminate\Support\Facades\DB;
 
 class KpiInspectionService
 {
+  /** @var list<string> */
+    private const OPERATIONAL_COUNT_STATUSES = [
+        KpiInspection::STATUS_APPROVED,
+        KpiInspection::STATUS_PENDING,
+    ];
+
     public function __construct(
         private readonly KpiScopeService $scopeService,
         private readonly KpiGeoFilterService $geoFilterService,
         private readonly KpiDashboardConfigService $dashboardConfig,
+        private readonly KpiPeriodService $periodService,
     ) {}
 
     public function applyInspectionScope(Builder $query, User $user): Builder
@@ -54,6 +61,30 @@ class KpiInspectionService
         $this->applyListFilters($query, $request, $user);
 
         return $query->with(['district:id,name', 'tehsil:id,name'])->get();
+    }
+
+    /**
+     * Operational achieved count for Health/Education header cards.
+     * Counts field inspections that count as completed work: approved + pending_review.
+     * Rejected inspections are excluded — they are not accepted completed visits.
+     */
+    public function countOperationalAchieved(KpiCard $card, User $user, Request $request): int
+    {
+        $query = $this->baseQuery($card, $user);
+        $this->applyListFilters($query, $request, $user);
+
+        return (int) $query
+            ->whereIn('status', self::OPERATIONAL_COUNT_STATUSES)
+            ->count();
+    }
+
+    /** Total scoped inspection rows in the selected period (all statuses). */
+    public function countScopedInspections(KpiCard $card, User $user, Request $request): int
+    {
+        $query = $this->baseQuery($card, $user);
+        $this->applyListFilters($query, $request, $user);
+
+        return (int) $query->count();
     }
 
     public function buildStatusCounts(KpiCard $card, User $user, Request $request): array
@@ -266,6 +297,10 @@ class KpiInspectionService
     private function applyListFilters(Builder $query, Request $request, User $user, bool $skipStatus = false): void
     {
         $this->geoFilterService->apply($query, $request, $user);
+
+        if ($request->filled('period_type')) {
+            $this->periodService->applyToQuery($query, $request, 'inspection_datetime');
+        }
 
         if (! $skipStatus && $request->filled('insp_status')) {
             $query->where('status', $request->string('insp_status')->toString());

@@ -149,6 +149,35 @@ class KpiChartService
             'values' => $data->values()->map(fn ($v) => is_numeric($v) ? (float) $v : 0)->values()->all(),
         ];
 
+        $submissionVisitTrend = $submissions
+            ->sortBy('submission_date')
+            ->groupBy(fn ($item) => $item->submission_date->format('d M'))
+            ->map(fn ($group) => (float) $group->sum(fn ($item) => (float) (
+                data_get($item->metric_snapshot, 'institution_visits')
+                ?? data_get($item->metric_snapshot, 'tandoor_inspections')
+                ?? data_get($item->metric_snapshot, 'facility_visits')
+                ?? 0
+            )))
+            ->take(14);
+
+        if ($submissionVisitTrend->isEmpty()) {
+            $submissionVisitTrend = $inspectionTrend;
+        }
+
+        $schoolCouncilActivated = $inspections->filter(
+            fn (KpiInspection $item) => in_array(strtolower((string) data_get($item->detail_data, 'school_council_activated', '')), ['yes', '1', 'true'], true)
+        )->count();
+        $schoolCouncilFromSubmissions = round(
+            (float) $submissions->avg(fn ($s) => (float) data_get($s->metric_snapshot, 'school_council_activated', 0)) * 100,
+            1
+        );
+        $schoolCouncilGauge = $inspections->isEmpty()
+            ? $schoolCouncilFromSubmissions
+            : round(($schoolCouncilActivated / max(1, $inspections->count())) * 100, 1);
+        if ($schoolCouncilGauge <= 0 && $schoolCouncilFromSubmissions > 0) {
+            $schoolCouncilGauge = $schoolCouncilFromSubmissions;
+        }
+
         return [
             'plant_inspections_trend' => $toChart($inspectionTrend),
             'inspection_trend' => $toChart($inspectionTrend),
@@ -157,7 +186,8 @@ class KpiChartService
             'filter_change_compliance' => ['labels' => ['Compliance'], 'values' => [$gaugeValue]],
             'clean_unclean_breakdown' => $toChart($this->detailFieldBreakdown($inspections, ['cleanliness_status', 'cleanliness'])),
             'clean_vs_unclean' => $toChart($this->detailFieldBreakdown($inspections, ['cleanliness_status', 'cleanliness'])),
-            'daily_inspections_trend' => $toChart($inspectionTrend),
+            'daily_inspections_trend' => $toChart($submissionVisitTrend->isNotEmpty() ? $submissionVisitTrend : $inspectionTrend),
+            'institution_visits_trend' => $toChart($submissionVisitTrend),
             'inspection_activity_trend' => $toChart($inspectionTrend),
             'terminal_inspections_trend' => $toChart($inspectionTrend),
             'market_inspections_trend' => $toChart($inspectionTrend),
@@ -200,12 +230,20 @@ class KpiChartService
                 'DC Visits' => $submissions->sum(fn ($i) => (float) data_get($i->metric_snapshot, 'dc_visits', data_get($i->metric_snapshot, 'dc_visit_completion', 0))),
                 'AC Visits' => $submissions->sum(fn ($i) => (float) data_get($i->metric_snapshot, 'ac_visits', data_get($i->metric_snapshot, 'ac_visit_completion', 0))),
             ])),
+            'facility_deficiency_breakdown' => $toChart($this->detailFieldBreakdown($inspections, ['facility_deficiency'])),
+            'school_council_activation' => ['labels' => ['Activation'], 'values' => [$schoolCouncilGauge]],
+            'issue_category_breakdown' => $toChart(collect([
+                'Cleanliness' => $submissions->sum(fn ($i) => (float) data_get($i->metric_snapshot, 'issues_cleanliness', 0)),
+                'Teacher Absence' => $submissions->sum(fn ($i) => (float) data_get($i->metric_snapshot, 'issues_teacher_absence', 0)),
+                'TLM Shortage' => $submissions->sum(fn ($i) => (float) data_get($i->metric_snapshot, 'issues_tlm_shortage', 0)),
+                'Facility Deficiency' => $submissions->sum(fn ($i) => (float) data_get($i->metric_snapshot, 'issues_facility_deficiency', 0)),
+            ])->filter(fn ($v) => $v > 0)),
             'health_issue_breakdown' => $toChart(collect([
                 'Cleanliness' => $submissions->sum(fn ($i) => (float) data_get($i->metric_snapshot, 'issues_cleanliness', 0)),
                 'Staff Absence' => $submissions->sum(fn ($i) => (float) data_get($i->metric_snapshot, 'issues_staff_absence', 0)),
                 'Medicine Shortage' => $submissions->sum(fn ($i) => (float) data_get($i->metric_snapshot, 'issues_medicine_shortage', 0)),
                 'Equipment / Utilities' => $submissions->sum(fn ($i) => (float) data_get($i->metric_snapshot, 'issues_equipment_utilities', 0)),
-            ])),
+            ])->filter(fn ($v) => $v > 0)),
             'shops_handcarts_comparison' => $toChart(collect([
                 'Shops' => $inspections->avg(fn ($i) => (float) data_get($i->detail_data, 'shops_checked', 0)) ?: 0,
                 'Handcarts' => $inspections->avg(fn ($i) => (float) data_get($i->detail_data, 'handcarts_checked', 0)) ?: 0,

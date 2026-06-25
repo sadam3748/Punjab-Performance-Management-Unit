@@ -19,6 +19,8 @@ class KpiInspectionDetailFactory
             'price-of-roti' => [
                 'violation' => $pick(['Over Price', 'Under Weight', 'Non-Availability']),
                 'fine' => $num(500, 5000),
+                'payment_status' => $pick(['Paid', 'Pending', 'PSID Generated']),
+                'psid' => 'PSID-'.str_pad((string) (10000 + $index), 6, '0', STR_PAD_LEFT),
             ],
             'price-of-plain-bakery-bread' => [
                 'violation' => $pick(['Over Price', 'Non-Availability']),
@@ -57,6 +59,7 @@ class KpiInspectionDetailFactory
                 'cleanliness' => $pick(['Good', 'Average', 'Poor']),
                 'teachers_present' => $pick(['Yes', 'Partial', 'No']),
                 'school_council_activated' => $pick(['Yes', 'No']),
+                'tlm_availability' => $pick(['Adequate', 'Partial', 'Shortage']),
                 'facility_deficiency' => $pick(['None', 'Minor', 'Major']),
             ],
             'inspection-of-health-facilities' => [

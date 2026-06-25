@@ -12,13 +12,13 @@ class PpmuDemoMetricFactory
   /** @return array{snapshot: array<string, int|float>, achievement_pct: float, remarks: string} */
   public function build(string $slug, Carbon $date, string $username, int $dayOffset, string $periodType): array
   {
-    $lahore = $username === 'ac.lahore';
+    $lahore = str_contains($username, 'lahore');
     $base = $this->basePerformance($slug, $lahore);
     $trend = $this->trendFactor($date, $dayOffset, $lahore);
     $pct = $this->boundedPerformance($base + $trend, $dayOffset);
 
     $snapshot = match ($slug) {
-      'price-of-roti' => $this->roti($pct, $dayOffset),
+      'price-of-roti' => $this->roti($pct, $dayOffset, $date, $lahore),
       'price-of-plain-bakery-bread' => $this->bread($pct, $dayOffset),
       'price-control-of-essential-commodities' => $this->priceControl($pct, $dayOffset),
       'repair-of-small-roads-in-both-urban-and-rural-areas' => $this->roads($pct, $dayOffset),
@@ -26,8 +26,8 @@ class PpmuDemoMetricFactory
       'dysfunctional-streetlights' => $this->streetlights($pct, $dayOffset),
       'covering-of-manholes' => $this->manholes($pct, $dayOffset),
       'functional-and-clean-water-filtration-plants' => $this->waterPlants($pct, $dayOffset),
-      'inspection-of-educational-institutions' => $this->schools($pct, $dayOffset, $lahore),
-      'inspection-of-health-facilities' => $this->health($pct, $dayOffset, $lahore),
+      'inspection-of-educational-institutions' => $this->schools($pct, $dayOffset, $lahore, $date),
+      'inspection-of-health-facilities' => $this->health($pct, $dayOffset, $lahore, $date),
       'violation-of-marriage-functions-act' => $this->marriage($pct, $dayOffset),
       'anti-encroachment-campaign' => $this->encroachment($pct, $dayOffset),
       'regulation-of-shops-and-handcarts' => $this->shops($pct, $dayOffset),
@@ -45,7 +45,10 @@ class PpmuDemoMetricFactory
     };
 
     return [
-      'snapshot' => $snapshot,
+      'snapshot' => $this->withScopeScale(
+        $this->withOperationalMetrics($slug, $snapshot, $pct),
+        $username
+      ),
       'achievement_pct' => $pct,
       'remarks' => $this->remarks($slug, $date, $periodType, $lahore, $pct),
     ];
@@ -122,33 +125,39 @@ class PpmuDemoMetricFactory
     };
   }
 
-  private function roti(float $pct, int $d): array
+  private function roti(float $pct, int $d, Carbon $date, bool $lahore): array
   {
-    $tier = [10, 8, 6][$d % 3];
-    $inspectors = 6 + ($d % 3);
-    $inspections = 24 + ($d % 8);
+    $tiers = [10, 8, 6];
+    $tier = $tiers[$d % 3];
+    $inspectors = $lahore ? (6 + ($d % 3)) : (4 + ($d % 2));
     $totalTarget = $inspectors * $tier;
-    $fines = max(2, (int) round($inspections * 0.16));
+    $inspections = max(8, (int) round($totalTarget * max(45, $pct) / 100));
     $violations = max(2, (int) round($inspections * 0.22));
+    $fines = max(2, (int) round($violations * 0.72));
     $complaints = max(3, (int) round($inspections * 0.12));
-    $resolved = max(2, (int) round($complaints * 0.85));
-    $validationTarget = 12 + ($d % 4);
+    $resolved = max(2, (int) round($complaints * 0.86));
+    $validationTarget = 10 + ($d % 5);
+    $validated = max(6, (int) round($validationTarget * max(70, $pct) / 100));
+    $approved = max(4, (int) round($validated * 0.8));
+    $rejected = max(1, (int) round($validated * 0.12));
 
     return [
-      'dc_weekly_review' => 1 + ($d % 2),
+      'dc_weekly_review' => ($date->dayOfWeek === Carbon::THURSDAY || $d % 7 === 0) ? 1 : 0,
       'tier_target' => $tier,
       'total_inspectors' => $inspectors,
       'inspections_total_target' => $totalTarget,
       'tandoor_inspections' => $inspections,
       'achievement_rate' => round(min(100, ($inspections / max(1, $totalTarget)) * 100), 1),
-      'coverage_mobility_index' => round(72 + ($pct - 70) * 0.4, 1),
+      'coverage_mobility_index' => round(72 + ($pct - 70) * 0.45, 1),
       'violations_found' => $violations,
       'fine_imposed' => $fines,
       'fine_imposition_rate' => round(($fines / max(1, $inspections)) * 100, 1),
       'citizen_complaints_received' => $complaints,
       'complaint_resolution_rate' => round(($resolved / max(1, $complaints)) * 100, 1),
       'validation_target' => $validationTarget,
-      'validated_inspections' => max(8, (int) round($validationTarget * 0.82)),
+      'validated_inspections' => $validated,
+      'approved_validations' => $approved,
+      'rejected_validations' => $rejected,
     ];
   }
 
@@ -246,6 +255,7 @@ class PpmuDemoMetricFactory
     $roPlants = 14;
     $ufPlants = $total - $roPlants;
     $inspect = 18 + ($d % 4);
+    $inspected = max(1, (int) round($inspect * $pct / 100));
     $functional = min($total, max(14, (int) round($total * $pct / 100)));
     $blocked = $d % 3;
     $clean = max(12, $functional - 2);
@@ -257,9 +267,9 @@ class PpmuDemoMetricFactory
       'total_ro_plants' => $roPlants,
       'total_uf_plants' => $ufPlants,
       'plants_to_inspect' => $inspect,
-      'inspected_plants' => $inspect,
-      'non_inspected_plants' => max(0, $total - $inspect),
-      'plant_coverage_rate' => round(($inspect / $total) * 100, 1),
+      'inspected_plants' => $inspected,
+      'non_inspected_plants' => max(0, $total - $inspected),
+      'plant_coverage_rate' => round(($inspected / $total) * 100, 1),
       'blocked_plants' => $blocked,
       'functional_plants' => $functional,
       'non_functional_plants' => max(0, $total - $functional),
@@ -268,61 +278,94 @@ class PpmuDemoMetricFactory
       'ro_filter_changed' => $changed,
       'ro_filter_pending' => $pending,
       'filter_change_rate' => round(($changed / max(1, $changed + $pending)) * 100, 1),
-      'approved_validations' => max(4, (int) round($inspect * 0.72)),
-      'rejected_validations' => max(1, (int) round($inspect * 0.08)),
+      'approved_validations' => max(4, (int) round($inspected * 0.72)),
+      'rejected_validations' => max(1, (int) round($inspected * 0.08)),
     ];
   }
 
-  private function schools(float $pct, int $d, bool $lahore): array
+  private function schools(float $pct, int $d, bool $lahore, Carbon $date): array
   {
-    $required = $lahore ? 28 : 24;
-    $acVisits = 4 + ($d % 3);
-    $reports = max(8, (int) round($required * $pct / 100));
+    $total = $lahore ? 156 : 112;
+    $required = $lahore ? 36 : 28;
+    $dcTarget = 2;
+    $dcVisits = min($dcTarget, 1 + ($d % 2));
+    $acTarget = 2;
+    $acVisits = min($acTarget, 1 + ($d % 2));
+    $dailyVisits = max(2, (int) round(($required / 22) * max(55, $pct) / 100));
+    $validationTarget = 10 + ($d % 4);
+    $validated = max(5, (int) round($validationTarget * max(65, $pct) / 100));
+    $approved = max(4, (int) round($validated * 0.82));
+    $rejected = max(1, (int) round($validated * 0.1));
+    $issuesClean = max(1, (int) round($dailyVisits * 0.18));
+    $issuesTeacher = max(1, (int) round($dailyVisits * 0.12));
+    $issuesTlm = max(1, (int) round($dailyVisits * 0.09));
+    $issuesFacility = max(1, (int) round($dailyVisits * 0.14));
+    $cumulative = min($total, (int) round($total * max(55, $pct) / 100 * ($date->day / max(1, $date->daysInMonth()))));
 
     return [
-      'dc_visits' => 2,
+      'total_institutions' => $total,
+      'institutions_inspected' => $dailyVisits,
+      'institutions_not_inspected' => max(0, $total - $cumulative),
+      'dc_visits' => $dcVisits,
       'ac_visits' => $acVisits,
-      'required_visits' => $required,
-      'institution_visits' => $reports,
-      'school_council_meeting' => 3 + ($d % 2),
-      'facilities_issues' => max(2, (int) round($reports * 0.15)),
+      'dc_visit_target' => $dcTarget,
+      'ac_visit_target' => $acTarget,
+      'required_visits' => max(2, (int) round($required / 22)),
+      'institution_visits' => $dailyVisits,
+      'school_council_meeting' => ($d % 5 === 0) ? 1 : 0,
+      'school_council_activated' => ($d % 3 !== 0) ? 1 : 0,
+      'issues_cleanliness' => $issuesClean,
+      'issues_teacher_absence' => $issuesTeacher,
+      'issues_tlm_shortage' => $issuesTlm,
+      'issues_facility_deficiency' => $issuesFacility,
+      'facilities_issues' => $issuesClean + $issuesTeacher + $issuesTlm + $issuesFacility,
+      'validation_target' => $validationTarget,
+      'validations_completed' => $validated,
+      'validated_inspections' => $validated,
+      'approved_validations' => $approved,
+      'rejected_validations' => $rejected,
+      'achievement_rate' => round(min(100, ($dailyVisits / max(1, (int) round($required / 22))) * 100), 1),
       'compliance_rate' => round($pct, 1),
     ];
   }
 
-  private function health(float $pct, int $d, bool $lahore): array
+  private function health(float $pct, int $d, bool $lahore, Carbon $date): array
   {
-    $total = $lahore ? 32 : 24;
-    $required = $lahore ? 22 : 18;
-    $visits = min($total, max(6, (int) round($required * $pct / 100)));
+    $total = $lahore ? 48 : 34;
+    $required = $lahore ? 28 : 20;
+    $dailyVisits = max(2, (int) round(($required / 22) * max(55, $pct) / 100));
     $dcTarget = 2;
     $dcVisits = min($dcTarget, 1 + ($d % 2));
-    $acTarget = 4;
-    $acVisits = min($acTarget, 3 + ($d % 2));
-    $validationTarget = 12 + ($d % 4);
-    $validated = max(5, (int) round($validationTarget * $pct / 100));
+    $acTarget = 2;
+    $acVisits = min($acTarget, 1 + ($d % 2));
+    $validationTarget = 10 + ($d % 4);
+    $validated = max(5, (int) round($validationTarget * max(65, $pct) / 100));
+    $approved = max(4, (int) round($validated * 0.84));
+    $rejected = max(1, (int) round($validated * 0.1));
+    $cumulative = min($total, (int) round($total * max(55, $pct) / 100 * ($date->day / max(1, $date->daysInMonth()))));
 
     return [
       'total_health_facilities' => $total,
       'dc_visits' => $dcVisits,
       'ac_visits' => $acVisits,
-      'required_visits' => $required,
-      'facility_visits' => $visits,
-      'facilities_not_inspected' => max(0, $total - $visits),
-      'dc_visit_completion' => round(($dcVisits / $dcTarget) * 100, 1),
-      'ac_visit_completion' => round(($acVisits / $acTarget) * 100, 1),
-      'health_council_meeting' => 2,
-      'sb_points' => 5 + ($d % 3),
-      'issues_resolved' => max(3, (int) round($visits * 0.7)),
-      'compliance_rate' => round($pct, 1),
-      'issues_cleanliness' => max(1, (int) round($visits * 0.12)),
-      'issues_staff_absence' => max(1, (int) round($visits * 0.08)),
-      'issues_medicine_shortage' => max(1, (int) round($visits * 0.07)),
-      'issues_equipment_utilities' => max(1, (int) round($visits * 0.1)),
+      'dc_visit_target' => $dcTarget,
+      'ac_visit_target' => $acTarget,
+      'required_visits' => max(2, (int) round($required / 22)),
+      'facility_visits' => $dailyVisits,
+      'facilities_not_inspected' => max(0, $total - $cumulative),
+      'dc_visit_completion' => round(($dcVisits / max(1, $dcTarget)) * 100, 1),
+      'ac_visit_completion' => round(($acVisits / max(1, $acTarget)) * 100, 1),
+      'health_council_meeting' => ($d % 6 === 0) ? 1 : 0,
+      'issues_cleanliness' => max(1, (int) round($dailyVisits * 0.14)),
+      'issues_staff_absence' => max(1, (int) round($dailyVisits * 0.1)),
+      'issues_medicine_shortage' => max(1, (int) round($dailyVisits * 0.08)),
+      'issues_equipment_utilities' => max(1, (int) round($dailyVisits * 0.11)),
       'validation_target' => $validationTarget,
+      'validations_completed' => $validated,
       'validated_inspections' => $validated,
-      'approved_validations' => max(4, (int) round($validated * 0.82)),
-      'rejected_validations' => max(1, (int) round($validated * 0.1)),
+      'approved_validations' => $approved,
+      'rejected_validations' => $rejected,
+      'compliance_rate' => round($pct, 1),
     ];
   }
 
@@ -523,6 +566,77 @@ class PpmuDemoMetricFactory
       'actions_taken' => max(4, (int) round(12 * $pct / 100)),
       'compliance_rate' => round($pct, 1),
     ];
+  }
+
+  /** @param array<string, int|float> $snapshot */
+  private function withOperationalMetrics(string $slug, array $snapshot, float $pct): array
+  {
+    [$target, $completed] = match ($slug) {
+      'price-of-roti' => [$snapshot['inspections_total_target'], $snapshot['tandoor_inspections']],
+      'price-of-plain-bakery-bread' => [$this->targetFromCompleted($snapshot['bread_inspections'], $pct), $snapshot['bread_inspections']],
+      'price-control-of-essential-commodities' => [$this->targetFromCompleted($snapshot['market_inspections'], $pct), $snapshot['market_inspections']],
+      'repair-of-small-roads-in-both-urban-and-rural-areas' => [$snapshot['weekly_road_target'], $snapshot['repair_completed']],
+      'zebra-crossings' => [$snapshot['schools_to_inspect'], $snapshot['schools_inspected']],
+      'dysfunctional-streetlights' => [$snapshot['sb_reported'], $snapshot['repairs_completed']],
+      'covering-of-manholes' => [$snapshot['manholes_identified'], $snapshot['covers_installed']],
+      'functional-and-clean-water-filtration-plants' => [$snapshot['plants_to_inspect'], $snapshot['inspected_plants']],
+      'inspection-of-educational-institutions' => [
+        $snapshot['required_visits'],
+        round($snapshot['required_visits'] * $pct / 100, 1),
+      ],
+      'inspection-of-health-facilities' => [
+        $snapshot['required_visits'],
+        round($snapshot['required_visits'] * $pct / 100, 1),
+      ],
+      'violation-of-marriage-functions-act' => [$this->targetFromCompleted($snapshot['marriage_hall_inspections'], $pct), $snapshot['marriage_hall_inspections']],
+      'anti-encroachment-campaign' => [$snapshot['daily_market_target'], $snapshot['encroachments_removed']],
+      'regulation-of-shops-and-handcarts' => [$this->targetFromCompleted($snapshot['markets_inspected'], $pct), $snapshot['markets_inspected']],
+      'stray-dogs' => [$snapshot['target_ucs'], $snapshot['uc_activities']],
+      'removal-of-wall-chalking' => [$snapshot['sites_identified'], $snapshot['removal_done']],
+      'graveyards' => [$snapshot['weekly_target'], $snapshot['graveyards_cleared']],
+      'e-biz' => [$snapshot['pending_applications'] + $snapshot['applications_completed'], $snapshot['applications_completed']],
+      'illegal-decanting' => [$this->targetFromCompleted($snapshot['stations_inspected'], $pct), $snapshot['stations_inspected']],
+      'suthra-punjab-campaign' => [
+        $this->targetFromCompleted($snapshot['dc_inspections'] + $snapshot['ac_uc_inspections'], $pct),
+        $snapshot['dc_inspections'] + $snapshot['ac_uc_inspections'],
+      ],
+      'maintenance-of-greenbelts' => [$snapshot['total_parks'], $snapshot['parks_maintained']],
+      'maintenance-of-drains-and-sewerage-lines' => [$snapshot['blockages_reported'], $snapshot['blockages_cleared']],
+      'bus-terminals' => [$snapshot['required_visits'], $snapshot['ac_visits']],
+      'chief-ministers-complaint-cell' => [$snapshot['complaints_received'], $snapshot['complaints_resolved']],
+      default => [$this->targetFromCompleted($snapshot['inspections'], $pct), $snapshot['inspections']],
+    };
+
+    $snapshot['operational_target'] = max(1, (int) round($target));
+    $snapshot['operational_completed'] = round(max(0, min(
+      $snapshot['operational_target'],
+      $completed
+    )), 1);
+
+    return $snapshot;
+  }
+
+  private function targetFromCompleted(int|float $completed, float $pct): int
+  {
+    return max(1, (int) ceil($completed / max(.45, min(.95, $pct / 100))));
+  }
+
+  /** @param array<string, int|float> $snapshot */
+  private function withScopeScale(array $snapshot, string $username): array
+  {
+    $multiplier = match (true) {
+      str_starts_with($username, 'dc.lahore') => 6,
+      str_starts_with($username, 'dc.layyah') => 4,
+      str_starts_with($username, 'com.lahore') => 20,
+      str_starts_with($username, 'com.dgkhan') => 16,
+      in_array($username, ['cs.pmru', 'super_admin'], true) => 60,
+      default => 1,
+    };
+
+    $snapshot['operational_target'] *= $multiplier;
+    $snapshot['operational_completed'] *= $multiplier;
+
+    return $snapshot;
   }
 
   private function remarks(string $slug, Carbon $date, string $periodType, bool $lahore, float $pct): string

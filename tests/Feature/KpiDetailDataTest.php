@@ -37,7 +37,7 @@ class KpiDetailDataTest extends TestCase
             ->assertSee('KPI Performance Cards')
             ->assertSee('Visit Target')
             ->assertSee('Visits Completed')
-            ->assertSee('Records')
+            ->assertDontSee('data-stat="reported"', false)
             ->assertSee('KPI Score')
             ->assertSee('Progress')
             ->assertSee('Total Health Facilities')
@@ -52,13 +52,49 @@ class KpiDetailDataTest extends TestCase
             $count = $card->submissions()->count();
             if (app()->environment('testing')) {
                 $this->assertGreaterThanOrEqual(20, $count, "KPI {$card->slug} should have test submissions");
-                $this->assertLessThanOrEqual(40, $count, "KPI {$card->slug} should not be over-seeded in tests");
+                $priority = in_array($card->slug, [
+                    'price-of-roti',
+                    'inspection-of-educational-institutions',
+                    'inspection-of-health-facilities',
+                    'functional-and-clean-water-filtration-plants',
+                    'chief-ministers-complaint-cell',
+                    'e-biz',
+                ], true);
+                $this->assertLessThanOrEqual(
+                    $priority ? 100 : 40,
+                    $count,
+                    "KPI {$card->slug} should not be over-seeded in tests"
+                );
 
                 return;
             }
 
             $this->assertGreaterThanOrEqual(50, $count, "KPI {$card->slug} should have enough submissions");
-            $this->assertLessThanOrEqual(60, $count, "KPI {$card->slug} should not be over-seeded");
+            $this->assertLessThanOrEqual(130, $count, "KPI {$card->slug} should not be over-seeded");
         });
+    }
+
+    public function test_priority_kpi_chart_definitions_have_populated_data(): void
+    {
+        $this->seed(PpmuSeeder::class);
+        $admin = User::where('username', 'super_admin')->firstOrFail();
+        $dashboard = app(KpiDashboardService::class);
+
+        foreach ([
+            'price-of-roti',
+            'inspection-of-health-facilities',
+            'inspection-of-educational-institutions',
+            'functional-and-clean-water-filtration-plants',
+            'chief-ministers-complaint-cell',
+            'e-biz',
+        ] as $slug) {
+            $card = KpiCard::where('slug', $slug)->firstOrFail();
+            $data = $dashboard->detail($card, $admin, Request::create('/'));
+
+            foreach ($data['charts']['definitions'] as $definition) {
+                $this->assertNotEmpty($definition['data']['labels'], "{$slug}: {$definition['key']} labels");
+                $this->assertNotEmpty($definition['data']['values'], "{$slug}: {$definition['key']} values");
+            }
+        }
     }
 }

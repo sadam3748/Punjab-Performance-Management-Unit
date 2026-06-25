@@ -11,7 +11,25 @@ class KpiInspectionSeeder extends Seeder
 {
     private const PER_KPI = 15;
 
-    private const LAHORE = [
+    private const PRIORITY_PER_KPI = 32;
+
+    /** @var list<string> */
+    private const VISIT_KPI_SLUGS = [
+        'inspection-of-educational-institutions',
+        'inspection-of-health-facilities',
+    ];
+
+    /** @var list<string> */
+    private const PRIORITY_SLUGS = [
+        'price-of-roti',
+        'inspection-of-educational-institutions',
+        'inspection-of-health-facilities',
+        'functional-and-clean-water-filtration-plants',
+        'chief-ministers-complaint-cell',
+        'e-biz',
+    ];
+
+    private const LAHORE_CITY = [
         'division_id' => 6,
         'district_id' => 23,
         'tehsil_id' => 81,
@@ -21,6 +39,19 @@ class KpiInspectionSeeder extends Seeder
         'tehsil_name' => 'Lahore City',
         'district_name' => 'Lahore',
     ];
+
+    private const LAHORE_CANTT = [
+        'division_id' => 6,
+        'district_id' => 23,
+        'tehsil_id' => 82,
+        'lat' => 31.5320,
+        'lng' => 74.3420,
+        'area' => 'Lahore',
+        'tehsil_name' => 'Lahore Cantonment',
+        'district_name' => 'Lahore',
+    ];
+
+    private const LAHORE = self::LAHORE_CITY;
 
     private const LAYYAH = [
         'division_id' => 2,
@@ -51,16 +82,31 @@ class KpiInspectionSeeder extends Seeder
         $now = now();
 
         foreach ($cards as $cardIndex => $card) {
+            if (in_array($card->slug, self::VISIT_KPI_SLUGS, true)) {
+                [$visitRows, $visitAttachments] = $this->buildVisitKpiInspections(
+                    $card,
+                    $users,
+                    $refCounter,
+                    $now,
+                    $batch
+                );
+                $inspectionRows = array_merge($inspectionRows, $visitRows);
+                $attachmentPlan = array_merge($attachmentPlan, $visitAttachments);
+
+                continue;
+            }
+
             $statuses = $this->statusSequence();
             $entities = $this->entitiesForSlug($card->slug, $card->title);
+            $perKpi = in_array($card->slug, self::PRIORITY_SLUGS, true) ? self::PRIORITY_PER_KPI : self::PER_KPI;
 
-            foreach (range(0, self::PER_KPI - 1) as $i) {
-                $side = $i < 6 ? self::LAHORE : self::LAYYAH;
-                $inspector = $users->get($i % 2 === 0 ? ($side === self::LAHORE ? 'ac.lahore' : 'ac.layyah') : ($side === self::LAHORE ? 'dc.lahore' : 'dc.layyah'));
-                $reviewer = $users->get($side === self::LAHORE ? 'dc.lahore' : 'dc.layyah');
+            foreach (range(0, $perKpi - 1) as $i) {
+                $side = $this->sideForIndex($i, $card->slug);
+                $inspector = $users->get($i % 2 === 0 ? ($side['tehsil_id'] === self::LAYYAH['tehsil_id'] ? 'ac.layyah' : 'ac.lahore') : ($side['tehsil_id'] === self::LAYYAH['tehsil_id'] ? 'dc.layyah' : 'dc.lahore'));
+                $reviewer = $users->get($side['tehsil_id'] === self::LAYYAH['tehsil_id'] ? 'dc.layyah' : 'dc.lahore');
 
-                $status = $statuses[$i];
-                $inspectedAt = $now->copy()->subDays($i % 21)->setTime(9 + ($i % 6), 15 * ($i % 4), 0);
+                $status = $statuses[$i % count($statuses)];
+                $inspectedAt = $this->inspectionDateForIndex($i, $perKpi, in_array($card->slug, self::PRIORITY_SLUGS, true));
                 $entity = $entities[$i % count($entities)];
                 $reference = sprintf('INSP-%s-%06d', $now->format('Y'), $refCounter++);
 
@@ -183,10 +229,10 @@ class KpiInspectionSeeder extends Seeder
     private function statusSequence(): array
     {
         return [
-            'pending_review', 'approved', 'approved', 'pending_review',
-            'approved', 'rejected', 'pending_review', 'approved',
-            'approved', 'rejected', 'pending_review', 'approved',
-            'pending_review', 'approved', 'rejected',
+            'approved', 'approved', 'pending_review', 'approved', 'rejected',
+            'approved', 'pending_review', 'approved', 'approved', 'pending_review',
+            'approved', 'rejected', 'approved', 'pending_review', 'approved',
+            'approved', 'rejected', 'approved', 'pending_review', 'approved',
         ];
     }
 
@@ -201,17 +247,23 @@ class KpiInspectionSeeder extends Seeder
         ];
 
         $specific = match ($slug) {
-            'inspection-of-health-facilities' => [
-                ['title' => 'DHQ Hospital Inspection', 'name' => 'DHQ Hospital', 'type' => 'Hospital', 'id' => 'HSP-101', 'address' => 'Hospital Road'],
-                ['title' => 'RHC Field Visit', 'name' => 'Rural Health Center', 'type' => 'Health Facility', 'id' => 'HSP-118', 'address' => 'Tehsil Road'],
-            ],
-            'inspection-of-educational-institutions' => [
-                ['title' => 'Govt High School Visit', 'name' => 'Govt High School', 'type' => 'School', 'id' => 'EDU-201', 'address' => 'Education Avenue'],
-                ['title' => 'Primary School Inspection', 'name' => 'Govt Primary School', 'type' => 'School', 'id' => 'EDU-214', 'address' => 'Model Town'],
-            ],
             'price-of-roti' => [
                 ['title' => 'Tandoor Price Inspection', 'name' => 'Main Bazaar Tandoor', 'type' => 'Tandoor', 'id' => 'TN-301', 'address' => 'Food Street'],
                 ['title' => 'Roti Price Compliance', 'name' => 'Community Tandoor', 'type' => 'Tandoor', 'id' => 'TN-309', 'address' => 'Market Lane'],
+                ['title' => 'Hotel Roti Check', 'name' => 'City Hotel Kitchen', 'type' => 'Hotel', 'id' => 'HT-412', 'address' => 'Mall Road'],
+                ['title' => 'Shop Inspection', 'name' => 'Anarkali Roti Shop', 'type' => 'Shop', 'id' => 'SH-518', 'address' => 'Anarkali Bazaar'],
+            ],
+            'inspection-of-educational-institutions' => [
+                ['title' => 'Govt High School Visit', 'name' => 'Govt High School Model Town', 'type' => 'School', 'id' => 'EDU-201', 'address' => 'Education Avenue'],
+                ['title' => 'Primary School Inspection', 'name' => 'Govt Primary School Gulberg', 'type' => 'School', 'id' => 'EDU-214', 'address' => 'Model Town'],
+                ['title' => 'College Monitoring', 'name' => 'Govt Degree College', 'type' => 'College', 'id' => 'EDU-228', 'address' => 'College Road'],
+                ['title' => 'School Council Review', 'name' => 'Govt Girls High School', 'type' => 'School', 'id' => 'EDU-241', 'address' => 'Civil Lines'],
+            ],
+            'inspection-of-health-facilities' => [
+                ['title' => 'DHQ Hospital Inspection', 'name' => 'DHQ Hospital', 'type' => 'Hospital', 'id' => 'HSP-101', 'address' => 'Hospital Road'],
+                ['title' => 'RHC Field Visit', 'name' => 'Rural Health Center', 'type' => 'RHC', 'id' => 'HSP-118', 'address' => 'Tehsil Road'],
+                ['title' => 'BHU Inspection', 'name' => 'Basic Health Unit Township', 'type' => 'BHU', 'id' => 'HSP-132', 'address' => 'Township'],
+                ['title' => 'Dispensary Check', 'name' => 'Govt Dispensary', 'type' => 'Dispensary', 'id' => 'HSP-145', 'address' => 'Health Avenue'],
             ],
             default => [],
         };
@@ -267,5 +319,167 @@ class KpiInspectionSeeder extends Seeder
             $side['tehsil_name'],
             $side['district_name']
         );
+    }
+
+    /** @return array<string, mixed> */
+    private function sideForIndex(int $i, string $slug): array
+    {
+        if (in_array($slug, self::PRIORITY_SLUGS, true)) {
+            return match ($i % 4) {
+                0, 1 => self::LAHORE_CITY,
+                2 => self::LAHORE_CANTT,
+                default => self::LAYYAH,
+            };
+        }
+
+        return $i < 6 ? self::LAHORE : self::LAYYAH;
+    }
+
+    private function inspectionDateForIndex(int $i, int $perKpi, bool $priority): Carbon
+    {
+        $now = now();
+        if (! $priority) {
+            return match (true) {
+                $i === 0 => $now->copy()->setTime(9, 0),
+                $i < 5 => $now->copy()->subDays($i % 7)->setTime(9 + ($i % 6), 15 * ($i % 4), 0),
+                $i < 10 => $now->copy()->subDays(8 + ($i % 18))->setTime(10 + ($i % 4), 10 * ($i % 5), 0),
+                default => $now->copy()->subMonths(1 + ($i % max(1, min(5, $now->month))))
+                    ->subDays($i % 12)
+                    ->setTime(9 + ($i % 6), 20 * ($i % 3), 0),
+            };
+        }
+
+        $ratio = $perKpi > 1 ? $i / max(1, $perKpi - 1) : 0;
+
+        if ($ratio < 0.15) {
+            return $now->copy()->setTime(9 + ($i % 5), 10 * ($i % 6), 0);
+        }
+
+        if ($ratio < 0.45) {
+            return $now->copy()->subDays($i % 7)->setTime(10 + ($i % 4), 12 * ($i % 5), 0);
+        }
+
+        if ($ratio < 0.75) {
+            return $now->copy()->subDays(8 + ($i % 18))->setTime(11 + ($i % 3), 8 * ($i % 6), 0);
+        }
+
+        return $now->copy()->subMonths(1 + ($i % 4))->subDays($i % 12)->setTime(9 + ($i % 6), 20 * ($i % 3), 0);
+    }
+
+    /**
+     * @return array{0: list<array<string, mixed>>, 1: list<array<string, mixed>>}
+     */
+    private function buildVisitKpiInspections(object $card, $users, int &$refCounter, Carbon $now, string $batch): array
+    {
+        $statuses = $this->statusSequence();
+        $entities = $this->entitiesForSlug($card->slug, $card->title);
+        $tehsilPlan = [
+            ['tehsil_id' => 81, 'district_id' => 23, 'division_id' => 6, 'count' => 14, 'tehsil_name' => 'Lahore City', 'district_name' => 'Lahore', 'lat' => 31.5204, 'lng' => 74.3587],
+            ['tehsil_id' => 82, 'district_id' => 23, 'division_id' => 6, 'count' => 8, 'tehsil_name' => 'Lahore Cantonment', 'district_name' => 'Lahore', 'lat' => 31.5320, 'lng' => 74.3420],
+            ['tehsil_id' => 83, 'district_id' => 23, 'division_id' => 6, 'count' => 5, 'tehsil_name' => 'Model Town', 'district_name' => 'Lahore', 'lat' => 31.4834, 'lng' => 74.3250],
+            ['tehsil_id' => 84, 'district_id' => 23, 'division_id' => 6, 'count' => 4, 'tehsil_name' => 'Raiwind', 'district_name' => 'Lahore', 'lat' => 31.2484, 'lng' => 74.2203],
+            ['tehsil_id' => 85, 'district_id' => 23, 'division_id' => 6, 'count' => 4, 'tehsil_name' => 'Shalimar', 'district_name' => 'Lahore', 'lat' => 31.5870, 'lng' => 74.3805],
+            ['tehsil_id' => 24, 'district_id' => 7, 'division_id' => 2, 'count' => 11, 'tehsil_name' => 'Layyah', 'district_name' => 'Layyah', 'lat' => 30.9617, 'lng' => 70.9397],
+        ];
+
+        $rows = [];
+        $attachments = [];
+        $globalIndex = 0;
+
+        foreach ($tehsilPlan as $plan) {
+            $side = [
+                'division_id' => $plan['division_id'],
+                'district_id' => $plan['district_id'],
+                'tehsil_id' => $plan['tehsil_id'],
+                'tehsil_name' => $plan['tehsil_name'],
+                'district_name' => $plan['district_name'],
+                'lat' => $plan['lat'],
+                'lng' => $plan['lng'],
+            ];
+            $inspectorUsername = $plan['tehsil_id'] === 24 ? 'ac.layyah' : 'ac.lahore';
+            $reviewerUsername = $plan['tehsil_id'] === 24 ? 'dc.layyah' : 'dc.lahore';
+            $inspector = $users->get($inspectorUsername);
+            $reviewer = $users->get($reviewerUsername);
+
+            for ($i = 0; $i < $plan['count']; $i++) {
+                $status = $statuses[$globalIndex % count($statuses)];
+                $inspectedAt = $this->visitInspectionDateForIndex($globalIndex, $plan['count']);
+                $entity = $entities[$globalIndex % count($entities)];
+                $reference = sprintf('INSP-%s-%06d', $now->format('Y'), $refCounter++);
+                $detailData = \Database\Seeders\Support\KpiInspectionDetailFactory::forSlug($card->slug, $globalIndex);
+                $location = $this->locationFor($side, $globalIndex);
+                $fullAddress = $this->fullAddress($side, $entity, $location);
+
+                $rows[] = [
+                    'uuid' => (string) Str::uuid(),
+                    'reference_no' => $reference,
+                    'kpi_card_id' => $card->id,
+                    'kpi_submission_id' => null,
+                    'division_id' => $side['division_id'],
+                    'district_id' => $side['district_id'],
+                    'tehsil_id' => $side['tehsil_id'],
+                    'inspected_by' => $inspector?->id,
+                    'reviewed_by' => $status === 'pending_review' ? null : $reviewer?->id,
+                    'inspection_title' => $entity['title'],
+                    'entity_name' => $entity['name'],
+                    'entity_type' => $entity['type'],
+                    'identifier' => $entity['id'].'-'.$plan['tehsil_id'],
+                    'address' => $fullAddress,
+                    'latitude' => $location['lat'],
+                    'longitude' => $location['lng'],
+                    'inspection_datetime' => $inspectedAt,
+                    'status' => $status,
+                    'observations' => json_encode([
+                        'Field verification completed at '.$entity['name'].'.',
+                        'Compliance indicators reviewed against '.$card->title.' standards.',
+                    ]),
+                    'actions_required' => json_encode($status === 'rejected'
+                        ? ['Re-inspection required within 7 days.']
+                        : ['Continue routine monitoring during current reporting week.']),
+                    'actions_taken' => json_encode($status !== 'pending_review'
+                        ? ['Evidence uploaded and checklist completed.']
+                        : ['Preliminary site visit completed.']),
+                    'detail_data' => json_encode($detailData),
+                    'review_remarks' => $status === 'approved' ? 'Inspection evidence verified and accepted.' : null,
+                    'rejection_reason' => $status === 'rejected' ? 'Evidence incomplete or compliance below required threshold.' : null,
+                    'reviewed_at' => $status === 'pending_review' ? null : $inspectedAt->copy()->addHours(6),
+                    'is_demo' => true,
+                    'seed_batch' => $batch,
+                    'created_at' => $inspectedAt,
+                    'updated_at' => $status === 'pending_review' ? $inspectedAt : $inspectedAt->copy()->addHours(6),
+                ];
+
+                $attachments[] = [
+                    'reference_no' => $reference,
+                    'slug' => $card->slug,
+                    'count' => 1 + ($globalIndex % 2),
+                    'ts' => $inspectedAt,
+                ];
+
+                $globalIndex++;
+            }
+        }
+
+        return [$rows, $attachments];
+    }
+
+    private function visitInspectionDateForIndex(int $index, int $tehsilTotal): Carbon
+    {
+        $now = now();
+        $ratio = $tehsilTotal > 1 ? ($index % $tehsilTotal) / max(1, $tehsilTotal - 1) : 0;
+
+        if ($ratio < 0.18) {
+            return $now->copy()->setTime(9 + ($index % 4), 15 * ($index % 4), 0);
+        }
+
+        if ($ratio < 0.50) {
+            return $now->copy()->subDays($index % 6)->setTime(10 + ($index % 3), 12 * ($index % 5), 0);
+        }
+
+        if ($ratio < 0.78) {
+            return $now->copy()->subDays(7 + ($index % 16))->setTime(11 + ($index % 2), 8 * ($index % 6), 0);
+        }
+
+        return $now->copy()->subMonths(1 + ($index % 3))->subDays($index % 10)->setTime(9 + ($index % 5), 20 * ($index % 3), 0);
     }
 }

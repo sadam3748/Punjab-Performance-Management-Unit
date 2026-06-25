@@ -83,17 +83,23 @@
             <dl class="ppmu-info-grid ppmu-info-grid-balanced mb-0">
                 <div class="ppmu-info-item ppmu-info-item-wide"><dt>Full Address</dt><dd class="ppmu-address-text">{{ $inspection->address ?? '—' }}</dd></div>
                 <div class="ppmu-info-item"><dt>Tehsil</dt><dd>{{ $inspection->tehsil?->name ?? '—' }}</dd></div>
-                <div class="ppmu-info-item"><dt>Latitude</dt><dd>{{ $inspection->latitude ?? '—' }}</dd></div>
-                <div class="ppmu-info-item"><dt>Longitude</dt><dd>{{ $inspection->longitude ?? '—' }}</dd></div>
+                <div class="ppmu-info-item ppmu-coordinate-info-item">
+                    <dt>Coordinates</dt>
+                    <dd class="ppmu-coordinate-values">
+                        <span><small>Latitude</small>{{ $inspection->latitude ?? '—' }}</span>
+                        <span><small>Longitude</small>{{ $inspection->longitude ?? '—' }}</span>
+                    </dd>
+                </div>
             </dl>
         </div>
     </div>
 </div>
 
 @if(!empty($detailFields))
+    @php $detailFieldCount = count($detailFields); @endphp
     <div class="card-ppmf ppmu-inspection-panel mt-3">
         <h3><i class="bi bi-list-check"></i> KPI-Specific Details</h3>
-        <div class="ppmu-kpi-specific-grid">
+        <div class="ppmu-kpi-specific-grid ppmu-kpi-specific-grid-count-{{ $detailFieldCount }}">
             @foreach($detailFields as $field)
                 @php
                     $fieldKey = $field['field'];
@@ -115,9 +121,10 @@
         </div>
     </div>
 @elseif(!empty($inspection->detail_data))
+    @php $detailFieldCount = count($inspection->detail_data); @endphp
     <div class="card-ppmf ppmu-inspection-panel mt-3">
         <h3><i class="bi bi-list-check"></i> KPI-Specific Details</h3>
-        <div class="ppmu-kpi-specific-grid">
+        <div class="ppmu-kpi-specific-grid ppmu-kpi-specific-grid-count-{{ $detailFieldCount }}">
             @foreach($inspection->detail_data as $key => $value)
                 <div class="ppmu-inspection-detail-item ppmu-kpi-specific-card tone-{{ ['green','blue','purple','orange','red','yellow'][$loop->index % 6] }}">
                     <div class="ppmu-kpi-specific-icon">
@@ -244,25 +251,31 @@
     </div>
 
     @if($inspection->isPending() && $canReview)
-        <div class="ppmu-review-actions">
-            <div class="ppmu-review-action-card ppmu-review-approve">
-                <form method="POST" action="{{ route('kpi.inspections.approve', [$kpiCard, $inspection]) }}" class="ppmu-review-form">
-                    @csrf
-                    <label class="form-label">Approval remarks <span>Optional</span></label>
-                    <textarea name="review_remarks" class="form-control form-control-sm" rows="3" placeholder="Add concise approval remarks">{{ old('review_remarks') }}</textarea>
-                    <button type="submit" class="btn ppmu-review-btn ppmu-review-btn-approve"><i class="bi bi-check-circle-fill"></i> Approve Inspection</button>
-                </form>
+        <form method="POST" action="{{ route('kpi.inspections.approve', [$kpiCard, $inspection]) }}" class="ppmu-review-form ppmu-review-form-shared">
+            @csrf
+            <label class="form-label" for="inspection-review-remarks">
+                Remarks
+                <span>Optional for approval, required for rejection</span>
+            </label>
+            <textarea
+                id="inspection-review-remarks"
+                name="remarks"
+                class="form-control form-control-sm @error('rejection_reason') is-invalid @enderror"
+                rows="3"
+                placeholder="Add review remarks or explain what must be corrected">{{ old('remarks', old('review_remarks', old('rejection_reason'))) }}</textarea>
+            @error('rejection_reason')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+            <div class="ppmu-review-buttons">
+                <button type="submit" class="btn ppmu-review-btn ppmu-review-btn-approve">
+                    <i class="bi bi-check-circle-fill"></i> Approve Inspection
+                </button>
+                <button
+                    type="submit"
+                    formaction="{{ route('kpi.inspections.reject', [$kpiCard, $inspection]) }}"
+                    class="btn ppmu-review-btn ppmu-review-btn-reject">
+                    <i class="bi bi-x-circle-fill"></i> Reject Inspection
+                </button>
             </div>
-            <div class="ppmu-review-action-card ppmu-review-reject">
-                <form method="POST" action="{{ route('kpi.inspections.reject', [$kpiCard, $inspection]) }}" class="ppmu-review-form">
-                    @csrf
-                    <label class="form-label">Rejection reason <span>Required</span></label>
-                    <textarea name="rejection_reason" class="form-control form-control-sm @error('rejection_reason') is-invalid @enderror" rows="3" required placeholder="Explain what must be corrected">{{ old('rejection_reason') }}</textarea>
-                    @error('rejection_reason')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
-                    <button type="submit" class="btn ppmu-review-btn ppmu-review-btn-reject"><i class="bi bi-x-circle-fill"></i> Reject Inspection</button>
-                </form>
-            </div>
-        </div>
+        </form>
     @else
         <div class="ppmu-review-decision">
             <p><strong>Status:</strong> <span class="badge rounded-pill text-bg-{{ $inspection->statusClass() }}">{{ $inspection->statusLabel() }}</span></p>
