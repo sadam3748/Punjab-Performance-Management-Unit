@@ -393,8 +393,8 @@ class KpiInspectionSeeder extends Seeder
             ['tehsil_id' => 83, 'district_id' => 23, 'division_id' => 6, 'count' => 5, 'tehsil_name' => 'Model Town', 'district_name' => 'Lahore', 'lat' => 31.4834, 'lng' => 74.3250],
             ['tehsil_id' => 84, 'district_id' => 23, 'division_id' => 6, 'count' => 4, 'tehsil_name' => 'Raiwind', 'district_name' => 'Lahore', 'lat' => 31.2484, 'lng' => 74.2203],
             ['tehsil_id' => 85, 'district_id' => 23, 'division_id' => 6, 'count' => 4, 'tehsil_name' => 'Shalimar', 'district_name' => 'Lahore', 'lat' => 31.5870, 'lng' => 74.3805],
-            ['tehsil_id' => 24, 'district_id' => 7, 'division_id' => 2, 'count' => 12, 'tehsil_name' => 'Layyah', 'district_name' => 'Layyah', 'lat' => 30.9617, 'lng' => 70.9397, 'inspector' => 'ac.layyah'],
-            ['tehsil_id' => 25, 'district_id' => 7, 'division_id' => 2, 'count' => 10, 'tehsil_name' => 'Karor Lal Esan', 'district_name' => 'Layyah', 'lat' => 30.9520, 'lng' => 70.9280, 'inspector' => 'ac.karor'],
+            ['tehsil_id' => 24, 'district_id' => 7, 'division_id' => 2, 'count' => 11, 'tehsil_name' => 'Layyah', 'district_name' => 'Layyah', 'lat' => 30.9617, 'lng' => 70.9397, 'inspector' => 'ac.layyah'],
+            ['tehsil_id' => 25, 'district_id' => 7, 'division_id' => 2, 'count' => 7, 'tehsil_name' => 'Karor Lal Esan', 'district_name' => 'Layyah', 'lat' => 30.9520, 'lng' => 70.9280, 'inspector' => 'ac.karor'],
         ];
 
         $rows = [];
@@ -508,8 +508,8 @@ class KpiInspectionSeeder extends Seeder
     private function demoTehsilStatusPlan(int $tehsilId): ?array
     {
         return match ($tehsilId) {
-            24 => ['approved', 'approved', 'approved', 'approved', 'approved', 'approved', 'pending_review', 'pending_review', 'rejected', 'approved', 'approved', 'pending_review'],
-            25 => ['approved', 'approved', 'approved', 'approved', 'pending_review', 'rejected', 'approved', 'approved', 'pending_review', 'approved'],
+            24 => ['approved', 'approved', 'approved', 'approved', 'approved', 'approved', 'approved', 'approved', 'pending_review', 'pending_review', 'rejected'],
+            25 => ['approved', 'approved', 'approved', 'approved', 'approved', 'pending_review', 'rejected'],
             81 => ['approved', 'approved', 'approved', 'approved', 'approved', 'approved', 'approved', 'pending_review', 'pending_review', 'rejected'],
             default => null,
         };
@@ -640,8 +640,8 @@ class KpiInspectionSeeder extends Seeder
         $period = app(\App\Services\KpiPeriodService::class);
         $range = $period->getWeekDateRange($period->currentWeekNo());
         $start = $range['start'] ?? now()->startOfDay();
-        $dayOffset = min(6, $index % 7);
+        $dayOffset = min(5, $index % 6);
 
-        return $start->copy()->addDays($dayOffset)->setTime(9 + ($index % 4), 15 * ($index % 4), 0);
+        return $start->copy()->addDays($dayOffset)->startOfDay()->addHours(10);
     }
 }

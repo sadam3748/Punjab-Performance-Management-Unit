@@ -178,7 +178,12 @@ class KpiDashboardTest extends TestCase
                 (float) $monthly[$username]->target
             );
             $expectedAchieved = (float) $inspections->countOperationalAchieved($card, $user, $weeklyRequest);
-            $this->assertSame($expectedAchieved, (float) $weekly[$username]->achieved, $username);
+            $expectedDisplay = min($expectedAchieved, (float) $weekly[$username]->target);
+            $this->assertSame($expectedDisplay, (float) $weekly[$username]->achieved, $username);
+            $this->assertLessThanOrEqual((float) $weekly[$username]->target, (float) $weekly[$username]->achieved, $username);
+            if ($username === 'ac.lahore') {
+                $this->assertGreaterThan((float) $weekly['ac.lahore']->achieved, $expectedAchieved);
+            }
             $this->assertGreaterThan((float) $weekly['ac.lahore']->achieved, (float) $weekly['dc.lahore']->achieved);
         }
     }
@@ -200,11 +205,18 @@ class KpiDashboardTest extends TestCase
             $card = KpiCard::where('slug', $slug)->firstOrFail();
             $home = $dashboard->assignedCards($user, $request)->firstWhere('slug', $slug);
             $detail = $dashboard->detail($card, $user, $request);
-            $expected = (float) $inspections->countOperationalAchieved($card, $user, $request);
+            $rawAchieved = (float) $inspections->countOperationalAchieved($card, $user, $request);
+            $expected = $slug === 'inspection-of-health-facilities'
+                ? min($rawAchieved, (float) $home->target)
+                : $rawAchieved;
 
             $this->assertSame($expected, (float) $home->achieved, $slug.' home achieved');
             $this->assertSame((float) $home->target, (float) $detail['header']['operational_target'], $slug.' target parity');
             $this->assertSame((float) $home->achieved, (float) $detail['header']['completed'], $slug.' achieved parity');
+            if ($slug === 'inspection-of-health-facilities') {
+                $this->assertSame($rawAchieved, (float) $detail['header']['actual_completed']);
+                $this->assertLessThanOrEqual(100.0, (float) $detail['header']['achievement_percentage']);
+            }
             $this->assertSame($detail['summary']['total'], $detail['header']['records'], $slug.' records are submission count');
         }
     }
@@ -355,9 +367,9 @@ class KpiDashboardTest extends TestCase
         $this->actingAs($user)
             ->get('/kpi/inspection-of-health-facilities/dashboard')
             ->assertOk()
-            ->assertSee('View Inspections')
             ->assertDontSee('kpiInspectionFilter', false)
-            ->assertDontSee('ppmu-inspection-count-grid', false);
+            ->assertDontSee('ppmu-inspection-count-grid', false)
+            ->assertDontSee('ppmu-inspections-link-section', false);
     }
 
     public function test_kpi_detail_hides_all_period_tab(): void
@@ -563,5 +575,96 @@ class KpiDashboardTest extends TestCase
         $this->assertSame($approved + $pending + $rejected, $total);
         $this->assertFalse($values->has('Total Visits'));
         $this->assertFalse($values->has('Achieved'));
+    }
+
+    public function test_health_ac_header_caps_completed_to_weekly_target(): void
+    {
+        $this->seed(PpmuSeeder::class);
+
+        $card = KpiCard::where('slug', 'inspection-of-health-facilities')->firstOrFail();
+        $user = User::where('username', 'ac.layyah')->firstOrFail();
+        $period = app(\App\Services\KpiPeriodService::class);
+        $inspections = app(\App\Services\KpiInspectionService::class);
+        $request = \Illuminate\Http\Request::create('/', 'GET', [
+            'period_type' => 'weekly',
+            'week_no' => $period->currentWeekNo(),
+            'month' => (string) now()->month,
+            'year' => (string) now()->year,
+        ]);
+
+        $actualCompleted = $inspections->countOperationalAchieved($card, $user, $request);
+        $detail = app(\App\Services\KpiDashboardService::class)->detail($card, $user, $request);
+
+        $this->assertGreaterThan(2, $actualCompleted);
+        $this->assertSame(2.0, (float) $detail['header']['operational_target']);
+        $this->assertSame(2.0, (float) $detail['header']['completed']);
+        $this->assertSame((float) $actualCompleted, (float) $detail['header']['actual_completed']);
+        $this->assertSame(100.0, (float) $detail['header']['achievement_percentage']);
+    }
+
+    public function test_health_ac_weekly_card_counts_match_seeded_demo(): void
+    {
+        $this->seed(PpmuSeeder::class);
+
+        $card = KpiCard::where('slug', 'inspection-of-health-facilities')->firstOrFail();
+        $period = app(\App\Services\KpiPeriodService::class);
+        $request = \Illuminate\Http\Request::create('/', 'GET', [
+            'period_type' => 'weekly',
+            'week_no' => $period->currentWeekNo(),
+            'month' => (string) now()->month,
+            'year' => (string) now()->year,
+        ]);
+        $dashboard = app(\App\Services\KpiDashboardService::class);
+
+        $cases = [
+            'ac.layyah' => ['total' => 34, 'inspected' => 11, 'approved' => 8, 'pending' => 2, 'rejected' => 1, 'ac_visits' => '2 / 2'],
+            'ac.karor' => ['total' => 28, 'inspected' => 7, 'approved' => 5, 'pending' => 1, 'rejected' => 1, 'ac_visits' => '2 / 2'],
+            'ac.lahore' => ['total' => 48, 'inspected' => 10, 'approved' => 7, 'pending' => 2, 'rejected' => 1, 'ac_visits' => '2 / 2'],
+        ];
+
+        foreach ($cases as $username => $expected) {
+            $user = User::where('username', $username)->firstOrFail();
+            $detail = $dashboard->detail($card, $user, $request);
+            $coverage = collect($detail['metricSections'])->firstWhere('title', 'Inspection Coverage');
+            $visits = collect($detail['metricSections'])->firstWhere('title', 'Visits & Meetings');
+            $values = collect($coverage['metrics'])->mapWithKeys(fn ($m) => [$m['label'] => $m['value']]);
+            $visitValues = collect($visits['metrics'])->mapWithKeys(fn ($m) => [$m['label'] => $m['value']]);
+
+            $this->assertSame($expected['total'], (int) $values['Total Facilities'], $username.' total');
+            $this->assertSame($expected['inspected'], (int) $values['Inspected'], $username.' inspected');
+            $this->assertSame($expected['approved'], (int) $values['Approved'], $username.' approved');
+            $this->assertSame($expected['pending'], (int) $values['Pending'], $username.' pending');
+            $this->assertSame($expected['rejected'], (int) $values['Rejected'], $username.' rejected');
+            $this->assertSame(
+                $expected['approved'] + $expected['pending'] + $expected['rejected'],
+                (int) $values['Inspected'],
+                $username.' inspected invariant'
+            );
+            $this->assertSame($expected['ac_visits'], (string) $visitValues['AC Visits'], $username.' ac visits');
+            $this->assertSame(2.0, (float) $detail['header']['completed'], $username.' header completed');
+        }
+    }
+
+    public function test_health_role_scope_isolates_tehsil_and_district_data(): void
+    {
+        $this->seed(PpmuSeeder::class);
+
+        $card = KpiCard::where('slug', 'inspection-of-health-facilities')->firstOrFail();
+        $period = app(\App\Services\KpiPeriodService::class);
+        $request = \Illuminate\Http\Request::create('/', 'GET', [
+            'period_type' => 'weekly',
+            'week_no' => $period->currentWeekNo(),
+        ]);
+        $inspections = app(\App\Services\KpiInspectionService::class);
+
+        $layyah = $inspections->getInspectionsCollection($card, User::where('username', 'ac.layyah')->firstOrFail(), $request);
+        $karor = $inspections->getInspectionsCollection($card, User::where('username', 'ac.karor')->firstOrFail(), $request);
+        $dcLayyah = $inspections->getInspectionsCollection($card, User::where('username', 'dc.layyah')->firstOrFail(), $request);
+
+        $this->assertSame(11, $layyah->count());
+        $this->assertSame(7, $karor->count());
+        $this->assertSame(18, $dcLayyah->count());
+        $this->assertTrue($layyah->pluck('tehsil_id')->every(fn ($id) => (int) $id === 24));
+        $this->assertTrue($karor->pluck('tehsil_id')->every(fn ($id) => (int) $id === 25));
     }
 }

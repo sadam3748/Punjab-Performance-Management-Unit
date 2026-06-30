@@ -399,16 +399,25 @@ class KpiDashboardService
                 : $this->resolveAchieved($submissions, max($operationalTarget, $marks));
         }
 
+        $actualCompleted = $completed;
+        if ($card->slug === 'inspection-of-health-facilities' && $periodTotals && $operationalTarget > 0) {
+            $completed = min($completed, $operationalTarget);
+        }
+
         // Records = submitted KPI reports only (not summed activity-volume fields).
         $records = $submissions->count();
         $inspectionsCount = $this->inspectionService->countScopedInspections($card, $user, $request);
 
         $pct = $this->resolveAchievementPct($submissions, $completed, $operationalTarget);
+        if ($card->slug === 'inspection-of-health-facilities') {
+            $pct = min(100.0, $pct);
+        }
         $score = $this->formula->scoreFromWeightage($pct, $marks);
 
         return [
             'operational_target' => $operationalTarget,
             'completed' => $completed,
+            'actual_completed' => $actualCompleted,
             'records' => $records,
             'submitted_reports' => $records,
             'inspections_count' => $inspectionsCount,
@@ -626,10 +635,22 @@ class KpiDashboardService
         $issues = $this->issueCountsFromInspections($inspections, $card->slug);
         $acTarget = 2;
         $dcTarget = 2;
-        $acVisits = (int) $submissions->sum(fn ($s) => (float) data_get($s->metric_snapshot, 'ac_visits', 0));
-        $dcVisits = (int) $submissions->sum(fn ($s) => (float) data_get($s->metric_snapshot, 'dc_visits', 0));
-        $acVisits = min($acTarget, max($acVisits, min($achieved, $acTarget)));
-        $dcVisits = min($dcTarget, max($dcVisits, 0));
+        $role = $user->role?->slug ?? '';
+
+        if ($card->slug === 'inspection-of-health-facilities' && in_array($role, ['ac', 'field_user'], true)) {
+            $acVisitsCapped = min($achieved, $acTarget);
+            $acVisitsDisplay = sprintf('%d / %d', $acVisitsCapped, $acTarget);
+            $acVisitAchievement = min(100.0, round(($acVisitsCapped / max(1, $acTarget)) * 100, 1));
+            $dcVisitsDisplay = sprintf('%d / %d', 0, $dcTarget);
+        } else {
+            $acVisits = (int) $submissions->sum(fn ($s) => (float) data_get($s->metric_snapshot, 'ac_visits', 0));
+            $dcVisits = (int) $submissions->sum(fn ($s) => (float) data_get($s->metric_snapshot, 'dc_visits', 0));
+            $acVisits = min($acTarget, max($acVisits, min($achieved, $acTarget)));
+            $dcVisits = min($dcTarget, max($dcVisits, 0));
+            $acVisitsDisplay = sprintf('%d / %d', $acVisits, $acTarget);
+            $dcVisitsDisplay = sprintf('%d / %d', $dcVisits, $dcTarget);
+            $acVisitAchievement = round(min(100, ($acVisits / max(1, $acTarget)) * 100), 1);
+        }
 
         return [
             'total_visits' => $totalVisits,
@@ -642,11 +663,11 @@ class KpiDashboardService
             'not_inspected' => $notInspected,
             'validation_target' => $validationTarget,
             'validated' => $approved + $rejected,
-            'dc_visits_display' => sprintf('%d / %d', $dcVisits, $dcTarget),
-            'ac_visits_display' => sprintf('%d / %d', $acVisits, $acTarget),
+            'dc_visits_display' => $dcVisitsDisplay,
+            'ac_visits_display' => $acVisitsDisplay,
             'ac_visit_target' => $acTarget,
-            'ac_visit_achievement' => round(min(100, ($acVisits / max(1, $acTarget)) * 100), 1),
-            'district_visits' => $dcVisits + $acVisits,
+            'ac_visit_achievement' => $acVisitAchievement,
+            'district_visits' => min($achieved, $acTarget + $dcTarget),
             'districts_reporting' => $submissions->pluck('district_id')->filter()->unique()->count(),
             'issues' => $issues,
         ];

@@ -167,7 +167,7 @@ class KpiInspectionTest extends TestCase
 
         KpiCard::where('is_active', true)->each(function (KpiCard $card) {
             $expected = match ($card->slug) {
-                'inspection-of-educational-institutions', 'inspection-of-health-facilities' => 53,
+                'inspection-of-educational-institutions', 'inspection-of-health-facilities' => 49,
                 'price-of-roti' => 36,
                 'functional-and-clean-water-filtration-plants',
                 'chief-ministers-complaint-cell',
@@ -182,7 +182,7 @@ class KpiInspectionTest extends TestCase
             );
         });
 
-        $this->assertSame(493, KpiInspection::count());
+        $this->assertSame(485, KpiInspection::count());
 
         $total = KpiInspection::count();
         $this->assertEqualsWithDelta(.60, KpiInspection::where('status', 'approved')->count() / $total, .03);
