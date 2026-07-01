@@ -68,7 +68,11 @@ class KpiDashboardConfigService
     public function headerLabelsFor(string $slug): array
     {
         return match ($this->normalizeSlug($slug)) {
-            'inspection-of-health-facilities', 'inspection-of-educational-institutions' => [
+            'inspection-of-health-facilities' => [
+                'target' => 'Visit Target',
+                'completed' => 'Target Completed',
+            ],
+            'inspection-of-educational-institutions' => [
                 'target' => 'Visit Target',
                 'completed' => 'Visits Completed',
             ],

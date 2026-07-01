@@ -26,8 +26,8 @@ class KpiMetricSections
     {
         $coverage = [
             ['field' => 'total_health_facilities', 'label' => 'Total Facilities'],
-            ['field' => 'facilities_inspected', 'label' => 'Inspected'],
-            ['field' => 'facilities_not_inspected', 'label' => 'Not Inspected'],
+            ['field' => 'facilities_inspected', 'label' => 'Facilities Inspected'],
+            ['field' => 'facilities_not_inspected', 'label' => 'Facilities Not Inspected'],
             ['field' => 'validation_target', 'label' => 'Validation Target'],
             ['field' => 'validations_completed', 'label' => 'Validated'],
             ['field' => 'inspections_pending', 'label' => 'Pending'],
@@ -37,14 +37,14 @@ class KpiMetricSections
 
         $visits = match ($role) {
             'ac', 'field_user' => [
-                ['field' => 'ac_visits', 'label' => 'AC Visits'],
-                ['field' => 'ac_visit_target', 'label' => 'Visit Target'],
-                ['field' => 'ac_visit_achievement', 'label' => 'Visit Achievement'],
+                ['field' => 'required_visits', 'label' => 'Required Visits'],
+                ['field' => 'target_completed', 'label' => 'Completed Visits'],
+                ['field' => 'ac_visit_achievement', 'label' => 'Target Achievement'],
             ],
             'dc' => [
-                ['field' => 'ac_visits', 'label' => 'AC Visits'],
-                ['field' => 'dc_visits', 'label' => 'DC Visits'],
-                ['field' => 'health_council_meeting', 'label' => 'Health Council Meeting'],
+                ['field' => 'district_ac_visit_target', 'label' => 'AC Visit Target'],
+                ['field' => 'dc_visits', 'label' => 'DC Own Visits'],
+                ['field' => 'health_council_meeting', 'label' => 'Council Meetings'],
             ],
             'commissioner' => [
                 ['field' => 'district_visits', 'label' => 'District Visits'],

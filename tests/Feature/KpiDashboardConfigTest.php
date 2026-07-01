@@ -39,11 +39,13 @@ class KpiDashboardConfigTest extends TestCase
             ->get("/kpi/{$slug}/dashboard")
             ->assertOk()
             ->assertSee('KPI Performance Cards')
-            ->assertSee('Total Health Facilities')
-            ->assertSee('Inspection List')
+            ->assertSee('Total Facilities')
+            ->assertSee('Facilities Inspected')
+            ->assertDontSee('ppmu-pi-title">Inspection Records', false)
             ->assertSee('Cleanliness')
-            ->assertSee('bi-eye', false)
-            ->assertSee('KPI Detail Dashboard');
+            ->assertDontSee('Submission Reports')
+            ->assertSee('KPI Detail Dashboard')
+            ->assertSee('District Comparison — Inspection Records');
     }
 
     public function test_health_facilities_uses_visit_header_labels(): void
@@ -52,7 +54,7 @@ class KpiDashboardConfigTest extends TestCase
             ->headerLabelsFor('inspection-of-health-facilities');
 
         $this->assertSame('Visit Target', $labels['target']);
-        $this->assertSame('Visits Completed', $labels['completed']);
+        $this->assertSame('Target Completed', $labels['completed']);
     }
 
     public function test_price_of_roti_uses_two_management_charts(): void

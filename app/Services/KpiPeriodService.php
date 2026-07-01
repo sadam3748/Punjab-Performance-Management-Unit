@@ -23,9 +23,20 @@ class KpiPeriodService
         ];
     }
 
-    public function formatWeekLabel(Carbon $start, Carbon $end, ?int $monthIndex = null): string
+    public function formatWeekLabel(Carbon $start, Carbon $end, ?int $monthIndex = null, bool $withWeekdays = false): string
     {
         $prefix = $monthIndex !== null ? sprintf('Week %d · ', $monthIndex) : 'Week · ';
+
+        if ($withWeekdays) {
+            return $prefix.sprintf(
+                '%s %s – %s %s %s',
+                $start->format('D'),
+                $start->format('d M'),
+                $end->format('D'),
+                $end->format('d M'),
+                $end->format('Y')
+            );
+        }
 
         return $prefix.sprintf(
             '%s – %s',
@@ -46,7 +57,7 @@ class KpiPeriodService
         return [
             'start' => $start,
             'end' => $end,
-            'label_with_year' => $start->format('d M, Y').' - '.$end->format('d M, Y'),
+            'label_with_year' => $this->formatWeekLabel($start, $end, null, true),
         ];
     }
 
@@ -159,9 +170,7 @@ class KpiPeriodService
             $weekEnd = Carbon::parse($range['week_end']);
 
             if ($weekEnd->gte($monthStart) && $weekStart->lte($monthEnd)) {
-                $displayStart = $weekStart->lt($monthStart) ? $monthStart->copy() : $weekStart->copy();
-                $displayEnd = $weekEnd->gt($monthEnd) ? $monthEnd->copy() : $weekEnd->copy();
-                $weeks[$range['week_no']] = $this->formatWeekLabel($displayStart, $displayEnd, $weekIndex);
+                $weeks[$range['week_no']] = $this->formatWeekLabel($weekStart, $weekEnd, $weekIndex, true);
                 $weekIndex++;
             }
 
@@ -187,7 +196,7 @@ class KpiPeriodService
         $range = $this->getWeekDateRange($weekNo);
 
         if ($range['start'] && $range['end']) {
-            return $this->formatWeekLabel($range['start'], $range['end']);
+            return $this->formatWeekLabel($range['start'], $range['end'], null, true);
         }
 
         return 'Week · —';

@@ -105,13 +105,18 @@
     </div>
     <div class="ppmu-chart-grid ppmu-chart-grid-count-{{ $chartCount }}" id="kpiDetailCharts">
         @foreach($visibleCharts as $index => $chart)
+            @php
+                $chartSubtitle = $chart['subtitle']
+                    ?? ($kpiCard->slug !== 'inspection-of-health-facilities' ? ucfirst($chart['type']).' chart' : null);
+            @endphp
             <x-chart-card
                 :title="$chart['title']"
-                :subtitle="ucfirst($chart['type']).' chart'"
+                :subtitle="$chartSubtitle"
                 :canvas="'kpiChart_'.$index"/>
         @endforeach
     </div>
 
+    @if($kpiCard->slug !== 'inspection-of-health-facilities')
     <div id="kpiDetailRecords">
         @include('dashboard.partials.kpi-detail-records', [
             'kpiCard' => $kpiCard,
@@ -121,6 +126,7 @@
             'periodDescription' => $period_description ?? '',
         ])
     </div>
+    @endif
 </div>
 
 @endsection

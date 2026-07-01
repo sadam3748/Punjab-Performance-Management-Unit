@@ -30,13 +30,15 @@ class KpiDashboardController extends Controller
             $v >= 85 ? '#087443' : ($v >= 70 ? '#2563eb' : ($v >= 50 ? '#e07b00' : '#dc2626'))
         );
 
+        $isHealth = $kpiCard->slug === 'inspection-of-health-facilities';
+
         return response()->json([
             'header' => $data['header'],
             'metrics_html' => view('dashboard.partials.kpi-detail-metrics', [
                 'metrics' => $data['metrics'],
                 'metricSections' => $data['metricSections'],
             ])->render(),
-            'records_html' => view('dashboard.partials.kpi-detail-records', [
+            'records_html' => $isHealth ? '' : view('dashboard.partials.kpi-detail-records', [
                 'kpiCard' => $kpiCard,
                 'summary' => $data['summary'],
                 'tableSubmissions' => $data['tableSubmissions'],

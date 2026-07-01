@@ -36,12 +36,12 @@ class KpiDetailDataTest extends TestCase
             ->assertOk()
             ->assertSee('KPI Performance Cards')
             ->assertSee('Visit Target')
-            ->assertSee('Visits Completed')
+            ->assertSee('Target Completed')
             ->assertDontSee('data-stat="reported"', false)
-            ->assertSee('KPI Score')
             ->assertSee('Progress')
-            ->assertSee('Total Health Facilities')
-            ->assertSee('Inspection List');
+            ->assertSee('Total Facilities')
+            ->assertDontSee('ppmu-pi-title">Inspection Records', false)
+            ->assertSee('District Comparison — Inspection Records');
     }
 
     public function test_seeded_submission_volume_per_kpi(): void
@@ -61,7 +61,7 @@ class KpiDetailDataTest extends TestCase
                     'e-biz',
                 ], true);
                 $this->assertLessThanOrEqual(
-                    $priority ? 100 : 40,
+                    $priority ? 130 : 40,
                     $count,
                     "KPI {$card->slug} should not be over-seeded in tests"
                 );

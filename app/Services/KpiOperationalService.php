@@ -36,11 +36,12 @@ class KpiOperationalService
         Request $request,
         array $fields,
         ?int $inspectionAchieved = null,
+        ?array $activeScope = null,
     ): array {
         $operationalSubmissions = $this->operationalSubmissions($submissions, $user, $request);
 
         if (in_array($card->slug, self::WEEKLY_VISIT_KPIS, true)) {
-            $target = $this->visitTarget($user, $request, $operationalSubmissions);
+            $target = $this->visitTarget($user, $request, $operationalSubmissions, $card, $activeScope);
             // Achieved is supplied from kpi_inspections (approved + pending_review) for scope/period.
             $completed = (float) max(0, $inspectionAchieved ?? 0);
 
@@ -117,9 +118,9 @@ class KpiOperationalService
         return $atLevel->isNotEmpty() ? $atLevel->values() : $submissions;
     }
 
-    private function visitTarget(User $user, Request $request, Collection $submissions): float
+    private function visitTarget(User $user, Request $request, Collection $submissions, ?KpiCard $card = null, ?array $activeScope = null): float
     {
-        $weeklyTarget = $this->weeklyVisitTargetForScope($user, $request);
+        $weeklyTarget = $this->weeklyVisitTargetForScope($user, $request, $card, $activeScope);
         $params = $this->periodService->resolvedParams($request);
 
         return match ($params['period_type']) {
@@ -131,10 +132,30 @@ class KpiOperationalService
         };
     }
 
-    private function weeklyVisitTargetForScope(User $user, Request $request): int
+    private function weeklyVisitTargetForScope(User $user, Request $request, ?KpiCard $card = null, ?array $activeScope = null): int
     {
         if ($request->filled('geo_tehsil')) {
             return 2;
+        }
+
+        if ($card?->slug === 'inspection-of-health-facilities' && is_array($activeScope) && ($activeScope['tehsils'] ?? 0) > 0) {
+            $activeTehsils = (int) $activeScope['tehsils'];
+            $activeDistricts = max(1, (int) ($activeScope['districts'] ?? 1));
+
+            if ($request->filled('geo_district')) {
+                return ($activeTehsils * 2) + 2;
+            }
+
+            if ($request->filled('geo_division')) {
+                return ($activeTehsils * 2) + ($activeDistricts * 2);
+            }
+
+            return match ($user->role?->slug) {
+                'ac', 'field_user' => 2,
+                'dc' => ($activeTehsils * 2) + 2,
+                'commissioner' => ($activeTehsils * 2) + ($activeDistricts * 2),
+                default => ($activeTehsils * 2) + ($activeDistricts * 2),
+            };
         }
 
         if ($request->filled('geo_district')) {

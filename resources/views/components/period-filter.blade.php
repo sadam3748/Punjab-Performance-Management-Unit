@@ -33,11 +33,12 @@
                     <option value="{{ $year }}" @selected((string) ($period['year'] ?? now()->year) === (string) $year)>{{ $year }}</option>
                 @endforeach
             </select>
-            <select data-filter="week_no" class="form-select form-select-sm ppmu-filter-week" data-period-control="weekly" @if(($period['period_type'] ?? '') !== 'weekly') hidden @endif>
+            <select data-filter="week_no" class="form-select form-select-sm ppmu-filter-week" data-period-control="weekly" @if(($period['period_type'] ?? '') !== 'weekly') hidden @endif title="Reporting weeks run Thursday to Wednesday.">
                 @foreach($filters['weeks'] ?? [] as $value => $label)
                     <option value="{{ $value }}" @selected((string) ($period['week_no'] ?? $filters['default_week_no'] ?? '') === (string) $value)>{{ $label }}</option>
                 @endforeach
             </select>
+            <span class="ppmu-week-range-hint text-muted small" data-period-control="weekly" @if(($period['period_type'] ?? '') !== 'weekly') hidden @endif title="Reporting weeks run Thursday to Wednesday.">Reporting weeks run Thursday to Wednesday.</span>
             <input type="date" data-filter="date" value="{{ $period['date'] ?? '' }}" class="form-control form-control-sm ppmu-filter-date" data-period-control="daily" @if(($period['period_type'] ?? '') !== 'daily') hidden @endif>
             <button type="button" class="btn btn-sm btn-outline-secondary ppmu-filter-reset" data-filter-reset>Reset</button>
         </div>

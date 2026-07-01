@@ -395,6 +395,7 @@ class KpiInspectionSeeder extends Seeder
             ['tehsil_id' => 85, 'district_id' => 23, 'division_id' => 6, 'count' => 4, 'tehsil_name' => 'Shalimar', 'district_name' => 'Lahore', 'lat' => 31.5870, 'lng' => 74.3805],
             ['tehsil_id' => 24, 'district_id' => 7, 'division_id' => 2, 'count' => 11, 'tehsil_name' => 'Layyah', 'district_name' => 'Layyah', 'lat' => 30.9617, 'lng' => 70.9397, 'inspector' => 'ac.layyah'],
             ['tehsil_id' => 25, 'district_id' => 7, 'division_id' => 2, 'count' => 7, 'tehsil_name' => 'Karor Lal Esan', 'district_name' => 'Layyah', 'lat' => 30.9520, 'lng' => 70.9280, 'inspector' => 'ac.karor'],
+            ['tehsil_id' => 27, 'district_id' => 8, 'division_id' => 2, 'count' => 9, 'tehsil_name' => 'Muzaffargarh', 'district_name' => 'Muzaffargarh', 'lat' => 30.0703, 'lng' => 71.1933, 'inspector' => 'dc.layyah'],
         ];
 
         $rows = [];
@@ -442,7 +443,7 @@ class KpiInspectionSeeder extends Seeder
                     'inspected_by' => $inspector?->id,
                     'reviewed_by' => $status === 'pending_review' ? null : $reviewer?->id,
                     'inspection_title' => $entity['title'],
-                    'entity_name' => $entity['name'],
+                    'entity_name' => sprintf('%s — %s #%02d', $entity['name'], $plan['tehsil_name'], $i + 1),
                     'entity_type' => $entity['type'],
                     'identifier' => $entity['id'].'-'.$plan['tehsil_id'],
                     'address' => $fullAddress,

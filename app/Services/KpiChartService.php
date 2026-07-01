@@ -25,7 +25,7 @@ class KpiChartService
         array $definitions,
     ): array {
         $legacy = $this->build($submissions, $user, $target, $achieved, $areaScores);
-        $datasets = $this->buildDatasets($submissions, $inspections, $user, $target, $achieved, $areaScores, $legacy);
+        $datasets = $this->buildDatasets($slug, $submissions, $inspections, $user, $target, $achieved, $areaScores, $legacy);
 
         $configured = collect($definitions)->map(function (array $definition) use ($datasets, $user): array {
             $key = $definition['key'];
@@ -105,6 +105,7 @@ class KpiChartService
 
     /** @return array<string, array{labels: list<string>, values: list<float|int>}> */
     private function buildDatasets(
+        string $slug,
         Collection $submissions,
         Collection $inspections,
         User $user,
@@ -197,6 +198,28 @@ class KpiChartService
 
         $healthIssues = $this->healthIssueBreakdownFromInspections($inspections);
 
+        $dcAcVisitCompletion = collect([
+            'DC Visits' => $submissions->sum(fn ($i) => (float) data_get($i->metric_snapshot, 'dc_visits', data_get($i->metric_snapshot, 'dc_visit_completion', 0))),
+            'AC Visits' => $submissions->sum(fn ($i) => (float) data_get($i->metric_snapshot, 'ac_visits', data_get($i->metric_snapshot, 'ac_visit_completion', 0))),
+        ]);
+
+        if ($slug === 'inspection-of-health-facilities') {
+            $activeTehsils = max(1, $inspections->pluck('tehsil_id')->filter()->unique()->count());
+            $acTarget = max(2, $activeTehsils * 2);
+            $dcTarget = 2;
+            $acCompleted = (int) $inspections->whereIn('status', [KpiInspection::STATUS_APPROVED, KpiInspection::STATUS_PENDING])->count();
+            $dcCompleted = (int) $submissions->sum(fn ($i) => (float) data_get($i->metric_snapshot, 'dc_visits', 0));
+
+            if (in_array($user->role?->slug, ['ac', 'field_user'], true)) {
+                $acTarget = 2;
+            }
+
+            $dcAcVisitCompletion = collect([
+                'AC Visits %' => min(100.0, $this->formula->percentage(min($acCompleted, $acTarget), $acTarget)),
+                'DC Visits %' => min(100.0, $this->formula->percentage(min($dcCompleted, $dcTarget), $dcTarget)),
+            ]);
+        }
+
         return [
             'plant_inspections_trend' => $toChart($inspectionTrend),
             'inspection_trend' => $toChart($inspectionTrend),
@@ -247,10 +270,7 @@ class KpiChartService
             'target_achieved' => $toChart($legacy['target_achieved']),
             'performance_trend' => $toChart($legacy['trend']),
             'dc_ac_inspection_comparison' => $toChart($this->detailFieldBreakdown($inspections, ['dc_inspected', 'ac_inspected'])),
-            'dc_ac_visit_completion' => $toChart(collect([
-                'DC Visits' => $submissions->sum(fn ($i) => (float) data_get($i->metric_snapshot, 'dc_visits', data_get($i->metric_snapshot, 'dc_visit_completion', 0))),
-                'AC Visits' => $submissions->sum(fn ($i) => (float) data_get($i->metric_snapshot, 'ac_visits', data_get($i->metric_snapshot, 'ac_visit_completion', 0))),
-            ])),
+            'dc_ac_visit_completion' => $toChart($dcAcVisitCompletion),
             'facility_deficiency_breakdown' => $toChart($this->detailFieldBreakdown($inspections, ['facility_deficiency'])),
             'school_council_activation' => ['labels' => ['Activation'], 'values' => [$schoolCouncilGauge]],
             'issue_category_breakdown' => $toChart(collect([

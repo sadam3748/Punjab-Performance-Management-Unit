@@ -78,6 +78,18 @@ class KpiInspectionService
             ->count();
     }
 
+    /** @return array{tehsils: int, districts: int, divisions: int} */
+    public function activeScopeCounts(KpiCard $card, User $user, Request $request): array
+    {
+        $inspections = $this->getInspectionsCollection($card, $user, $request);
+
+        return [
+            'tehsils' => $inspections->pluck('tehsil_id')->filter()->unique()->count(),
+            'districts' => $inspections->pluck('district_id')->filter()->unique()->count(),
+            'divisions' => $inspections->pluck('division_id')->filter()->unique()->count(),
+        ];
+    }
+
     /** Total scoped inspection rows in the selected period (all statuses). */
     public function countScopedInspections(KpiCard $card, User $user, Request $request): int
     {

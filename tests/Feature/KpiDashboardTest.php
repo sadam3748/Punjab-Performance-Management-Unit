@@ -166,8 +166,22 @@ class KpiDashboardTest extends TestCase
             ->firstWhere('slug', 'inspection-of-health-facilities'));
 
         $this->assertSame(2.0, (float) $weekly['ac.lahore']->target);
-        $this->assertSame(12.0, (float) $weekly['dc.lahore']->target);
-        $this->assertGreaterThan((float) $weekly['dc.lahore']->target, (float) $weekly['com.lahore']->target);
+
+        foreach ($users->keys() as $username) {
+            $user = $users[$username];
+            $activeScope = $inspections->activeScopeCounts($card, $user, $weeklyRequest);
+            $activeTehsils = max(1, (int) $activeScope['tehsils']);
+            $activeDistricts = max(1, (int) $activeScope['districts']);
+            $expectedWeeklyTarget = match ($user->role?->slug) {
+                'ac', 'field_user' => 2.0,
+                'dc' => (float) (($activeTehsils * 2) + 2),
+                'commissioner' => (float) (($activeTehsils * 2) + ($activeDistricts * 2)),
+                default => (float) (($activeTehsils * 2) + ($activeDistricts * 2)),
+            };
+            $this->assertSame($expectedWeeklyTarget, (float) $weekly[$username]->target, $username.' weekly target');
+        }
+
+        $this->assertGreaterThanOrEqual((float) $weekly['com.lahore']->target, (float) $weekly['dc.lahore']->target);
         $this->assertGreaterThan((float) $weekly['com.lahore']->target, (float) $weekly['cs.pmru']->target);
 
         $weeksInMonth = (int) ceil(now()->daysInMonth / 7);
@@ -356,7 +370,13 @@ class KpiDashboardTest extends TestCase
         $keys = collect($detail['charts']['definitions'])->pluck('key');
         $this->assertTrue($keys->contains('tehsil_comparison'));
         $comparison = collect($detail['charts']['definitions'])->firstWhere('key', 'tehsil_comparison');
+        $this->assertStringContainsString('Tehsil Comparison — Inspection Records', (string) ($comparison['title'] ?? ''));
+        $this->assertStringContainsString('inspection records by tehsil', strtolower((string) ($comparison['subtitle'] ?? '')));
         $this->assertNotEmpty($comparison['data']['labels'] ?? []);
+        $layyah = collect($comparison['data']['labels'] ?? [])->first(fn ($l) => str_contains((string) $l, 'Layyah'));
+        $karor = collect($comparison['data']['labels'] ?? [])->first(fn ($l) => str_contains((string) $l, 'Karor'));
+        $this->assertNotNull($layyah);
+        $this->assertNotNull($karor);
     }
 
     public function test_inspection_list_section_has_no_duplicate_summary_cards(): void
@@ -396,6 +416,13 @@ class KpiDashboardTest extends TestCase
         $this->assertNotEmpty($labels);
         $this->assertStringStartsWith('Week 1', $labels[0]);
         $this->assertStringNotContainsString('W26', $labels[0]);
+        $this->assertStringContainsString('Thu', $labels[0]);
+        $this->assertStringContainsString('Wed', $labels[0]);
+
+        $weekNo = array_key_first($filters['weeks'] ?? []);
+        $range = $period->getWeekDateRange((string) $weekNo);
+        $this->assertStringContainsString($range['start']->format('d M'), $labels[0]);
+        $this->assertStringContainsString($range['end']->format('d M'), $labels[0]);
 
         $user = User::where('username', 'ac.lahore')->firstOrFail();
         $this->actingAs($user)
@@ -424,10 +451,22 @@ class KpiDashboardTest extends TestCase
         $user = User::where('username', 'ac.lahore')->firstOrFail();
 
         $this->actingAs($user)
-            ->get('/kpi/inspection-of-health-facilities/dashboard')
+            ->get('/kpi/price-of-roti/dashboard')
             ->assertOk()
             ->assertSee('Submission Reports')
             ->assertSee('KPI summary rows from submissions', false);
+    }
+
+    public function test_health_detail_hides_submission_reports_section(): void
+    {
+        $this->seed(PpmuSeeder::class);
+        $user = User::where('username', 'ac.lahore')->firstOrFail();
+
+        $this->actingAs($user)
+            ->get('/kpi/inspection-of-health-facilities/dashboard')
+            ->assertOk()
+            ->assertDontSee('Submission Reports')
+            ->assertDontSee('kpiDetailRecords', false);
     }
 
     public function test_health_metric_sections_are_grouped(): void
@@ -567,12 +606,17 @@ class KpiDashboardTest extends TestCase
         $coverage = collect($detail['metricSections'])->firstWhere('title', 'Inspection Coverage');
         $values = collect($coverage['metrics'])->mapWithKeys(fn ($m) => [$m['label'] => $m['value']]);
 
-        $total = (int) $values['Inspected'];
         $approved = (int) $values['Approved'];
         $pending = (int) $values['Pending'];
         $rejected = (int) $values['Rejected'];
+        $facilitiesInspected = (int) $values['Facilities Inspected'];
+        $facilitiesNotInspected = (int) $values['Facilities Not Inspected'];
+        $totalFacilities = (int) $values['Total Facilities'];
+        $records = $approved + $pending + $rejected;
 
-        $this->assertSame($approved + $pending + $rejected, $total);
+        $this->assertFalse($values->has('Inspection Records'));
+        $this->assertSame($records, app(\App\Services\KpiInspectionService::class)->getInspectionsCollection($card, $user, $request)->count());
+        $this->assertSame($facilitiesInspected + $facilitiesNotInspected, $totalFacilities);
         $this->assertFalse($values->has('Total Visits'));
         $this->assertFalse($values->has('Achieved'));
     }
@@ -617,9 +661,9 @@ class KpiDashboardTest extends TestCase
         $dashboard = app(\App\Services\KpiDashboardService::class);
 
         $cases = [
-            'ac.layyah' => ['total' => 34, 'inspected' => 11, 'approved' => 8, 'pending' => 2, 'rejected' => 1, 'ac_visits' => '2 / 2'],
-            'ac.karor' => ['total' => 28, 'inspected' => 7, 'approved' => 5, 'pending' => 1, 'rejected' => 1, 'ac_visits' => '2 / 2'],
-            'ac.lahore' => ['total' => 48, 'inspected' => 10, 'approved' => 7, 'pending' => 2, 'rejected' => 1, 'ac_visits' => '2 / 2'],
+            'ac.layyah' => ['total' => 34, 'facilities' => 11, 'records' => 11, 'approved' => 8, 'pending' => 2, 'rejected' => 1, 'required_visits' => 2],
+            'ac.karor' => ['total' => 28, 'facilities' => 7, 'records' => 7, 'approved' => 5, 'pending' => 1, 'rejected' => 1, 'required_visits' => 2],
+            'ac.lahore' => ['total' => 48, 'facilities' => 10, 'records' => 10, 'approved' => 7, 'pending' => 2, 'rejected' => 1, 'required_visits' => 2],
         ];
 
         foreach ($cases as $username => $expected) {
@@ -631,17 +675,27 @@ class KpiDashboardTest extends TestCase
             $visitValues = collect($visits['metrics'])->mapWithKeys(fn ($m) => [$m['label'] => $m['value']]);
 
             $this->assertSame($expected['total'], (int) $values['Total Facilities'], $username.' total');
-            $this->assertSame($expected['inspected'], (int) $values['Inspected'], $username.' inspected');
+            $this->assertSame($expected['facilities'], (int) $values['Facilities Inspected'], $username.' facilities');
+            $this->assertFalse($values->has('Inspection Records'), $username.' hides inspection records card');
             $this->assertSame($expected['approved'], (int) $values['Approved'], $username.' approved');
             $this->assertSame($expected['pending'], (int) $values['Pending'], $username.' pending');
             $this->assertSame($expected['rejected'], (int) $values['Rejected'], $username.' rejected');
             $this->assertSame(
                 $expected['approved'] + $expected['pending'] + $expected['rejected'],
-                (int) $values['Inspected'],
-                $username.' inspected invariant'
+                $expected['records'],
+                $username.' internal records invariant'
             );
-            $this->assertSame($expected['ac_visits'], (string) $visitValues['AC Visits'], $username.' ac visits');
+            $this->assertSame(
+                (int) $values['Facilities Inspected'] + (int) $values['Facilities Not Inspected'],
+                (int) $values['Total Facilities'],
+                $username.' facility invariant'
+            );
+            $this->assertSame($expected['required_visits'], (int) $visitValues['Required Visits'], $username.' required visits');
+            $this->assertSame(2, (int) $visitValues['Completed Visits'], $username.' completed visits');
+            $this->assertSame(100.0, (float) $visitValues['Target Achievement'], $username.' target achievement');
             $this->assertSame(2.0, (float) $detail['header']['completed'], $username.' header completed');
+            $this->assertLessThanOrEqual(2.0, (float) $detail['header']['completed'], $username.' header cap');
+            $this->assertLessThanOrEqual(100.0, (float) $detail['header']['achievement_percentage'], $username.' progress cap');
         }
     }
 
@@ -666,5 +720,128 @@ class KpiDashboardTest extends TestCase
         $this->assertSame(18, $dcLayyah->count());
         $this->assertTrue($layyah->pluck('tehsil_id')->every(fn ($id) => (int) $id === 24));
         $this->assertTrue($karor->pluck('tehsil_id')->every(fn ($id) => (int) $id === 25));
+    }
+
+    public function test_health_chart_subtitles_are_management_friendly(): void
+    {
+        $this->seed(PpmuSeeder::class);
+        $card = KpiCard::where('slug', 'inspection-of-health-facilities')->firstOrFail();
+        $period = app(\App\Services\KpiPeriodService::class);
+        $request = \Illuminate\Http\Request::create('/', 'GET', [
+            'period_type' => 'weekly',
+            'week_no' => $period->currentWeekNo(),
+        ]);
+        $dashboard = app(\App\Services\KpiDashboardService::class);
+
+        $ac = $dashboard->detail($card, User::where('username', 'ac.lahore')->firstOrFail(), $request);
+        $dc = $dashboard->detail($card, User::where('username', 'dc.layyah')->firstOrFail(), $request);
+        $cs = $dashboard->detail($card, User::where('username', 'cs.pmru')->firstOrFail(), $request);
+
+        foreach ($ac['chartDefinitions'] as $chart) {
+            $this->assertNotSame('Bar chart', $chart['subtitle'] ?? null);
+            $this->assertNotSame('Donut chart', $chart['subtitle'] ?? null);
+        }
+
+        $dcComparison = collect($dc['chartDefinitions'])->firstWhere('key', 'tehsil_comparison');
+        $this->assertStringContainsString('Tehsil Comparison — Inspection Records', (string) ($dcComparison['title'] ?? ''));
+
+        $csComparison = collect($cs['chartDefinitions'])->firstWhere('key', 'district_comparison');
+        $this->assertStringContainsString('District Comparison — Inspection Records', (string) ($csComparison['title'] ?? ''));
+    }
+
+    public function test_health_header_shows_target_completed_label(): void
+    {
+        $this->seed(PpmuSeeder::class);
+        $user = User::where('username', 'ac.layyah')->firstOrFail();
+
+        $this->actingAs($user)
+            ->get('/kpi/inspection-of-health-facilities/dashboard')
+            ->assertOk()
+            ->assertSee('Target Completed', false)
+            ->assertDontSee('Visits Completed', false);
+    }
+
+    public function test_ac_health_visits_cards_show_required_completed_and_achievement_without_duplicate_target(): void
+    {
+        $this->seed(PpmuSeeder::class);
+        $user = User::where('username', 'ac.layyah')->firstOrFail();
+
+        $this->actingAs($user)
+            ->get('/kpi/inspection-of-health-facilities/dashboard')
+            ->assertOk()
+            ->assertSee('Required Visits', false)
+            ->assertSee('Completed Visits', false)
+            ->assertSee('Target Achievement', false)
+            ->assertDontSee('AC Visit Target', false);
+    }
+
+    public function test_health_coverage_shows_eight_cards_without_inspection_records(): void
+    {
+        $this->seed(PpmuSeeder::class);
+        $card = KpiCard::where('slug', 'inspection-of-health-facilities')->firstOrFail();
+        $period = app(\App\Services\KpiPeriodService::class);
+        $detail = app(\App\Services\KpiDashboardService::class)->detail(
+            $card,
+            User::where('username', 'dc.layyah')->firstOrFail(),
+            \Illuminate\Http\Request::create('/', 'GET', [
+                'period_type' => 'weekly',
+                'week_no' => $period->currentWeekNo(),
+            ])
+        );
+
+        $coverage = collect($detail['metricSections'])->firstWhere('title', 'Inspection Coverage');
+        $labels = collect($coverage['metrics'])->pluck('label')->all();
+
+        $this->assertCount(8, $labels);
+        $this->assertNotContains('Inspection Records', $labels);
+        $this->assertSame(
+            ['Total Facilities', 'Facilities Inspected', 'Facilities Not Inspected', 'Validation Target', 'Validated', 'Pending', 'Approved', 'Rejected'],
+            $labels
+        );
+    }
+
+    public function test_dc_layyah_ac_visit_target_matches_active_tehsils(): void
+    {
+        $this->seed(PpmuSeeder::class);
+        $card = KpiCard::where('slug', 'inspection-of-health-facilities')->firstOrFail();
+        $user = User::where('username', 'dc.layyah')->firstOrFail();
+        $period = app(\App\Services\KpiPeriodService::class);
+        $request = \Illuminate\Http\Request::create('/', 'GET', [
+            'period_type' => 'weekly',
+            'week_no' => $period->currentWeekNo(),
+        ]);
+
+        $detail = app(\App\Services\KpiDashboardService::class)->detail($card, $user, $request);
+        $visits = collect($detail['metricSections'])->firstWhere('title', 'Visits & Meetings');
+        $visitValues = collect($visits['metrics'])->mapWithKeys(fn ($m) => [$m['label'] => $m['value']]);
+        $comparison = collect($detail['charts']['definitions'])->firstWhere('key', 'tehsil_comparison');
+        $activeTehsils = count($comparison['data']['labels'] ?? []);
+        $visitChart = collect($detail['charts']['definitions'])->firstWhere('key', 'dc_ac_visit_completion');
+
+        $this->assertSame(2, $activeTehsils);
+        $this->assertSame(4, (int) $visitValues['AC Visit Target']);
+        $this->assertStringContainsString('AC Visits %', implode(',', $visitChart['data']['labels'] ?? []));
+        $this->assertLessThanOrEqual(100.0, max($visitChart['data']['values'] ?? [0]));
+    }
+
+    public function test_cs_health_demo_progress_is_not_critical(): void
+    {
+        $this->seed(PpmuSeeder::class);
+        $card = KpiCard::where('slug', 'inspection-of-health-facilities')->firstOrFail();
+        $user = User::where('username', 'cs.pmru')->firstOrFail();
+        $period = app(\App\Services\KpiPeriodService::class);
+        $detail = app(\App\Services\KpiDashboardService::class)->detail(
+            $card,
+            $user,
+            \Illuminate\Http\Request::create('/', 'GET', [
+                'period_type' => 'weekly',
+                'week_no' => $period->currentWeekNo(),
+            ])
+        );
+
+        $this->assertGreaterThan(0, (float) $detail['header']['operational_target']);
+        $this->assertLessThan(500.0, (float) $detail['header']['operational_target']);
+        $this->assertGreaterThan(20.0, (float) $detail['header']['achievement_percentage']);
+        $this->assertNotSame('Critical', $detail['header']['status_label']);
     }
 }
