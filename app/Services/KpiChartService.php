@@ -196,7 +196,10 @@ class KpiChartService
             $acVisitGauge = $this->formula->percentage($achieved, $target);
         }
 
-        $healthObservations = $this->healthObservationAvailabilityFromInspections($inspections);
+        $healthObservations = $this->healthObservationAvailabilityFromInspections(
+            $inspections,
+            $slug === 'inspection-of-health-facilities' ? (int) max(0, round($achieved)) : $inspections->count(),
+        );
         $healthIssues = $this->healthIssueBreakdownFromInspections($inspections);
 
         $dcAcVisitCompletion = collect([
@@ -346,8 +349,8 @@ class KpiChartService
         };
     }
 
-    /** @return array{labels: list<string>, datasets: list<array{label: string, values: list<int>, color: string}>} */
-    private function healthObservationAvailabilityFromInspections(Collection $inspections): array
+    /** @return array{labels: list<string>, datasets: list<array{label: string, values: list<int>, color: string}>, facilities_inspected: int} */
+    private function healthObservationAvailabilityFromInspections(Collection $inspections, int $facilitiesInspected): array
     {
         $categories = [
             'Deep Cleaning' => 'deep_cleaning_available',
@@ -359,6 +362,16 @@ class KpiChartService
             'UHI Compliance' => 'uhi_compliance',
         ];
 
+        $limit = max(0, $facilitiesInspected);
+        $scoped = $limit > 0 && $inspections->count() > $limit
+            ? $inspections
+                ->sortByDesc(fn ($inspection) => $inspection->inspection_datetime)
+                ->take($limit)
+                ->values()
+            : $inspections->values();
+
+        $inspectedTotal = $limit > 0 ? $limit : $scoped->count();
+
         $available = [];
         $notAvailable = [];
 
@@ -366,7 +379,7 @@ class KpiChartService
             $available[$label] = 0;
             $notAvailable[$label] = 0;
 
-            foreach ($inspections as $inspection) {
+            foreach ($scoped as $inspection) {
                 $detail = is_array($inspection->detail_data)
                     ? $inspection->detail_data
                     : (json_decode($inspection->detail_data ?? '[]', true) ?: []);
@@ -376,7 +389,7 @@ class KpiChartService
                 if ($field === 'uhi_compliance') {
                     if ($value === 'yes') {
                         $available[$label]++;
-                    } elseif ($value === 'no') {
+                    } else {
                         $notAvailable[$label]++;
                     }
 
@@ -385,7 +398,7 @@ class KpiChartService
 
                 if ($value === 'available' || $value === 'yes') {
                     $available[$label]++;
-                } elseif ($value === 'not_available' || $value === 'no') {
+                } else {
                     $notAvailable[$label]++;
                 }
             }
@@ -407,6 +420,7 @@ class KpiChartService
                     'color' => '#dc2626',
                 ],
             ],
+            'facilities_inspected' => $inspectedTotal,
         ];
     }
 

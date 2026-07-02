@@ -1088,23 +1088,23 @@ class KpiDashboardService
             return match ($role) {
                 'ac', 'field_user' => [
                     ['type' => 'bar', 'title' => 'Review Status', 'subtitle' => 'Approved, pending review, and rejected inspection records.', 'key' => 'inspection_status_breakdown'],
-                    ['type' => 'grouped_bar', 'title' => 'Observation Availability — Available vs Not Available', 'subtitle' => 'Shows checklist results from selected health inspections.', 'key' => 'health_observation_availability'],
+                    ['type' => 'stacked_bar', 'title' => 'Observation Availability', 'subtitle' => 'Available vs Not Available observations from inspected health facilities.', 'key' => 'health_observation_availability'],
                 ],
                 'dc' => [
                     ['type' => 'bar', 'title' => 'Inspection Target Completion', 'subtitle' => 'AC and DC health inspection target completion.', 'key' => 'dc_ac_visit_completion'],
                     ['type' => 'bar', 'title' => 'Tehsil Comparison — Inspections Completed', 'subtitle' => 'Completed inspections by tehsil in selected period.', 'key' => 'tehsil_comparison'],
-                    ['type' => 'grouped_bar', 'title' => 'Observation Availability — Available vs Not Available', 'subtitle' => 'Shows checklist results from selected health inspections.', 'key' => 'health_observation_availability'],
+                    ['type' => 'stacked_bar', 'title' => 'Observation Availability', 'subtitle' => 'Available vs Not Available observations from inspected health facilities.', 'key' => 'health_observation_availability'],
                     ['type' => 'bar', 'title' => 'Review Status', 'subtitle' => 'Approved, pending review, and rejected inspection records.', 'key' => 'inspection_status_breakdown'],
                 ],
                 'commissioner' => [
                     ['type' => 'bar', 'title' => 'District Comparison — Inspections Completed', 'subtitle' => 'Completed inspections by district in selected period.', 'key' => 'district_comparison'],
-                    ['type' => 'grouped_bar', 'title' => 'Observation Availability — Available vs Not Available', 'subtitle' => 'Shows checklist results from selected health inspections.', 'key' => 'health_observation_availability'],
+                    ['type' => 'stacked_bar', 'title' => 'Observation Availability', 'subtitle' => 'Available vs Not Available observations from inspected health facilities.', 'key' => 'health_observation_availability'],
                     ['type' => 'bar', 'title' => 'Inspection Target Completion', 'subtitle' => 'AC and DC health inspection target completion.', 'key' => 'dc_ac_visit_completion'],
                     ['type' => 'bar', 'title' => 'Review Status', 'subtitle' => 'Approved, pending review, and rejected inspection records.', 'key' => 'inspection_status_breakdown'],
                 ],
                 default => [
                     ['type' => 'bar', 'title' => 'District/Division Comparison — Inspections Completed', 'subtitle' => 'Completed inspections across Punjab in selected period.', 'key' => 'district_comparison'],
-                    ['type' => 'grouped_bar', 'title' => 'Observation Availability — Available vs Not Available', 'subtitle' => 'Shows checklist results from selected health inspections.', 'key' => 'health_observation_availability'],
+                    ['type' => 'stacked_bar', 'title' => 'Observation Availability', 'subtitle' => 'Available vs Not Available observations from inspected health facilities.', 'key' => 'health_observation_availability'],
                     ['type' => 'bar', 'title' => 'Inspection Target Completion', 'subtitle' => 'AC and DC health inspection target completion.', 'key' => 'dc_ac_visit_completion'],
                     ['type' => 'bar', 'title' => 'Review Status', 'subtitle' => 'Approved, pending review, and rejected inspection records.', 'key' => 'inspection_status_breakdown'],
                 ],

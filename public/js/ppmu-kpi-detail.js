@@ -62,18 +62,27 @@
                     return;
                 }
                 const colors = chartColors(Math.max(labels.length, values.length, 1));
-                const chartType = def.type === 'grouped_bar' ? 'bar' : (def.type === 'donut' ? 'doughnut' : (def.type === 'pie' ? 'pie' : def.type));
+                const chartType = def.type === 'grouped_bar' || def.type === 'stacked_bar'
+                    ? 'bar'
+                    : (def.type === 'donut' ? 'doughnut' : (def.type === 'pie' ? 'pie' : def.type));
 
                 if (chartType === 'bar' && Array.isArray(payload.datasets) && payload.datasets.length) {
+                    const isStacked = def.type === 'stacked_bar';
+                    const horizontal = def.type === 'grouped_bar' || def.type === 'stacked_bar' || String(def.key || '').includes('observation');
+                    const facilitiesInspected = Number(payload.facilities_inspected ?? 0);
                     const datasets = payload.datasets.map((series, seriesIndex) => ({
                         label: series.label || ('Series ' + (seriesIndex + 1)),
                         data: series.values || [],
                         backgroundColor: series.color || chartColors(payload.datasets.length)[seriesIndex],
-                        borderRadius: 4,
+                        borderRadius: isStacked
+                            ? (seriesIndex === 0
+                                ? { topLeft: 4, bottomLeft: 4, topRight: 0, bottomRight: 0 }
+                                : { topLeft: 0, bottomLeft: 0, topRight: 4, bottomRight: 4 })
+                            : 4,
                         borderSkipped: false,
                         maxBarThickness: 18,
+                        stack: isStacked ? 'observations' : undefined,
                     }));
-                    const horizontal = def.type === 'grouped_bar' || String(def.key || '').includes('observation');
                     const barValueLabels = {
                         id: 'ppmuBarValueLabels',
                         afterDatasetsDraw(chart) {
@@ -118,6 +127,7 @@
                             scales: {
                                 y: {
                                     beginAtZero: true,
+                                    stacked: isStacked,
                                     grid: horizontal ? { display: false } : grid,
                                     ticks: {
                                         font: fnt,
@@ -132,6 +142,7 @@
                                 },
                                 x: {
                                     beginAtZero: true,
+                                    stacked: isStacked,
                                     grid: horizontal ? grid : { display: false },
                                     ticks: { font: fnt, padding: horizontal ? 6 : 4 },
                                 },
@@ -142,11 +153,21 @@
                                     labels: { padding: 12, usePointStyle: true, pointStyle: 'circle', font: fnt },
                                 },
                                 tooltip: {
+                                    mode: isStacked ? 'index' : 'nearest',
+                                    intersect: !isStacked,
                                     callbacks: {
                                         label(context) {
                                             const value = context.parsed?.x ?? context.parsed?.y ?? 0;
                                             const series = context.dataset?.label || 'Value';
                                             return ` ${series}: ${value}`;
+                                        },
+                                        footer(items) {
+                                            if (!isStacked || !items?.length) return '';
+                                            const available = Number(items[0]?.parsed?.x ?? items[0]?.parsed?.y ?? 0);
+                                            const notAvailable = Number(items[1]?.parsed?.x ?? items[1]?.parsed?.y ?? 0);
+                                            const total = available + notAvailable;
+                                            const inspected = facilitiesInspected > 0 ? facilitiesInspected : total;
+                                            return `Total inspected: ${inspected}`;
                                         },
                                     },
                                 },

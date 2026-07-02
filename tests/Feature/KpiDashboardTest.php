@@ -873,7 +873,7 @@ class KpiDashboardTest extends TestCase
         $this->assertSame('Total health facilities in this area', $totalFacilities['description'] ?? null);
     }
 
-    public function test_health_observation_chart_is_observation_availability_grouped_bar(): void
+    public function test_health_observation_chart_is_observation_availability_stacked_bar(): void
     {
         $this->seed(PpmuSeeder::class);
         $card = KpiCard::where('slug', 'inspection-of-health-facilities')->firstOrFail();
@@ -885,12 +885,17 @@ class KpiDashboardTest extends TestCase
 
         $chart = collect($detail['charts']['definitions'])->firstWhere('key', 'health_observation_availability');
         $this->assertNotNull($chart);
-        $this->assertSame('Observation Availability — Available vs Not Available', $chart['title']);
-        $this->assertSame('grouped_bar', $chart['type']);
-        $this->assertStringContainsString('Shows checklist results from selected health inspections', (string) ($chart['subtitle'] ?? ''));
+        $this->assertSame('Observation Availability', $chart['title']);
+        $this->assertSame('stacked_bar', $chart['type']);
+        $this->assertStringContainsString('Available vs Not Available observations from inspected health facilities', (string) ($chart['subtitle'] ?? ''));
         $this->assertCount(2, $chart['data']['datasets'] ?? []);
         $this->assertSame('Available', $chart['data']['datasets'][0]['label'] ?? null);
         $this->assertSame('Not Available', $chart['data']['datasets'][1]['label'] ?? null);
+        $this->assertSame(2, (int) ($chart['data']['facilities_inspected'] ?? 0));
+
+        $deepCleaningAvailable = (int) ($chart['data']['datasets'][0]['values'][0] ?? 0);
+        $deepCleaningNotAvailable = (int) ($chart['data']['datasets'][1]['values'][0] ?? 0);
+        $this->assertSame(2, $deepCleaningAvailable + $deepCleaningNotAvailable);
     }
 
     public function test_health_observation_cards_do_not_use_combined_value_text(): void
