@@ -9,7 +9,7 @@ class KpiInspectionAttachment extends Model
 {
     protected $fillable = [
         'kpi_inspection_id', 'file_path', 'file_name', 'file_type', 'mime_type',
-        'caption', 'latitude', 'longitude', 'sort_order', 'is_demo',
+        'caption', 'observation_key', 'latitude', 'longitude', 'sort_order', 'is_demo',
     ];
 
     protected $casts = [

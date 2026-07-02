@@ -7,7 +7,6 @@ use App\Models\KpiInspection;
 use App\Services\KpiDashboardService;
 use App\Services\KpiGeoFilterService;
 use App\Services\KpiInspectionService;
-use App\Services\KpiPeriodService;
 use Illuminate\Http\Request;
 
 class KpiInspectionController extends Controller
@@ -17,44 +16,29 @@ class KpiInspectionController extends Controller
     public function index(
         Request $request,
         KpiInspectionService $inspectionService,
-        KpiPeriodService $periodService,
         KpiGeoFilterService $geoFilterService,
     ) {
         $user = $request->user()->loadMissing(['role', 'division', 'district', 'tehsil']);
-
-        if ($request->getQueryString() === null || $request->getQueryString() === '') {
-            $request = $this->applyInspectionDefaults($request, $periodService);
-
-            return redirect()->route('inspections.index', $request->query());
-        }
-
-        $request = $this->applyInspectionDefaults($request, $periodService);
-
-        $year = (int) ($request->input('year') ?: now()->year);
-        $month = (int) ($request->input('month') ?: now()->month);
+        $request = $this->applyInspectionDefaults($request);
 
         return view('inspections.index', [
             'user' => $user,
             'inspectionRecords' => $inspectionService->getAllInspectionsList($user, $request),
             'kpiCards' => KpiCard::query()->where('is_active', true)->orderBy('title')->get(['id', 'title', 'slug']),
-            'filters' => $periodService->filterOptions($year, $month),
-            'period' => $periodService->state($request),
-            'period_description' => $periodService->description($request),
             'geoFilters' => $geoFilterService->options($user),
             'geo' => $geoFilterService->state($request),
             'inspectionFilters' => $inspectionService->filterOptions($user),
             'selectedKpiCardId' => (int) $request->input('kpi_card_id'),
-            'inspectionDefaults' => $this->inspectionDefaults($request, $periodService),
+            'inspectionDateRange' => $inspectionService->completedDayDateRange(),
         ]);
     }
 
     public function data(
         Request $request,
         KpiInspectionService $inspectionService,
-        KpiPeriodService $periodService,
     ) {
         $user = $request->user()->loadMissing(['role', 'division', 'district', 'tehsil']);
-        $request = $this->applyInspectionDefaults($request, $periodService);
+        $request = $this->applyInspectionDefaults($request);
 
         $records = $inspectionService->getAllInspectionsList($user, $request);
 
@@ -63,35 +47,12 @@ class KpiInspectionController extends Controller
             'total' => $records->total(),
             'from' => $records->firstItem(),
             'to' => $records->lastItem(),
-            'period_description' => $periodService->description($request),
         ]);
     }
 
-    /** @return array<string, string> */
-    private function inspectionDefaults(Request $request, KpiPeriodService $periodService): array
+    private function applyInspectionDefaults(Request $request): Request
     {
-        return [
-            'period_type' => 'weekly',
-            'week_no' => (string) $periodService->currentWeekNo(),
-            'month' => (string) now()->month,
-            'year' => (string) now()->year,
-            'kpi_card_id' => (string) $request->input('kpi_card_id', $this->defaultKpiCardId() ?? ''),
-            'insp_per_page' => (string) $request->input('insp_per_page', 25),
-        ];
-    }
-
-    private function applyInspectionDefaults(Request $request, KpiPeriodService $periodService): Request
-    {
-        if (! $request->filled('period_type')) {
-            $request->merge([
-                'period_type' => 'weekly',
-                'week_no' => $periodService->currentWeekNo(),
-                'month' => (string) now()->month,
-                'year' => (string) now()->year,
-            ]);
-        }
-
-        if (! $request->filled('kpi_card_id')) {
+        if (! $request->has('kpi_card_id')) {
             $defaultKpiId = $this->defaultKpiCardId();
             if ($defaultKpiId) {
                 $request->merge(['kpi_card_id' => (string) $defaultKpiId]);
@@ -99,7 +60,7 @@ class KpiInspectionController extends Controller
         }
 
         if (! $request->filled('insp_per_page')) {
-            $request->merge(['insp_per_page' => '25']);
+            $request->merge(['insp_per_page' => '10']);
         }
 
         return $request;
@@ -125,6 +86,7 @@ class KpiInspectionController extends Controller
         return view('kpi-inspections.show', [
             'kpiCard' => $kpiCard,
             'user' => $user,
+            'backUrl' => $this->inspectionListBackUrl($request),
         ] + $data);
     }
 
@@ -145,7 +107,7 @@ class KpiInspectionController extends Controller
         $service->approveInspection($inspection, $user, $validated['review_remarks'] ?? null);
 
         return redirect()
-            ->route('kpi.inspections.show', [$kpiCard, $inspection])
+            ->route('kpi.inspections.show', $this->detailRouteParameters($request, $kpiCard, $inspection))
             ->with('success', 'Inspection approved successfully.');
     }
 
@@ -160,13 +122,43 @@ class KpiInspectionController extends Controller
         ]);
 
         $validated = $request->validate([
-            'rejection_reason' => ['required', 'string', 'min:5', 'max:2000'],
+            'rejection_reason' => ['nullable', 'string', 'max:2000'],
         ]);
 
-        $service->rejectInspection($inspection, $user, $validated['rejection_reason']);
+        $service->rejectInspection($inspection, $user, $validated['rejection_reason'] ?? null);
 
         return redirect()
-            ->route('kpi.inspections.show', [$kpiCard, $inspection])
+            ->route('kpi.inspections.show', $this->detailRouteParameters($request, $kpiCard, $inspection))
             ->with('success', 'Inspection rejected and recorded.');
+    }
+
+    private function inspectionListBackUrl(Request $request): string
+    {
+        $fallback = route('inspections.index');
+        $candidate = $request->string('return_url')->toString();
+
+        if ($candidate === '') {
+            return $fallback;
+        }
+
+        $path = parse_url($candidate, PHP_URL_PATH);
+        $expectedPath = parse_url($fallback, PHP_URL_PATH);
+        $host = parse_url($candidate, PHP_URL_HOST);
+
+        return $path === $expectedPath && ($host === null || $host === $request->getHost())
+            ? $candidate
+            : $fallback;
+    }
+
+    /** @return array<int|string, mixed> */
+    private function detailRouteParameters(Request $request, KpiCard $kpiCard, KpiInspection $inspection): array
+    {
+        $parameters = [$kpiCard, $inspection];
+
+        if ($request->filled('return_url')) {
+            $parameters['return_url'] = $this->inspectionListBackUrl($request);
+        }
+
+        return $parameters;
     }
 }

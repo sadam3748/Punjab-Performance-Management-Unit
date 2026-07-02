@@ -196,6 +196,7 @@ class KpiChartService
             $acVisitGauge = $this->formula->percentage($achieved, $target);
         }
 
+        $healthObservations = $this->healthObservationAvailabilityFromInspections($inspections);
         $healthIssues = $this->healthIssueBreakdownFromInspections($inspections);
 
         $dcAcVisitCompletion = collect([
@@ -207,16 +208,17 @@ class KpiChartService
             $activeTehsils = max(1, $inspections->pluck('tehsil_id')->filter()->unique()->count());
             $acTarget = max(2, $activeTehsils * 2);
             $dcTarget = 2;
-            $acCompleted = (int) $inspections->whereIn('status', [KpiInspection::STATUS_APPROVED, KpiInspection::STATUS_PENDING])->count();
-            $dcCompleted = (int) $submissions->sum(fn ($i) => (float) data_get($i->metric_snapshot, 'dc_visits', 0));
+            $acCompleted = (int) $inspections->count();
+            $dcCompleted = $this->healthDcCompletedCount($inspections, $submissions, $dcTarget);
 
             if (in_array($user->role?->slug, ['ac', 'field_user'], true)) {
                 $acTarget = 2;
+                $acCompleted = min($acCompleted, $acTarget);
             }
 
             $dcAcVisitCompletion = collect([
-                'AC Visits %' => min(100.0, $this->formula->percentage(min($acCompleted, $acTarget), $acTarget)),
-                'DC Visits %' => min(100.0, $this->formula->percentage(min($dcCompleted, $dcTarget), $dcTarget)),
+                'AC Inspection Target %' => min(100.0, $this->formula->percentage(min($acCompleted, $acTarget), $acTarget)),
+                'DC Inspection Target %' => min(100.0, $this->formula->percentage(min($dcCompleted, $dcTarget), $dcTarget)),
             ]);
         }
 
@@ -279,11 +281,16 @@ class KpiChartService
                 'TLM Shortage' => $submissions->sum(fn ($i) => (float) data_get($i->metric_snapshot, 'issues_tlm_shortage', 0)),
                 'Facility Deficiency' => $submissions->sum(fn ($i) => (float) data_get($i->metric_snapshot, 'issues_facility_deficiency', 0)),
             ])->filter(fn ($v) => $v > 0)),
+            'health_observation_availability' => $healthObservations,
             'health_issue_breakdown' => $toChart($healthIssues->isNotEmpty() ? $healthIssues : collect([
-                'Cleanliness' => $submissions->sum(fn ($i) => (float) data_get($i->metric_snapshot, 'issues_cleanliness', 0)),
-                'Staff Absence' => $submissions->sum(fn ($i) => (float) data_get($i->metric_snapshot, 'issues_staff_absence', 0)),
-                'Medicine Shortage' => $submissions->sum(fn ($i) => (float) data_get($i->metric_snapshot, 'issues_medicine_shortage', 0)),
-                'Equipment / Utilities' => $submissions->sum(fn ($i) => (float) data_get($i->metric_snapshot, 'issues_equipment_utilities', 0)),
+                'Deep Cleaning' => $submissions->sum(fn ($i) => (float) data_get($i->metric_snapshot, 'observation_deep_cleaning_not', 0)),
+                'Staff Availability' => $submissions->sum(fn ($i) => (float) data_get($i->metric_snapshot, 'observation_staff_not', 0)),
+                'Medicine Flex' => $submissions->sum(fn ($i) => (float) data_get($i->metric_snapshot, 'observation_medicine_not', 0)),
+                'Testing Equipment' => $submissions->sum(fn ($i) => (float) data_get($i->metric_snapshot, 'observation_equipment_not', 0)),
+                'Drinking Water' => $submissions->sum(fn ($i) => (float) data_get($i->metric_snapshot, 'observation_water_not', 0)),
+                'Utilities' => $submissions->sum(fn ($i) => (float) data_get($i->metric_snapshot, 'observation_utilities_not', 0)),
+                'UHI Compliance' => $submissions->sum(fn ($i) => (float) data_get($i->metric_snapshot, 'observation_uhi_no', 0)),
+                'Attention Required' => $submissions->sum(fn ($i) => (float) data_get($i->metric_snapshot, 'observation_attention_required', 0)),
             ])->filter(fn ($v) => $v > 0)),
             'shops_handcarts_comparison' => $toChart(collect([
                 'Shops' => $inspections->avg(fn ($i) => (float) data_get($i->detail_data, 'shops_checked', 0)) ?: 0,
@@ -339,13 +346,81 @@ class KpiChartService
         };
     }
 
+    /** @return array{labels: list<string>, datasets: list<array{label: string, values: list<int>, color: string}>} */
+    private function healthObservationAvailabilityFromInspections(Collection $inspections): array
+    {
+        $categories = [
+            'Deep Cleaning' => 'deep_cleaning_available',
+            'Staff Availability' => 'staff_available',
+            'Medicine Flex' => 'medicine_flex_available',
+            'Testing Equipment' => 'testing_equipment_available',
+            'Drinking Water' => 'drinking_water_available',
+            'Utilities' => 'utilities_available',
+            'UHI Compliance' => 'uhi_compliance',
+        ];
+
+        $available = [];
+        $notAvailable = [];
+
+        foreach ($categories as $label => $field) {
+            $available[$label] = 0;
+            $notAvailable[$label] = 0;
+
+            foreach ($inspections as $inspection) {
+                $detail = is_array($inspection->detail_data)
+                    ? $inspection->detail_data
+                    : (json_decode($inspection->detail_data ?? '[]', true) ?: []);
+
+                $value = strtolower((string) ($detail[$field] ?? $this->legacyHealthObservationChartValue($detail, $field)));
+
+                if ($field === 'uhi_compliance') {
+                    if ($value === 'yes') {
+                        $available[$label]++;
+                    } elseif ($value === 'no') {
+                        $notAvailable[$label]++;
+                    }
+
+                    continue;
+                }
+
+                if ($value === 'available' || $value === 'yes') {
+                    $available[$label]++;
+                } elseif ($value === 'not_available' || $value === 'no') {
+                    $notAvailable[$label]++;
+                }
+            }
+        }
+
+        $labels = array_keys($categories);
+
+        return [
+            'labels' => $labels,
+            'datasets' => [
+                [
+                    'label' => 'Available',
+                    'values' => array_map(fn (string $label) => $available[$label], $labels),
+                    'color' => '#087443',
+                ],
+                [
+                    'label' => 'Not Available',
+                    'values' => array_map(fn (string $label) => $notAvailable[$label], $labels),
+                    'color' => '#dc2626',
+                ],
+            ],
+        ];
+    }
+
     private function healthIssueBreakdownFromInspections(Collection $inspections): Collection
     {
         $counts = [
-            'Cleanliness' => 0,
-            'Staff Absence' => 0,
-            'Medicine Shortage' => 0,
-            'Equipment / Utilities' => 0,
+            'Deep Cleaning' => 0,
+            'Staff Availability' => 0,
+            'Medicine Flex' => 0,
+            'Testing Equipment' => 0,
+            'Drinking Water' => 0,
+            'Utilities' => 0,
+            'UHI Compliance' => 0,
+            'Attention Required' => 0,
         ];
 
         foreach ($inspections as $inspection) {
@@ -353,23 +428,61 @@ class KpiChartService
                 ? $inspection->detail_data
                 : (json_decode($inspection->detail_data ?? '[]', true) ?: []);
 
-            if ($this->isNegativeSignal($detail['cleanliness'] ?? null)) {
-                $counts['Cleanliness']++;
+            $fieldMap = [
+                'Deep Cleaning' => 'deep_cleaning_available',
+                'Staff Availability' => 'staff_available',
+                'Medicine Flex' => 'medicine_flex_available',
+                'Testing Equipment' => 'testing_equipment_available',
+                'Drinking Water' => 'drinking_water_available',
+                'Utilities' => 'utilities_available',
+            ];
+
+            foreach ($fieldMap as $label => $field) {
+                $value = strtolower((string) ($detail[$field] ?? $this->legacyHealthObservationChartValue($detail, $field)));
+                if ($value === 'not_available' || $value === 'no') {
+                    $counts[$label]++;
+                    $counts['Attention Required']++;
+                }
             }
-            if (($detail['staff_present'] ?? 'Yes') === 'No') {
-                $counts['Staff Absence']++;
-            }
-            if (($detail['medicines_ok'] ?? 'Yes') === 'No') {
-                $counts['Medicine Shortage']++;
-            }
-            if (($detail['equipment_status'] ?? '') === 'Non-Operational'
-                || ($detail['equipment_ok'] ?? 'Yes') === 'No'
-                || ($detail['utilities_ok'] ?? 'Yes') === 'No') {
-                $counts['Equipment / Utilities']++;
+
+            $uhi = strtolower((string) ($detail['uhi_compliance'] ?? ''));
+            if ($uhi === 'no') {
+                $counts['UHI Compliance']++;
+                $counts['Attention Required']++;
             }
         }
 
         return collect($counts)->filter(fn ($v) => $v > 0);
+    }
+
+    /** @param  array<string, mixed>  $detail */
+    private function legacyHealthObservationChartValue(array $detail, string $field): string
+    {
+        return match ($field) {
+            'deep_cleaning_available' => $this->isNegativeSignal($detail['cleanliness'] ?? null) ? 'not_available' : 'available',
+            'staff_available' => (($detail['staff_present'] ?? 'Yes') === 'No') ? 'not_available' : 'available',
+            'medicine_flex_available' => (($detail['medicines_ok'] ?? 'Yes') === 'No') ? 'not_available' : 'available',
+            'testing_equipment_available' => in_array($detail['equipment_status'] ?? '', ['Non-Operational', 'Partial'], true)
+                ? 'not_available'
+                : 'available',
+            'drinking_water_available' => ($detail['utilities_ok'] ?? 'Yes') === 'No' ? 'not_available' : 'available',
+            'utilities_available' => ($detail['utilities_ok'] ?? 'Yes') === 'No' ? 'not_available' : 'available',
+            default => 'available',
+        };
+    }
+
+    private function healthDcCompletedCount(Collection $inspections, Collection $submissions, int $dcTarget): int
+    {
+        $fromSubmissions = (int) $submissions->sum(fn ($i) => (float) data_get($i->metric_snapshot, 'dc_visits', 0));
+        if ($fromSubmissions > 0) {
+            return min($dcTarget, $fromSubmissions);
+        }
+
+        $dcInspections = $inspections->filter(function (KpiInspection $item) {
+            return in_array($item->inspectedBy?->role?->slug, ['dc', 'commissioner'], true);
+        })->count();
+
+        return min($dcTarget, $dcInspections);
     }
 
     private function isNegativeSignal(mixed $value): bool

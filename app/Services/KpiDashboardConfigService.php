@@ -69,8 +69,9 @@ class KpiDashboardConfigService
     {
         return match ($this->normalizeSlug($slug)) {
             'inspection-of-health-facilities' => [
-                'target' => 'Visit Target',
-                'completed' => 'Target Completed',
+                'target' => 'Inspection Target',
+                'completed' => 'Inspected',
+                'review' => 'Review %',
             ],
             'inspection-of-educational-institutions' => [
                 'target' => 'Visit Target',

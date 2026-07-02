@@ -2420,6 +2420,251 @@ body:has(.ppmu-main-dashboard) {
     text-overflow: ellipsis;
 }
 
+.ppmu-pi-card-helper {
+    display: block;
+    margin-top: 6px;
+    font-size: 11px;
+    font-weight: 500;
+    color: #64748b;
+    line-height: 1.3;
+}
+
+.ppmu-observation-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+}
+
+.ppmu-obs-chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 8px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1.2;
+    border: 1px solid transparent;
+}
+
+.ppmu-obs-chip-available {
+    color: #087443;
+    background: rgba(8, 116, 67, .08);
+    border-color: rgba(8, 116, 67, .18);
+}
+
+.ppmu-obs-chip-unavailable {
+    color: #b45309;
+    background: rgba(224, 123, 0, .08);
+    border-color: rgba(224, 123, 0, .18);
+}
+
+.ppmu-obs-attention-text {
+    margin: 0;
+    font-size: 13px;
+    font-weight: 600;
+    color: #b45309;
+    line-height: 1.35;
+}
+
+.ppmu-pi-card-observation_availability .ppmu-pi-card-foot,
+.ppmu-pi-card-observation_yesno .ppmu-pi-card-foot,
+.ppmu-pi-card-attention .ppmu-pi-card-foot {
+    padding-top: 2px;
+}
+
+.ppmu-obs-status-badge {
+    font-size: 12px;
+    font-weight: 600;
+    width: fit-content;
+}
+
+.ppmu-obs-evidence-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #087443;
+    text-decoration: none;
+    background: transparent;
+    border: 0;
+    padding: 0;
+    cursor: pointer;
+}
+
+.ppmu-obs-evidence-link:hover {
+    color: #065f46;
+    text-decoration: underline;
+}
+
+.ppmu-obs-evidence-muted {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    color: #94a3b8;
+}
+
+.ppmu-review-actions {
+    max-width: 720px;
+}
+
+.ppmu-review-actions-unified {
+    display: block;
+    width: 100%;
+    max-width: none;
+    padding-top: 2px;
+}
+
+.ppmu-review-actions-unified .form-label {
+    display: block;
+    font-size: 12px;
+    font-weight: 700;
+    color: #0f172a;
+    margin-bottom: 8px;
+    text-align: left;
+}
+
+.ppmu-review-actions-unified textarea {
+    display: block;
+    width: 100%;
+    min-height: 96px;
+    font-size: 13px;
+    line-height: 1.45;
+    text-align: left;
+    resize: vertical;
+    border-radius: 10px;
+}
+
+.ppmu-review-actions-unified .ppmu-review-action-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 10px;
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid #e2e8f0;
+}
+
+.ppmu-review-actions-unified .ppmu-review-btn {
+    width: auto;
+    min-width: 168px;
+    padding: 0 18px;
+}
+
+.ppmu-review-action-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.ppmu-review-form-inline {
+    margin: 0;
+}
+
+.ppmu-evidence-item:target {
+    outline: 2px solid rgba(8, 116, 67, .35);
+    outline-offset: 4px;
+    border-radius: 10px;
+}
+
+.ppmu-evidence-archive {
+    padding: 0;
+    overflow: hidden;
+}
+
+.ppmu-evidence-archive-toggle {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 14px 16px;
+    border: 0;
+    background: #fff;
+    text-align: left;
+    cursor: pointer;
+}
+
+.ppmu-evidence-archive-title {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    font-weight: 700;
+    color: #0f172a;
+}
+
+.ppmu-evidence-archive-meta {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: #64748b;
+    font-size: 12px;
+}
+
+.ppmu-evidence-archive-meta em {
+    font-style: normal;
+    font-weight: 600;
+}
+
+.ppmu-evidence-archive-chevron {
+    transition: transform .2s ease;
+}
+
+.ppmu-evidence-archive-toggle[aria-expanded="true"] .ppmu-evidence-archive-chevron {
+    transform: rotate(180deg);
+}
+
+.ppmu-evidence-gallery-archive {
+    padding: 0 16px 16px;
+    border-top: 1px solid #e2e8f0;
+}
+
+.ppmu-evidence-archive-empty {
+    padding: 0 16px 16px;
+}
+
+.ppmu-obs-evidence-modal-eyebrow {
+    display: block;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+    color: #64748b;
+    margin-bottom: 2px;
+}
+
+.ppmu-obs-evidence-modal-body {
+    background: #f8faf9;
+    text-align: center;
+    padding: 18px;
+}
+
+.ppmu-obs-evidence-modal-img {
+    display: block;
+    width: 100%;
+    max-height: 62vh;
+    object-fit: contain;
+    margin: 0 auto;
+    border-radius: 12px;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+}
+
+.ppmu-obs-evidence-modal-caption {
+    margin-top: 10px;
+    font-size: 12px;
+    color: #64748b;
+}
+
+.ppmu-obs-evidence-modal-footer {
+    justify-content: space-between;
+    gap: 10px;
+}
+
 .ppmu-pi-card.tone-green::before  { background: #087443; }
 .ppmu-pi-card.tone-blue::before   { background: #2563eb; }
 .ppmu-pi-card.tone-yellow::before,
@@ -4410,6 +4655,14 @@ body:has(.ppmu-main-dashboard) {
 .ppmu-inspections-page #inspectionListWrap.is-loading {
     opacity: 0.55;
     pointer-events: none;
+}
+
+.ppmu-inspections-page .ppmu-inspection-table .ppmu-th-action,
+.ppmu-inspections-page .ppmu-inspection-table .ppmu-td-action {
+    width: 72px;
+    min-width: 72px;
+    max-width: 72px;
+    text-align: center;
 }
 
 @media (min-width: 1200px) {

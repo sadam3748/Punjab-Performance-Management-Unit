@@ -64,6 +64,13 @@ class KpiInspectionDetailFactory
             ],
             'inspection-of-health-facilities' => [
                 'facility_type' => $pick(['Hospital', 'BHU', 'RHC', 'Dispensary']),
+                'deep_cleaning_available' => $pick(['available', 'not_available']),
+                'staff_available' => $pick(['available', 'not_available']),
+                'medicine_flex_available' => $pick(['available', 'not_available']),
+                'testing_equipment_available' => $pick(['available', 'not_available']),
+                'drinking_water_available' => $pick(['available', 'not_available']),
+                'utilities_available' => $pick(['available', 'not_available']),
+                'uhi_compliance' => $pick(['yes', 'no']),
                 'cleanliness' => $pick(['Good', 'Average', 'Poor']),
                 'staff_present' => $pick(['Yes', 'Partial', 'No']),
                 'medicines_ok' => $pick(['Yes', 'Partial', 'No']),

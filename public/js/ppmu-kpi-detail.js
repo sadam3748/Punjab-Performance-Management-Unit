@@ -54,7 +54,7 @@
                 const labels = payload.labels || [];
                 const values = payload.values || [];
 
-                if (!labels.length && !values.length) {
+                if (!labels.length && !values.length && !(payload.datasets || []).length) {
                     const parent = canvas.closest('.card-ppmf-body');
                     if (parent) {
                         parent.innerHTML = '<div class="ppmu-chart-empty"><i class="bi bi-bar-chart"></i><span>No data available for this chart</span></div>';
@@ -62,7 +62,100 @@
                     return;
                 }
                 const colors = chartColors(Math.max(labels.length, values.length, 1));
-                const chartType = def.type === 'donut' ? 'doughnut' : (def.type === 'pie' ? 'pie' : def.type);
+                const chartType = def.type === 'grouped_bar' ? 'bar' : (def.type === 'donut' ? 'doughnut' : (def.type === 'pie' ? 'pie' : def.type));
+
+                if (chartType === 'bar' && Array.isArray(payload.datasets) && payload.datasets.length) {
+                    const datasets = payload.datasets.map((series, seriesIndex) => ({
+                        label: series.label || ('Series ' + (seriesIndex + 1)),
+                        data: series.values || [],
+                        backgroundColor: series.color || chartColors(payload.datasets.length)[seriesIndex],
+                        borderRadius: 4,
+                        borderSkipped: false,
+                        maxBarThickness: 18,
+                    }));
+                    const horizontal = def.type === 'grouped_bar' || String(def.key || '').includes('observation');
+                    const barValueLabels = {
+                        id: 'ppmuBarValueLabels',
+                        afterDatasetsDraw(chart) {
+                            const { ctx, chartArea } = chart;
+                            if (!chartArea) return;
+                            ctx.save();
+                            ctx.font = '600 10px "Plus Jakarta Sans", system-ui, sans-serif';
+                            ctx.textBaseline = 'middle';
+                            chart.data.datasets.forEach((dataset, datasetIndex) => {
+                                const meta = chart.getDatasetMeta(datasetIndex);
+                                if (meta.hidden) return;
+                                meta.data.forEach((bar, index) => {
+                                    const value = Number(dataset.data[index] ?? 0);
+                                    if (!value) return;
+                                    const label = String(value);
+                                    const inside = horizontal
+                                        ? (bar.x - chartArea.left) > 28
+                                        : (chartArea.bottom - bar.y) > 18;
+                                    ctx.fillStyle = inside ? '#fff' : '#334155';
+                                    ctx.textAlign = inside ? 'right' : (horizontal ? 'left' : 'center');
+                                    if (horizontal) {
+                                        ctx.fillText(label, inside ? bar.x - 6 : bar.x + 6, bar.y);
+                                    } else {
+                                        ctx.fillText(label, bar.x, inside ? bar.y + 4 : bar.y - 8);
+                                    }
+                                });
+                            });
+                            ctx.restore();
+                        },
+                    };
+
+                    charts['kpiChart_' + index] = new Chart(canvas, {
+                        type: 'bar',
+                        data: { labels, datasets },
+                        options: {
+                            indexAxis: horizontal ? 'y' : 'x',
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            layout: {
+                                padding: horizontal ? { left: 6, right: 10 } : { top: 8, bottom: 4 },
+                            },
+                            scales: {
+                                y: {
+                                    beginAtZero: true,
+                                    grid: horizontal ? { display: false } : grid,
+                                    ticks: {
+                                        font: fnt,
+                                        autoSkip: false,
+                                        padding: horizontal ? 10 : 6,
+                                    },
+                                    afterFit(axis) {
+                                        if (horizontal) {
+                                            axis.width = Math.max(axis.width, 152);
+                                        }
+                                    },
+                                },
+                                x: {
+                                    beginAtZero: true,
+                                    grid: horizontal ? grid : { display: false },
+                                    ticks: { font: fnt, padding: horizontal ? 6 : 4 },
+                                },
+                            },
+                            plugins: {
+                                legend: {
+                                    position: 'bottom',
+                                    labels: { padding: 12, usePointStyle: true, pointStyle: 'circle', font: fnt },
+                                },
+                                tooltip: {
+                                    callbacks: {
+                                        label(context) {
+                                            const value = context.parsed?.x ?? context.parsed?.y ?? 0;
+                                            const series = context.dataset?.label || 'Value';
+                                            return ` ${series}: ${value}`;
+                                        },
+                                    },
+                                },
+                            },
+                        },
+                        plugins: [barValueLabels],
+                    });
+                    return;
+                }
 
                 if (chartType === 'gauge') {
                     const value = clampPercent(values[0] ?? 0);
@@ -226,6 +319,11 @@
         stats.querySelector('[data-stat="target"] strong').textContent = fmtNum(header.operational_target ?? header.target, 1);
         stats.querySelector('[data-stat="achieved"] strong').textContent = fmtNum(header.completed ?? header.achieved, 1);
         stats.querySelector('[data-stat="pct"] strong').textContent = clampPercent(header.achievement_percentage) + '%';
+
+        const reviewEl = stats.querySelector('[data-stat="review_pct"] strong');
+        if (reviewEl) {
+            reviewEl.textContent = clampPercent(header.review_percentage ?? 0) + '%';
+        }
 
         const statusEl = stats.querySelector('[data-stat="status"]');
         if (statusEl) {

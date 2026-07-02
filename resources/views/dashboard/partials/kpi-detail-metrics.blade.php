@@ -19,7 +19,14 @@
                         :formula="$metric['formula_text'] ?? null"
                         :hint="$metric['hint'] ?? null"
                         :description="$metric['description'] ?? null"
-                        :unit="$metric['unit'] ?? null"/>
+                        :unit="$metric['unit'] ?? null"
+                        :display-mode="$metric['display_mode'] ?? null"
+                        :observation-available="$metric['observation_available'] ?? null"
+                        :observation-not-available="$metric['observation_not_available'] ?? null"
+                        :observation-yes="$metric['observation_yes'] ?? null"
+                        :observation-no="$metric['observation_no'] ?? null"
+                        :attention-text="$metric['attention_text'] ?? null"
+                        :card-helper="$metric['card_helper'] ?? null"/>
                 @endforeach
             </div>
         </div>
@@ -36,7 +43,14 @@
                 :formula="$metric['formula_text'] ?? null"
                 :hint="$metric['hint'] ?? null"
                 :description="$metric['description'] ?? null"
-                :unit="$metric['unit'] ?? null"/>
+                :unit="$metric['unit'] ?? null"
+                :display-mode="$metric['display_mode'] ?? null"
+                :observation-available="$metric['observation_available'] ?? null"
+                :observation-not-available="$metric['observation_not_available'] ?? null"
+                :observation-yes="$metric['observation_yes'] ?? null"
+                :observation-no="$metric['observation_no'] ?? null"
+                :attention-text="$metric['attention_text'] ?? null"
+                :card-helper="$metric['card_helper'] ?? null"/>
         @endforeach
     </div>
 @endif

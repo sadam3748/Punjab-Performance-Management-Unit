@@ -3,12 +3,12 @@
         <thead>
             <tr>
                 <th>Ref.</th>
-                <th>KPI</th>
-                <th>Entity</th>
+                <th>Facility Name</th>
+                <th>Type</th>
                 <th>Tehsil</th>
                 <th>Date</th>
-                <th>Status</th>
-                <th class="ppmu-th-action"></th>
+                <th>Review Status</th>
+                <th class="ppmu-th-action">Action</th>
             </tr>
         </thead>
         <tbody>
@@ -16,16 +16,16 @@
                 @php $card = $inspection->kpiCard; @endphp
                 <tr>
                     <td><strong class="ppmu-inspection-ref">{{ $inspection->reference_no }}</strong></td>
-                    <td title="{{ $card?->title }}">{{ \Illuminate\Support\Str::limit($card?->title ?? '—', 28) }}</td>
                     <td title="{{ $inspection->entity_name }}">{{ \Illuminate\Support\Str::limit($inspection->entity_name ?? '—', 24) }}</td>
+                    <td>{{ $inspection->entity_type ?? '—' }}</td>
                     <td>{{ $inspection->tehsil?->name ?? '—' }}</td>
-                    <td>{{ $inspection->inspection_datetime->format('d M Y') }}</td>
+                    <td>{{ $inspection->inspection_datetime->copy()->timezone(config('app.inspection_timezone', 'Asia/Karachi'))->format('d M Y, h:i A') }}</td>
                     <td>
                         <span class="ppmu-inspection-status ppmu-inspection-status-{{ $inspection->status }}">{{ $inspection->statusLabel() }}</span>
                     </td>
                     <td class="text-center ppmu-td-action">
                         @if($card)
-                            <a href="{{ route('kpi.inspections.show', [$card, $inspection]) }}"
+                            <a href="{{ route('kpi.inspections.show', [$card, $inspection, 'return_url' => route('inspections.index', request()->query())]) }}"
                                class="ppmu-inspection-view-icon"
                                title="View inspection detail"
                                aria-label="View inspection {{ $inspection->reference_no }}">

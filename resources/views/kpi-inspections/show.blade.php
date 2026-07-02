@@ -23,8 +23,8 @@
 
 <div class="ppmu-inspection-hero card-ppmf">
     <div class="ppmu-detail-hero-bar">
-        <a href="{{ route('kpi.dashboard', $kpiCard) }}" class="ppmu-back">
-            <i class="bi bi-arrow-left-circle-fill"></i> Back to KPI Dashboard
+        <a href="{{ $backUrl }}" class="ppmu-back">
+            <i class="bi bi-arrow-left-circle-fill"></i> Back
         </a>
         <span class="badge rounded-pill text-bg-{{ $inspection->statusClass() }} ppmu-inspection-hero-badge">{{ $inspection->statusLabel() }}</span>
     </div>
@@ -34,7 +34,6 @@
             <img src="{{ $imageUrl }}" alt="{{ $kpiCard->title }}" width="88" height="88">
         </div>
         <div class="ppmu-detail-info">
-            <span class="ppmu-detail-category">{{ $kpiCard->category }}</span>
             <h1>{{ $inspection->inspection_title }}</h1>
             <div class="ppmu-detail-meta">
                 <span><i class="bi bi-tag-fill"></i>{{ $kpiCard->title }}</span>
@@ -43,25 +42,6 @@
             </div>
         </div>
     </div>
-</div>
-
-<div class="ppmu-inspection-summary-grid ppmu-inspection-summary-compact mb-3">
-    <article class="ppmu-pi-card tone-blue">
-        <div class="ppmu-pi-card-head"><div class="ppmu-pi-icon"><i class="bi bi-pin-map"></i></div><h4 class="ppmu-pi-title">Tehsil</h4></div>
-        <div class="ppmu-pi-card-foot"><strong class="ppmu-pi-value ppmu-pi-value-text">{{ $inspection->tehsil?->name ?? '—' }}</strong></div>
-    </article>
-    <article class="ppmu-pi-card tone-green">
-        <div class="ppmu-pi-card-head"><div class="ppmu-pi-icon"><i class="bi bi-calendar-event"></i></div><h4 class="ppmu-pi-title">Inspection Date</h4></div>
-        <div class="ppmu-pi-card-foot"><strong class="ppmu-pi-value ppmu-pi-value-text">{{ $inspection->inspection_datetime->format('d M Y') }}</strong></div>
-    </article>
-    <article class="ppmu-pi-card tone-purple">
-        <div class="ppmu-pi-card-head"><div class="ppmu-pi-icon"><i class="bi bi-person-badge"></i></div><h4 class="ppmu-pi-title">Inspected By</h4></div>
-        <div class="ppmu-pi-card-foot"><strong class="ppmu-pi-value ppmu-pi-value-text">{{ $inspection->inspectedBy?->name ?? '—' }}</strong></div>
-    </article>
-    <article class="ppmu-pi-card tone-orange">
-        <div class="ppmu-pi-card-head"><div class="ppmu-pi-icon"><i class="bi bi-shield-check"></i></div><h4 class="ppmu-pi-title">Review Status</h4></div>
-        <div class="ppmu-pi-card-foot"><strong class="ppmu-pi-value ppmu-pi-value-text">{{ $inspection->statusLabel() }}</strong></div>
-    </article>
 </div>
 
 <div class="row g-3 ppmu-inspection-detail-rows">
@@ -95,44 +75,37 @@
     </div>
 </div>
 
-@if(!empty($detailFields))
-    @php $detailFieldCount = count($detailFields); @endphp
+@if(!empty($observationCards))
+    @php $detailFieldCount = count($observationCards); @endphp
     <div class="card-ppmf ppmu-inspection-panel mt-3">
-        <h3><i class="bi bi-list-check"></i> KPI-Specific Details</h3>
+        <h3><i class="bi bi-list-check"></i> Observations</h3>
         <div class="ppmu-kpi-specific-grid ppmu-kpi-specific-grid-count-{{ $detailFieldCount }}">
-            @foreach($detailFields as $field)
-                @php
-                    $fieldKey = $field['field'];
-                    $value = match ($fieldKey) {
-                        'entity_name', 'address' => $inspection->{$fieldKey} ?? null,
-                        default => data_get($inspection->detail_data, $fieldKey),
-                    };
-                @endphp
+            @foreach($observationCards as $observation)
                 <div class="ppmu-inspection-detail-item ppmu-kpi-specific-card tone-{{ ['green','blue','purple','orange','red','yellow'][$loop->index % 6] }}">
                     <div class="ppmu-kpi-specific-icon">
                         <i class="bi {{ ['bi-check2-circle','bi-buildings','bi-geo-alt','bi-person-check','bi-clipboard2-check','bi-shield-check'][$loop->index % 6] }}"></i>
                     </div>
                     <div class="ppmu-kpi-specific-body">
-                        <span>{{ $field['label'] }}</span>
-                        <strong>{{ is_array($value) ? json_encode($value) : ($value ?? '—') }}</strong>
-                    </div>
-                </div>
-            @endforeach
-        </div>
-    </div>
-@elseif(!empty($inspection->detail_data))
-    @php $detailFieldCount = count($inspection->detail_data); @endphp
-    <div class="card-ppmf ppmu-inspection-panel mt-3">
-        <h3><i class="bi bi-list-check"></i> KPI-Specific Details</h3>
-        <div class="ppmu-kpi-specific-grid ppmu-kpi-specific-grid-count-{{ $detailFieldCount }}">
-            @foreach($inspection->detail_data as $key => $value)
-                <div class="ppmu-inspection-detail-item ppmu-kpi-specific-card tone-{{ ['green','blue','purple','orange','red','yellow'][$loop->index % 6] }}">
-                    <div class="ppmu-kpi-specific-icon">
-                        <i class="bi {{ ['bi-check2-circle','bi-buildings','bi-geo-alt','bi-person-check','bi-clipboard2-check','bi-shield-check'][$loop->index % 6] }}"></i>
-                    </div>
-                    <div class="ppmu-kpi-specific-body">
-                        <span>{{ ucwords(str_replace('_', ' ', $key)) }}</span>
-                        <strong>{{ is_array($value) ? json_encode($value) : $value }}</strong>
+                        <span>{{ $observation['label'] }}</span>
+                        <span class="badge rounded-pill text-bg-{{ ($observation['status_tone'] ?? 'neutral') === 'warning' ? 'warning' : 'success' }} ppmu-obs-status-badge">
+                            {{ $observation['value'] }}
+                        </span>
+                        @if(($observation['key'] ?? '') !== 'overall_attention')
+                            @if($observation['has_evidence'] ?? false)
+                                <button
+                                    type="button"
+                                    class="ppmu-obs-evidence-link mt-1"
+                                    data-bs-toggle="modal"
+                                    data-bs-target="#ppmuObservationEvidenceModal"
+                                    data-evidence-url="{{ $observation['evidence_url'] }}"
+                                    data-evidence-label="{{ $observation['label'] }}"
+                                    data-observation-key="{{ $observation['observation_key'] ?? '' }}">
+                                    <i class="bi bi-image"></i> View Evidence
+                                </button>
+                            @else
+                                <span class="ppmu-obs-evidence-muted mt-1"><i class="bi bi-image"></i> No Evidence</span>
+                            @endif
+                        @endif
                     </div>
                 </div>
             @endforeach
@@ -140,18 +113,23 @@
     </div>
 @endif
 
-<div class="card-ppmf ppmu-inspection-panel mt-3">
+<div class="card-ppmf ppmu-inspection-panel mt-3" id="evidence-images">
     <h3><i class="bi bi-images"></i> Evidence Images</h3>
     @if($inspection->attachments->isNotEmpty())
         <div class="ppmu-evidence-gallery">
             @foreach($inspection->attachments as $attachment)
-                @php $url = $attachment->resolvedUrl($fallbackImage); @endphp
-                <figure class="ppmu-evidence-item">
-                    <a href="{{ $url }}" target="_blank" rel="noopener noreferrer">
+                @php
+                    $url = $attachment->resolvedUrl($fallbackImage);
+                    $evidenceId = $attachment->observation_key
+                        ? 'evidence-'.$attachment->observation_key
+                        : 'evidence-general-'.$loop->index;
+                @endphp
+                <figure class="ppmu-evidence-item" id="{{ $evidenceId }}">
+                    <a href="{{ $url }}" target="_blank" rel="noopener noreferrer" class="ppmu-evidence-open" data-evidence-url="{{ $url }}">
                         <img src="{{ $url }}" alt="{{ $attachment->caption ?? 'Evidence image' }}" loading="lazy">
                     </a>
                     <figcaption>
-                        <strong>{{ $attachment->caption ?? 'Field evidence' }}</strong>
+                        <strong>Field evidence photo {{ $loop->iteration }}</strong>
                         <small>{{ $attachment->created_at?->format('d M Y') }}</small>
                     </figcaption>
                 </figure>
@@ -200,47 +178,6 @@
     @endif
 </div>
 
-<div class="row g-3 mt-0 ppmu-inspection-detail-rows">
-    <div class="col-lg-6 d-flex">
-        <div class="card-ppmf ppmu-inspection-panel h-100 w-100">
-            <h3><i class="bi bi-eye"></i> Observations</h3>
-            @if(!empty($inspection->observations))
-                <ul class="ppmu-inspection-list mb-0">
-                    @foreach($inspection->observations as $item)
-                        <li>{{ is_array($item) ? ($item['text'] ?? json_encode($item)) : $item }}</li>
-                    @endforeach
-                </ul>
-            @else
-                <p class="text-muted mb-0">No observations recorded.</p>
-            @endif
-        </div>
-    </div>
-    <div class="col-lg-6 d-flex">
-        <div class="card-ppmf ppmu-inspection-panel h-100 w-100">
-            <h3><i class="bi bi-tools"></i> Actions Taken / Required</h3>
-            @if(!empty($inspection->actions_taken))
-                <h6 class="ppmu-inspection-subhead">Actions Taken</h6>
-                <ul class="ppmu-inspection-list">
-                    @foreach($inspection->actions_taken as $item)
-                        <li>{{ is_array($item) ? ($item['text'] ?? json_encode($item)) : $item }}</li>
-                    @endforeach
-                </ul>
-            @endif
-            @if(!empty($inspection->actions_required))
-                <h6 class="ppmu-inspection-subhead">Required Actions</h6>
-                <ul class="ppmu-inspection-list mb-0">
-                    @foreach($inspection->actions_required as $item)
-                        <li>{{ is_array($item) ? ($item['text'] ?? json_encode($item)) : $item }}</li>
-                    @endforeach
-                </ul>
-            @endif
-            @if(empty($inspection->actions_taken) && empty($inspection->actions_required))
-                <p class="text-muted mb-0">No action details recorded.</p>
-            @endif
-        </div>
-    </div>
-</div>
-
 <div class="card-ppmf ppmu-inspection-panel ppmu-review-card mt-3">
     <div class="ppmu-review-head">
         <div>
@@ -251,31 +188,53 @@
     </div>
 
     @if($inspection->isPending() && $canReview)
-        <form method="POST" action="{{ route('kpi.inspections.approve', [$kpiCard, $inspection]) }}" class="ppmu-review-form ppmu-review-form-shared">
-            @csrf
-            <label class="form-label" for="inspection-review-remarks">
-                Remarks
-                <span>Optional for approval, required for rejection</span>
-            </label>
+        <div class="ppmu-review-actions-unified">
+            <label class="form-label" for="review-remarks">Remarks</label>
             <textarea
-                id="inspection-review-remarks"
-                name="remarks"
-                class="form-control form-control-sm @error('rejection_reason') is-invalid @enderror"
-                rows="3"
-                placeholder="Add review remarks or explain what must be corrected">{{ old('remarks', old('review_remarks', old('rejection_reason'))) }}</textarea>
+                id="review-remarks"
+                class="form-control @error('review_remarks') is-invalid @enderror @error('rejection_reason') is-invalid @enderror"
+                rows="4"
+                placeholder="Add approval or rejection remarks (optional)">{{ old('review_remarks', old('rejection_reason')) }}</textarea>
+            @error('review_remarks')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
             @error('rejection_reason')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
-            <div class="ppmu-review-buttons">
-                <button type="submit" class="btn ppmu-review-btn ppmu-review-btn-approve">
-                    <i class="bi bi-check-circle-fill"></i> Approve Inspection
-                </button>
-                <button
-                    type="submit"
-                    formaction="{{ route('kpi.inspections.reject', [$kpiCard, $inspection]) }}"
-                    class="btn ppmu-review-btn ppmu-review-btn-reject">
-                    <i class="bi bi-x-circle-fill"></i> Reject Inspection
-                </button>
+
+            <div class="ppmu-review-action-buttons">
+                <form method="POST" action="{{ route('kpi.inspections.approve', [$kpiCard, $inspection]) }}" class="ppmu-review-form-inline" id="approve-inspection-form">
+                    @csrf
+                    <input type="hidden" name="return_url" value="{{ $backUrl }}">
+                    <input type="hidden" name="review_remarks" id="approve-remarks-input" value="{{ old('review_remarks') }}">
+                    <button type="submit" class="btn ppmu-review-btn ppmu-review-btn-approve">
+                        <i class="bi bi-check-circle-fill"></i> Approve Inspection
+                    </button>
+                </form>
+                <form method="POST" action="{{ route('kpi.inspections.reject', [$kpiCard, $inspection]) }}" class="ppmu-review-form-inline" id="reject-inspection-form">
+                    @csrf
+                    <input type="hidden" name="return_url" value="{{ $backUrl }}">
+                    <input type="hidden" name="rejection_reason" id="reject-remarks-input" value="{{ old('rejection_reason') }}">
+                    <button type="submit" class="btn ppmu-review-btn ppmu-review-btn-reject">
+                        <i class="bi bi-x-circle-fill"></i> Reject Inspection
+                    </button>
+                </form>
             </div>
-        </form>
+        </div>
+        <script>
+        (function () {
+            const remarks = document.getElementById('review-remarks');
+            const approveInput = document.getElementById('approve-remarks-input');
+            const rejectInput = document.getElementById('reject-remarks-input');
+            const approveForm = document.getElementById('approve-inspection-form');
+            const rejectForm = document.getElementById('reject-inspection-form');
+            if (!remarks || !approveForm || !rejectForm) return;
+
+            approveForm.addEventListener('submit', function () {
+                if (approveInput) approveInput.value = remarks.value.trim();
+            });
+
+            rejectForm.addEventListener('submit', function () {
+                if (rejectInput) rejectInput.value = remarks.value.trim();
+            });
+        })();
+        </script>
     @else
         <div class="ppmu-review-decision">
             <p><strong>Status:</strong> <span class="badge rounded-pill text-bg-{{ $inspection->statusClass() }}">{{ $inspection->statusLabel() }}</span></p>
@@ -294,9 +253,67 @@
         </div>
     @endif
 </div>
+
+<div class="modal fade" id="ppmuObservationEvidenceModal" tabindex="-1" aria-labelledby="ppmuObservationEvidenceTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content ppmu-modal-content ppmu-obs-evidence-modal">
+            <div class="modal-header ppmu-modal-header">
+                <div>
+                    <span class="ppmu-obs-evidence-modal-eyebrow">Observation Evidence</span>
+                    <h5 class="modal-title mb-0" id="ppmuObservationEvidenceTitle">Evidence Preview</h5>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body ppmu-obs-evidence-modal-body">
+                <img id="ppmuObservationEvidenceImage" src="" alt="Observation evidence preview" class="ppmu-obs-evidence-modal-img">
+                <p id="ppmuObservationEvidenceCaption" class="ppmu-obs-evidence-modal-caption mb-0"></p>
+            </div>
+            <div class="modal-footer ppmu-obs-evidence-modal-footer">
+                <a href="#" id="ppmuObservationEvidenceOpenLink" class="btn btn-sm ppmu-map-open-btn" target="_blank" rel="noopener noreferrer">
+                    <i class="bi bi-box-arrow-up-right"></i> Open Full Image
+                </a>
+                <button type="button" class="btn btn-sm btn-light" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
 @endsection
 
 @push('scripts')
+<script>
+(function () {
+    const modal = document.getElementById('ppmuObservationEvidenceModal');
+    if (!modal) return;
+
+    modal.addEventListener('show.bs.modal', function (event) {
+        const trigger = event.relatedTarget;
+        if (!trigger) return;
+
+        const url = trigger.getAttribute('data-evidence-url') || '';
+        const label = trigger.getAttribute('data-evidence-label') || 'Observation';
+        const key = trigger.getAttribute('data-observation-key') || '';
+        const title = document.getElementById('ppmuObservationEvidenceTitle');
+        const image = document.getElementById('ppmuObservationEvidenceImage');
+        const caption = document.getElementById('ppmuObservationEvidenceCaption');
+        const openLink = document.getElementById('ppmuObservationEvidenceOpenLink');
+
+        if (title) title.textContent = label;
+        if (image) {
+            image.src = url;
+            image.alt = label + ' evidence';
+        }
+        if (caption) {
+            caption.textContent = key
+                ? 'Observation field: ' + key.replace(/_/g, ' ')
+                : 'Field evidence image';
+        }
+        if (openLink) {
+            openLink.href = url || '#';
+            openLink.classList.toggle('disabled', url === '');
+        }
+    });
+})();
+</script>
 @if(empty($googleMapsKey) && $inspection->latitude && $inspection->longitude)
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <script>

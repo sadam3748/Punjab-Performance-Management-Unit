@@ -35,13 +35,14 @@ class KpiDetailDataTest extends TestCase
             ->get("/kpi/{$slug}/dashboard")
             ->assertOk()
             ->assertSee('KPI Performance Cards')
-            ->assertSee('Visit Target')
-            ->assertSee('Target Completed')
+            ->assertSee('Inspection Target')
+            ->assertSee('Inspected')
+            ->assertSee('Facilities Inspected')
             ->assertDontSee('data-stat="reported"', false)
             ->assertSee('Progress')
             ->assertSee('Total Facilities')
             ->assertDontSee('ppmu-pi-title">Inspection Records', false)
-            ->assertSee('District Comparison — Inspection Records');
+            ->assertSee('District/Division Comparison — Inspections Completed');
     }
 
     public function test_seeded_submission_volume_per_kpi(): void
@@ -93,7 +94,11 @@ class KpiDetailDataTest extends TestCase
 
             foreach ($data['charts']['definitions'] as $definition) {
                 $this->assertNotEmpty($definition['data']['labels'], "{$slug}: {$definition['key']} labels");
-                $this->assertNotEmpty($definition['data']['values'], "{$slug}: {$definition['key']} values");
+                $values = $definition['data']['values']
+                    ?? collect($definition['data']['datasets'] ?? [])->flatMap(
+                        fn (array $dataset): array => $dataset['values'] ?? $dataset['data'] ?? []
+                    )->all();
+                $this->assertNotEmpty($values, "{$slug}: {$definition['key']} values");
             }
         }
     }

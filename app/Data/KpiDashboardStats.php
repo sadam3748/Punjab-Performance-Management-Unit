@@ -488,45 +488,135 @@ class KpiDashboardStats
                 'total_health_facilities',
                 'bi-hospital',
                 'blue',
-                'Total BHUs, RHCs and other health facilities in the district baseline.',
+                'Total health facilities in this area',
                 '',
                 'yearly'
             ),
             self::card(
-                'Total Facilities Inspected',
-                'facility_visits',
+                'Facilities Inspected',
+                'facilities_inspected',
                 'bi-clipboard2-check',
                 'blue',
-                'Health facilities physically inspected during the reporting period.',
+                'Health facilities inspected during the reporting period.',
                 '',
-                'monthly'
+                'weekly'
             ),
             self::card(
-                'Total Facilities Not Inspected',
+                'Facilities Not Inspected',
                 'facilities_not_inspected',
                 'bi-hourglass-split',
                 'yellow',
-                'Health facilities not yet inspected against the monthly visit target.',
+                'Health facilities not yet inspected against the inspection target.',
                 'Total facilities − facilities inspected',
-                'monthly'
+                'weekly'
             ),
             self::card(
-                'DC Visits Completed vs Target',
-                'dc_visit_completion',
-                'bi-person-badge',
+                'Review Target',
+                'review_target',
+                'bi-bullseye',
+                'purple',
+                'Target number of inspected facilities to be reviewed by supervisory officers.',
+                'ceil(Facilities Inspected × review rate), minimum 1 when inspected > 0',
+                'weekly'
+            ),
+            self::card(
+                'Review Completion %',
+                'review_completion_rate',
+                'bi-percent',
+                'green',
+                'Share of review target completed through approved or rejected reviews.',
+                '(Approved + Rejected) ÷ Review Target × 100',
+                'weekly'
+            ),
+            self::card(
+                'Pending Review',
+                'inspections_pending',
+                'bi-hourglass-split',
+                'yellow',
+                'Inspected facilities awaiting supervisory review.',
+                'Facilities Inspected − Reviewed',
+                'weekly'
+            ),
+            self::card(
+                'Approved',
+                'inspections_approved',
+                'bi-check-circle',
+                'green',
+                'Inspected facilities approved after review.',
+                '',
+                'weekly'
+            ),
+            self::card(
+                'Rejected',
+                'inspections_rejected',
+                'bi-x-circle',
+                'red',
+                'Inspected facilities rejected after review.',
+                '',
+                'weekly'
+            ),
+            self::card(
+                'Required Inspections',
+                'required_inspections',
+                'bi-bullseye',
+                'purple',
+                'Weekly inspection target for the reporting scope.',
+                '',
+                'weekly'
+            ),
+            self::card(
+                'Completed Inspections',
+                'target_completed',
+                'bi-clipboard2-check',
                 'blue',
-                'DC visits to health facilities compared to the monthly DC visit target.',
-                'DC visits completed ÷ DC visit target × 100',
-                'monthly'
+                'Inspections completed against the weekly target.',
+                '',
+                'weekly'
             ),
             self::card(
-                'AC Visits Completed vs Target',
-                'ac_visit_completion',
+                'Target Achievement',
+                'ac_visit_achievement',
+                'bi-percent',
+                'green',
+                'Share of required inspections completed.',
+                'Completed Inspections ÷ Required Inspections × 100',
+                'weekly'
+            ),
+            self::card(
+                'AC Inspection Target',
+                'district_ac_visit_target',
                 'bi-person-check',
                 'blue',
-                'AC visits to health facilities compared to the monthly AC visit target.',
-                'AC visits completed ÷ AC visit target × 100',
-                'monthly'
+                'Combined AC inspection target across active tehsils.',
+                'Active tehsils × 2',
+                'weekly'
+            ),
+            self::card(
+                'DC Own Inspections',
+                'dc_own_inspections',
+                'bi-person-badge',
+                'blue',
+                'DC-led health facility inspections in the reporting period.',
+                '',
+                'weekly'
+            ),
+            self::card(
+                'District Inspections',
+                'district_inspections',
+                'bi-geo-alt',
+                'blue',
+                'Total district-level health inspections in the reporting period.',
+                '',
+                'weekly'
+            ),
+            self::card(
+                'Total Inspections',
+                'total_inspections',
+                'bi-list-check',
+                'blue',
+                'Total health inspections across the reporting scope.',
+                '',
+                'weekly'
             ),
             self::card(
                 'DC Meeting on Health Council Held',
@@ -538,76 +628,76 @@ class KpiDashboardStats
                 'monthly'
             ),
             self::card(
-                'Issues Found - Cleanliness',
-                'issues_cleanliness',
+                'Deep Cleaning',
+                'observation_deep_cleaning',
                 'bi-stars',
                 'yellow',
-                'Cleanliness deficiencies identified during health facility inspections.',
+                'Deep cleaning availability observed during inspections.',
                 '',
-                'monthly'
+                'weekly'
             ),
             self::card(
-                'Issues Found - Staff Absence',
-                'issues_staff_absence',
-                'bi-person-x',
-                'red',
-                'Staff absence or attendance issues found during facility inspections.',
+                'Staff Availability',
+                'observation_staff_availability',
+                'bi-person-check',
+                'blue',
+                'Staff availability observed during inspections.',
                 '',
-                'monthly'
+                'weekly'
             ),
             self::card(
-                'Issues Found - Medicine Shortage',
-                'issues_medicine_shortage',
+                'Medicine Flex',
+                'observation_medicine_flex',
                 'bi-capsule',
-                'red',
-                'Medicine stock shortages identified during health facility inspections.',
+                'blue',
+                'Medicine flex display observed during inspections.',
                 '',
-                'monthly'
+                'weekly'
             ),
             self::card(
-                'Issues Found - Equipment / Utilities',
-                'issues_equipment_utilities',
+                'Testing Equipment',
+                'observation_testing_equipment',
                 'bi-tools',
                 'yellow',
-                'Equipment, power or utility issues found during health facility inspections.',
+                'Testing equipment availability observed during inspections.',
                 '',
-                'monthly'
+                'weekly'
             ),
             self::card(
-                'Inspections Validation Target',
-                'validation_target',
-                'bi-bullseye',
-                'purple',
-                'Target number of health facility inspection reports to be validated.',
+                'Drinking Water',
+                'observation_drinking_water',
+                'bi-droplet',
+                'blue',
+                'Drinking water facility condition observed during inspections.',
                 '',
-                'monthly'
+                'weekly'
             ),
             self::card(
-                'Inspections Validated',
-                'validations_completed',
-                'bi-patch-check',
+                'Utilities',
+                'observation_utilities',
+                'bi-lightning',
+                'yellow',
+                'Utility availability observed during inspections.',
+                '',
+                'weekly'
+            ),
+            self::card(
+                'UHI Compliance',
+                'observation_uhi_compliance',
+                'bi-shield-check',
                 'green',
-                'Health facility inspection reports reviewed and validated by supervisory officers.',
+                'UHI compliance observed during inspections.',
                 '',
-                'monthly'
+                'weekly'
             ),
             self::card(
-                'Approved Validations',
-                'approved_validations',
-                'bi-check-circle',
-                'green',
-                'Validated health facility inspections approved for scorecard reporting.',
-                '',
-                'monthly'
-            ),
-            self::card(
-                'Rejected Validations',
-                'rejected_validations',
-                'bi-x-circle',
+                'Observation Issues',
+                'observation_attention_required',
+                'bi-exclamation-triangle',
                 'red',
-                'Validated health facility inspections rejected and sent back for correction.',
-                '',
-                'monthly'
+                'Not Available / No checks',
+                'Sum of Not Available and No observations',
+                'weekly'
             ),
         ];
     }

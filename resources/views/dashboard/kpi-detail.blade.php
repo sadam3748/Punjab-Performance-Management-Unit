@@ -48,8 +48,9 @@
 
         <div class="ppmu-detail-stats" id="kpiDetailHeaderStats"
              data-label-target="{{ $labels['target'] }}"
-             data-label-completed="{{ $labels['completed'] }}">
-            <div class="ppmu-ds-item" data-stat="target" title="Required operational work for the selected period">
+             data-label-completed="{{ $labels['completed'] }}"
+             data-show-review="{{ $kpiCard->slug === 'inspection-of-health-facilities' ? '1' : '0' }}">
+            <div class="ppmu-ds-item" data-stat="target" title="Required inspections for selected period">
                 <span data-label="target">{{ $labels['target'] }}</span>
                 <strong>{{ number_format($header['operational_target'] ?? $header['target'], 1) }}</strong>
             </div>
@@ -61,6 +62,12 @@
                 <span>Progress</span>
                 <strong>{{ $pct }}%</strong>
             </div>
+            @if($kpiCard->slug === 'inspection-of-health-facilities')
+            <div class="ppmu-ds-item ppmu-ds-pct" data-stat="review_pct" title="Reviewed ÷ Review Target × 100">
+                <span>Review %</span>
+                <strong>{{ min(100, round((float) ($header['review_percentage'] ?? 0), 1)) }}%</strong>
+            </div>
+            @endif
             <div class="ppmu-ds-item ppmu-ds-status" data-stat="status" title="Performance status from progress">
                 <span>Status</span>
                 <x-status-badge :status="$header['status_label']"/>

@@ -83,13 +83,9 @@ class KpiInspectionSeeder extends Seeder
 
         foreach ($cards as $cardIndex => $card) {
             if (in_array($card->slug, self::VISIT_KPI_SLUGS, true)) {
-                [$visitRows, $visitAttachments] = $this->buildVisitKpiInspections(
-                    $card,
-                    $users,
-                    $refCounter,
-                    $now,
-                    $batch
-                );
+                [$visitRows, $visitAttachments] = $card->slug === 'inspection-of-health-facilities'
+                    ? $this->buildHealthFacilityInspections($card, $users, $refCounter, $now, $batch)
+                    : $this->buildVisitKpiInspections($card, $users, $refCounter, $now, $batch);
                 $inspectionRows = array_merge($inspectionRows, $visitRows);
                 $attachmentPlan = array_merge($attachmentPlan, $visitAttachments);
 
@@ -201,6 +197,12 @@ class KpiInspectionSeeder extends Seeder
 
                 $imagePath = $this->resolveImagePath($plan['slug']);
                 for ($a = 0; $a < $plan['count']; $a++) {
+                    $observationKey = null;
+                    if ($plan['slug'] === 'inspection-of-health-facilities') {
+                        $keys = $this->healthObservationAttachmentKeys();
+                        $observationKey = $keys[$a % count($keys)] ?? null;
+                    }
+
                     $attachmentRows[] = [
                         'kpi_inspection_id' => $inspectionId,
                         'file_path' => $imagePath,
@@ -208,6 +210,7 @@ class KpiInspectionSeeder extends Seeder
                         'file_type' => 'image',
                         'mime_type' => 'image/png',
                         'caption' => 'Field evidence photo '.($a + 1),
+                        'observation_key' => $observationKey,
                         'latitude' => null,
                         'longitude' => null,
                         'sort_order' => $a,
@@ -222,6 +225,20 @@ class KpiInspectionSeeder extends Seeder
                 DB::table('kpi_inspection_attachments')->insert($chunk);
             }
         });
+    }
+
+    /** @return list<string> */
+    private function healthObservationAttachmentKeys(): array
+    {
+        return [
+            'deep_cleaning',
+            'staff_availability',
+            'medicine_flex',
+            'testing_equipment',
+            'drinking_water',
+            'utilities',
+            'uhi_compliance',
+        ];
     }
 
     private function resolveImagePath(string $slug): string
@@ -420,14 +437,28 @@ class KpiInspectionSeeder extends Seeder
             for ($i = 0; $i < $plan['count']; $i++) {
                 $demoStatuses = $this->demoTehsilStatusPlan($plan['tehsil_id']);
                 $status = $demoStatuses[$i] ?? $statuses[$globalIndex % count($statuses)];
-                $inspectedAt = $demoStatuses !== null && isset($demoStatuses[$i])
-                    ? $this->activeWeekDateForIndex($i)
-                    : $this->visitInspectionDateForIndex($globalIndex, $plan['count']);
+                $completedDayRecordCount = $demoStatuses !== null
+                    ? min(6, max(1, $plan['count'] - 2))
+                    : 0;
+                $isHealthCompletedDayRecord = $card->slug === 'inspection-of-health-facilities'
+                    && $demoStatuses !== null
+                    && $i < $completedDayRecordCount;
+                $isHealthCurrentPeriodRecord = $card->slug === 'inspection-of-health-facilities'
+                    && $demoStatuses !== null
+                    && $i >= $completedDayRecordCount
+                    && $i < $completedDayRecordCount + 2;
+                $inspectedAt = $isHealthCompletedDayRecord
+                    ? $this->latestCompletedDayDateForIndex($i)
+                    : ($isHealthCurrentPeriodRecord
+                        ? $now->copy()->setTime(9 + ($i % 6), 15 * ($i % 4), 0)
+                        : ($demoStatuses !== null && isset($demoStatuses[$i])
+                        ? $this->activeWeekDateForIndex($i)
+                        : $this->visitInspectionDateForIndex($globalIndex, $plan['count'])));
                 $entity = $entities[$globalIndex % count($entities)];
                 $reference = sprintf('INSP-%s-%06d', $now->format('Y'), $refCounter++);
                 $detailData = \Database\Seeders\Support\KpiInspectionDetailFactory::forSlug($card->slug, $globalIndex);
                 if ($card->slug === 'inspection-of-health-facilities') {
-                    $detailData = $this->healthDetailWithIssues($detailData, $globalIndex, $plan['tehsil_id']);
+                    $detailData = $this->healthObservationTemplate($i, $plan['tehsil_id']);
                 }
                 $location = $this->locationFor($side, $globalIndex);
                 $fullAddress = $this->fullAddress($side, $entity, $location);
@@ -485,6 +516,84 @@ class KpiInspectionSeeder extends Seeder
         return [$rows, $attachments];
     }
 
+    /**
+     * @return array{0: list<array<string, mixed>>, 1: list<array<string, mixed>>}
+     */
+    private function buildHealthFacilityInspections(object $card, $users, int &$refCounter, Carbon $now, string $batch): array
+    {
+        [$rows, $attachments] = $this->buildVisitKpiInspections($card, $users, $refCounter, $now, $batch);
+
+        if ($card->slug !== 'inspection-of-health-facilities') {
+            return [$rows, $attachments];
+        }
+
+        $dcInspector = $users->get('dc.layyah');
+        $reviewer = $users->get('dc.layyah');
+        $entities = $this->entitiesForSlug($card->slug, $card->title);
+        $side = [
+            'division_id' => 2,
+            'district_id' => 7,
+            'tehsil_id' => 24,
+            'tehsil_name' => 'Layyah',
+            'district_name' => 'Layyah',
+            'lat' => 30.9617,
+            'lng' => 70.9397,
+        ];
+
+        foreach ([
+            ['status' => 'approved', 'index' => 0],
+            ['status' => 'pending_review', 'index' => 1],
+        ] as $offset => $plan) {
+            $entity = $entities[$offset % count($entities)];
+            $inspectedAt = $this->activeWeekDateForIndex($offset + 2);
+            $reference = sprintf('INSP-%s-%06d', $now->format('Y'), $refCounter++);
+            $detailData = $this->healthObservationTemplate($plan['index'], 24);
+            $location = $this->locationFor($side, $offset + 20);
+            $fullAddress = $this->fullAddress($side, $entity, $location);
+
+            $rows[] = [
+                'uuid' => (string) Str::uuid(),
+                'reference_no' => $reference,
+                'kpi_card_id' => $card->id,
+                'kpi_submission_id' => null,
+                'division_id' => $side['division_id'],
+                'district_id' => $side['district_id'],
+                'tehsil_id' => $side['tehsil_id'],
+                'inspected_by' => $dcInspector?->id,
+                'reviewed_by' => $plan['status'] === 'pending_review' ? null : $reviewer?->id,
+                'inspection_title' => 'DC '.$entity['title'],
+                'entity_name' => sprintf('%s — DC Review #%02d', $entity['name'], $offset + 1),
+                'entity_type' => $entity['type'],
+                'identifier' => $entity['id'].'-dc-'.$offset,
+                'address' => $fullAddress,
+                'latitude' => $location['lat'],
+                'longitude' => $location['lng'],
+                'inspection_datetime' => $inspectedAt,
+                'status' => $plan['status'],
+                'observations' => json_encode(['DC-led health facility inspection completed.']),
+                'actions_required' => json_encode(['Continue district monitoring during current reporting week.']),
+                'actions_taken' => json_encode(['Evidence uploaded and checklist completed.']),
+                'detail_data' => json_encode($detailData),
+                'review_remarks' => $plan['status'] === 'approved' ? 'DC inspection evidence verified and accepted.' : null,
+                'rejection_reason' => null,
+                'reviewed_at' => $plan['status'] === 'pending_review' ? null : $inspectedAt->copy()->addHours(4),
+                'is_demo' => true,
+                'seed_batch' => $batch,
+                'created_at' => $inspectedAt,
+                'updated_at' => $plan['status'] === 'pending_review' ? $inspectedAt : $inspectedAt->copy()->addHours(4),
+            ];
+
+            $attachments[] = [
+                'reference_no' => $reference,
+                'slug' => $card->slug,
+                'count' => 1,
+                'ts' => $inspectedAt,
+            ];
+        }
+
+        return [$rows, $attachments];
+    }
+
     private function visitInspectionDateForIndex(int $index, int $tehsilTotal): Carbon
     {
         $now = now();
@@ -509,9 +618,9 @@ class KpiInspectionSeeder extends Seeder
     private function demoTehsilStatusPlan(int $tehsilId): ?array
     {
         return match ($tehsilId) {
-            24 => ['approved', 'approved', 'approved', 'approved', 'approved', 'approved', 'approved', 'approved', 'pending_review', 'pending_review', 'rejected'],
-            25 => ['approved', 'approved', 'approved', 'approved', 'approved', 'pending_review', 'rejected'],
-            81 => ['approved', 'approved', 'approved', 'approved', 'approved', 'approved', 'approved', 'pending_review', 'pending_review', 'rejected'],
+            24 => ['approved', 'pending_review', 'approved', 'rejected', 'approved', 'pending_review', 'approved', 'pending_review'],
+            25 => ['approved', 'rejected', 'approved', 'pending_review', 'approved', 'approved', 'rejected'],
+            81 => ['approved', 'pending_review', 'approved', 'rejected', 'approved', 'pending_review', 'approved', 'pending_review'],
             default => null,
         };
     }
@@ -603,37 +712,129 @@ class KpiInspectionSeeder extends Seeder
         return [$rows, $attachments];
     }
 
-    /** @param  array<string, mixed>  $detail */
-    private function healthDetailWithIssues(array $detail, int $index, int $tehsilId): array
+    /** @return array<string, mixed> */
+    private function healthObservationTemplate(int $index, int $tehsilId): array
     {
-        if ($index % 4 === 0) {
-            $detail['cleanliness'] = 'Poor';
-        }
-        if ($index % 5 === 1) {
-            $detail['staff_present'] = 'No';
-        }
-        if ($index % 6 === 2) {
-            $detail['medicines_ok'] = 'No';
-        }
-        if ($index % 7 === 3) {
-            $detail['equipment_status'] = 'Non-Operational';
-        }
+        $base = \Database\Seeders\Support\KpiInspectionDetailFactory::forSlug('inspection-of-health-facilities', $index);
+        $patterns = $this->healthObservationMixedPatterns();
+        $slot = ($tehsilId * 3 + $index) % count($patterns);
 
-        if ($tehsilId === 24 && $index < 8) {
-            $patterns = [
-                ['cleanliness' => 'Poor'],
-                ['cleanliness' => 'Average', 'staff_present' => 'No'],
-                ['medicines_ok' => 'No'],
-                ['equipment_status' => 'Non-Operational'],
-                ['cleanliness' => 'Poor', 'medicines_ok' => 'No'],
-                ['staff_present' => 'Partial'],
-                ['cleanliness' => 'Average'],
-                ['medicines_ok' => 'Partial'],
-            ];
-            $detail = array_merge($detail, $patterns[$index] ?? []);
-        }
+        return array_merge($base, $patterns[$slot]);
+    }
 
-        return $detail;
+    /** @return list<array<string, string>> */
+    private function healthObservationMixedPatterns(): array
+    {
+        return [
+            [
+                'deep_cleaning_available' => 'not_available',
+                'staff_available' => 'available',
+                'medicine_flex_available' => 'not_available',
+                'testing_equipment_available' => 'available',
+                'drinking_water_available' => 'available',
+                'utilities_available' => 'not_available',
+                'uhi_compliance' => 'no',
+            ],
+            [
+                'deep_cleaning_available' => 'available',
+                'staff_available' => 'not_available',
+                'medicine_flex_available' => 'available',
+                'testing_equipment_available' => 'not_available',
+                'drinking_water_available' => 'available',
+                'utilities_available' => 'available',
+                'uhi_compliance' => 'yes',
+            ],
+            [
+                'deep_cleaning_available' => 'available',
+                'staff_available' => 'available',
+                'medicine_flex_available' => 'not_available',
+                'testing_equipment_available' => 'available',
+                'drinking_water_available' => 'not_available',
+                'utilities_available' => 'available',
+                'uhi_compliance' => 'no',
+            ],
+            [
+                'deep_cleaning_available' => 'not_available',
+                'staff_available' => 'not_available',
+                'medicine_flex_available' => 'available',
+                'testing_equipment_available' => 'available',
+                'drinking_water_available' => 'available',
+                'utilities_available' => 'not_available',
+                'uhi_compliance' => 'yes',
+            ],
+            [
+                'deep_cleaning_available' => 'available',
+                'staff_available' => 'available',
+                'medicine_flex_available' => 'available',
+                'testing_equipment_available' => 'not_available',
+                'drinking_water_available' => 'not_available',
+                'utilities_available' => 'not_available',
+                'uhi_compliance' => 'yes',
+            ],
+            [
+                'deep_cleaning_available' => 'not_available',
+                'staff_available' => 'available',
+                'medicine_flex_available' => 'available',
+                'testing_equipment_available' => 'available',
+                'drinking_water_available' => 'available',
+                'utilities_available' => 'available',
+                'uhi_compliance' => 'no',
+            ],
+            [
+                'deep_cleaning_available' => 'available',
+                'staff_available' => 'not_available',
+                'medicine_flex_available' => 'not_available',
+                'testing_equipment_available' => 'not_available',
+                'drinking_water_available' => 'available',
+                'utilities_available' => 'available',
+                'uhi_compliance' => 'yes',
+            ],
+            [
+                'deep_cleaning_available' => 'not_available',
+                'staff_available' => 'available',
+                'medicine_flex_available' => 'not_available',
+                'testing_equipment_available' => 'available',
+                'drinking_water_available' => 'not_available',
+                'utilities_available' => 'not_available',
+                'uhi_compliance' => 'no',
+            ],
+            [
+                'deep_cleaning_available' => 'available',
+                'staff_available' => 'available',
+                'medicine_flex_available' => 'not_available',
+                'testing_equipment_available' => 'available',
+                'drinking_water_available' => 'available',
+                'utilities_available' => 'not_available',
+                'uhi_compliance' => 'yes',
+            ],
+            [
+                'deep_cleaning_available' => 'not_available',
+                'staff_available' => 'not_available',
+                'medicine_flex_available' => 'not_available',
+                'testing_equipment_available' => 'available',
+                'drinking_water_available' => 'available',
+                'utilities_available' => 'available',
+                'uhi_compliance' => 'no',
+            ],
+            [
+                'deep_cleaning_available' => 'available',
+                'staff_available' => 'not_available',
+                'medicine_flex_available' => 'available',
+                'testing_equipment_available' => 'not_available',
+                'drinking_water_available' => 'not_available',
+                'utilities_available' => 'available',
+                'uhi_compliance' => 'yes',
+            ],
+            [
+                'deep_cleaning_available' => 'not_available',
+                'staff_available' => 'available',
+                'medicine_flex_available' => 'available',
+                'testing_equipment_available' => 'not_available',
+                'drinking_water_available' => 'available',
+                'utilities_available' => 'not_available',
+                'uhi_compliance' => 'yes',
+            ],
+        ];
     }
 
     private function activeWeekDateForIndex(int $index): Carbon
@@ -644,5 +845,18 @@ class KpiInspectionSeeder extends Seeder
         $dayOffset = min(5, $index % 6);
 
         return $start->copy()->addDays($dayOffset)->startOfDay()->addHours(10);
+    }
+
+    private function latestCompletedDayDateForIndex(int $index): Carbon
+    {
+        return now(config('app.inspection_timezone', 'Asia/Karachi'))
+            ->subDay()
+            ->startOfDay()
+            ->setTime(
+                8 + ($index % 10),
+                10 * ($index % 6),
+                0,
+            )
+            ->setTimezone(config('app.timezone', 'UTC'));
     }
 }

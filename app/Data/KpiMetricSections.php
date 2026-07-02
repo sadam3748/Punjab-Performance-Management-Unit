@@ -28,38 +28,38 @@ class KpiMetricSections
             ['field' => 'total_health_facilities', 'label' => 'Total Facilities'],
             ['field' => 'facilities_inspected', 'label' => 'Facilities Inspected'],
             ['field' => 'facilities_not_inspected', 'label' => 'Facilities Not Inspected'],
-            ['field' => 'validation_target', 'label' => 'Validation Target'],
-            ['field' => 'validations_completed', 'label' => 'Validated'],
-            ['field' => 'inspections_pending', 'label' => 'Pending'],
+            ['field' => 'review_target', 'label' => 'Review Target'],
+            ['field' => 'review_completion_rate', 'label' => 'Review Completion %'],
+            ['field' => 'inspections_pending', 'label' => 'Pending Review'],
             ['field' => 'inspections_approved', 'label' => 'Approved'],
             ['field' => 'inspections_rejected', 'label' => 'Rejected'],
         ];
 
         $visits = match ($role) {
             'ac', 'field_user' => [
-                ['field' => 'required_visits', 'label' => 'Required Visits'],
-                ['field' => 'target_completed', 'label' => 'Completed Visits'],
+                ['field' => 'required_inspections', 'label' => 'Required Inspections'],
+                ['field' => 'target_completed', 'label' => 'Completed Inspections'],
                 ['field' => 'ac_visit_achievement', 'label' => 'Target Achievement'],
             ],
             'dc' => [
-                ['field' => 'district_ac_visit_target', 'label' => 'AC Visit Target'],
-                ['field' => 'dc_visits', 'label' => 'DC Own Visits'],
+                ['field' => 'district_ac_visit_target', 'label' => 'AC Inspection Target'],
+                ['field' => 'dc_own_inspections', 'label' => 'DC Own Inspections'],
                 ['field' => 'health_council_meeting', 'label' => 'Council Meetings'],
             ],
             'commissioner' => [
-                ['field' => 'district_visits', 'label' => 'District Visits'],
-                ['field' => 'dc_visits', 'label' => 'DC Visits'],
+                ['field' => 'district_inspections', 'label' => 'District Inspections'],
+                ['field' => 'dc_own_inspections', 'label' => 'DC Inspections'],
                 ['field' => 'health_council_meeting', 'label' => 'Meetings Held'],
             ],
             'chief_secretary', 'super_admin', 'pmru_user', 'viewer' => [
                 ['field' => 'districts_reporting', 'label' => 'Districts Reporting'],
-                ['field' => 'total_visits', 'label' => 'Total Visits'],
+                ['field' => 'total_inspections', 'label' => 'Total Inspections'],
                 ['field' => 'health_council_meeting', 'label' => 'Meetings Held'],
                 ['field' => 'achievement_rate', 'label' => 'Achievement %'],
             ],
             default => [
-                ['field' => 'ac_visits', 'label' => 'AC Visits'],
-                ['field' => 'dc_visits', 'label' => 'DC Visits'],
+                ['field' => 'ac_visits', 'label' => 'AC Inspections'],
+                ['field' => 'dc_own_inspections', 'label' => 'DC Inspections'],
                 ['field' => 'health_council_meeting', 'label' => 'Health Council Meeting'],
             ],
         };
@@ -67,11 +67,15 @@ class KpiMetricSections
         return [
             ['title' => 'Inspection Coverage', 'metrics' => $coverage],
             ['title' => 'Visits & Meetings', 'metrics' => $visits],
-            ['title' => 'Issues Found', 'metrics' => [
-                ['field' => 'issues_cleanliness', 'label' => 'Cleanliness'],
-                ['field' => 'issues_staff_absence', 'label' => 'Staff Absence'],
-                ['field' => 'issues_medicine_shortage', 'label' => 'Medicine Shortage'],
-                ['field' => 'issues_equipment_utilities', 'label' => 'Equipment'],
+            ['title' => 'Observations', 'metrics' => [
+                ['field' => 'observation_deep_cleaning', 'label' => 'Deep Cleaning'],
+                ['field' => 'observation_staff_availability', 'label' => 'Staff Availability'],
+                ['field' => 'observation_medicine_flex', 'label' => 'Medicine Flex'],
+                ['field' => 'observation_testing_equipment', 'label' => 'Testing Equipment'],
+                ['field' => 'observation_drinking_water', 'label' => 'Drinking Water'],
+                ['field' => 'observation_utilities', 'label' => 'Utilities'],
+                ['field' => 'observation_uhi_compliance', 'label' => 'UHI Compliance'],
+                ['field' => 'observation_attention_required', 'label' => 'Observation Issues'],
             ]],
         ];
     }

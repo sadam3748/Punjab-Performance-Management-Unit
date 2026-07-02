@@ -102,7 +102,9 @@ class KpiDashboardService
 
         $kpiConfig = $this->dashboardConfig->forKpi($card->slug);
         $chartDefinitions = $this->chartsForUser($kpiConfig['charts'], $user, $card->slug);
-        $inspectionCollection = $this->inspectionService->getInspectionsCollection($card, $user, $request);
+        $inspectionCollection = $card->slug === 'inspection-of-health-facilities'
+            ? $this->inspectionService->healthInspectionsForMetrics($card, $user, $request)
+            : $this->inspectionService->getInspectionsCollection($card, $user, $request);
         $inspectionStatusCounts = $this->inspectionService->buildStatusCounts($card, $user, $request);
         $inspectionTableColumns = $this->inspectionService->getTableColumnsForKpi($card->slug);
 
@@ -369,7 +371,9 @@ class KpiDashboardService
         ], true);
 
         $inspectionAchieved = $hasCalculatedVisitTarget && $periodTotals
-            ? $this->inspectionService->countOperationalAchieved($card, $user, $request)
+            ? ($card->slug === 'inspection-of-health-facilities'
+                ? $this->inspectionService->countHealthInspected($card, $user, $request)
+                : $this->inspectionService->countOperationalAchieved($card, $user, $request))
             : null;
 
         $activeScope = $card->slug === 'inspection-of-health-facilities' && $periodTotals
@@ -419,6 +423,11 @@ class KpiDashboardService
         }
         $score = $this->formula->scoreFromWeightage($pct, $marks);
 
+        $reviewPercentage = 0.0;
+        if ($card->slug === 'inspection-of-health-facilities' && $periodTotals) {
+            $reviewPercentage = $this->healthReviewPercentage($card, $user, $request, $completed);
+        }
+
         return [
             'operational_target' => $operationalTarget,
             'completed' => $completed,
@@ -427,6 +436,7 @@ class KpiDashboardService
             'submitted_reports' => $records,
             'inspections_count' => $inspectionsCount,
             'achievement_percentage' => $pct,
+            'review_percentage' => $reviewPercentage,
             'score' => $score,
             'total_marks' => $marks,
             'status_label' => $this->formula->performanceLabel($pct),
@@ -490,9 +500,17 @@ class KpiDashboardService
     ): Collection {
         $configured = collect($this->dashboardConfig->dashboardStatsFor($card->slug));
         $allValues = $submissions->flatMap->values;
-        $visitContext = $this->visitMetricContext($card, $user, $request, $submissions, $inspectionStatusCounts);
+        $visitContext = $this->visitMetricContext(
+            $card,
+            $user,
+            $request,
+            $submissions,
+            $inspectionStatusCounts,
+            $target,
+            $achieved,
+        );
 
-        return $configured->map(function (array $metric) use ($allValues, $submissions, $inspectionStatusCounts, $pct, $visitContext, $user) {
+        return $configured->map(function (array $metric) use ($allValues, $submissions, $inspectionStatusCounts, $pct, $visitContext, $user, $card) {
             $value = $this->resolveMetricValue(
                 $metric['field'],
                 $submissions,
@@ -501,12 +519,10 @@ class KpiDashboardService
                 $pct,
                 $visitContext,
                 $user,
+                $card->slug,
             );
 
-            return array_merge($metric, [
-                'value' => $value,
-                'hint' => $this->shortCardHint($metric),
-            ]);
+            return $this->decorateMetricCard($metric, $value);
         });
     }
 
@@ -523,7 +539,15 @@ class KpiDashboardService
     ): array {
         $configured = collect($this->dashboardConfig->dashboardStatsFor($card->slug))->keyBy('field');
         $allValues = $submissions->flatMap->values;
-        $visitContext = $this->visitMetricContext($card, $user, $request, $submissions, $inspectionStatusCounts);
+        $visitContext = $this->visitMetricContext(
+            $card,
+            $user,
+            $request,
+            $submissions,
+            $inspectionStatusCounts,
+            $operationalTarget,
+            $operationalCompleted,
+        );
         $sectionDefs = KpiMetricSections::for($card->slug, $user->role?->slug);
         $operational = [
             'target' => $operationalTarget,
@@ -564,10 +588,55 @@ class KpiDashboardService
         })->all();
     }
 
-    private function decorateMetricCard(array $metric, float|string|int $value): array
+    private function decorateMetricCard(array $metric, float|string|int|array $value): array
     {
         $field = (string) ($metric['field'] ?? '');
         $unit = $metric['unit'] ?? null;
+
+        if ($field === 'total_health_facilities') {
+            $metric['description'] = 'Total health facilities in this area';
+            $metric['card_helper'] = 'Total health facilities in this area';
+        }
+
+        if (is_array($value) && array_key_exists('available', $value)) {
+            return array_merge($metric, [
+                'value' => '',
+                'unit' => null,
+                'hint' => $this->shortCardHint($metric),
+                'formula_text' => $metric['formula_text'] ?? ($metric['formula'] ?? null),
+                'display_mode' => 'observation_availability',
+                'observation_available' => (int) ($value['available'] ?? 0),
+                'observation_not_available' => (int) ($value['not_available'] ?? 0),
+            ]);
+        }
+
+        if (is_array($value) && array_key_exists('yes', $value)) {
+            return array_merge($metric, [
+                'value' => '',
+                'unit' => null,
+                'hint' => $this->shortCardHint($metric),
+                'formula_text' => $metric['formula_text'] ?? ($metric['formula'] ?? null),
+                'display_mode' => 'observation_yesno',
+                'observation_yes' => (int) ($value['yes'] ?? 0),
+                'observation_no' => (int) ($value['no'] ?? 0),
+            ]);
+        }
+
+        if ($field === 'observation_attention_required') {
+            $count = (int) $value;
+
+            return array_merge($metric, [
+                'value' => '',
+                'unit' => null,
+                'hint' => $this->shortCardHint($metric),
+                'formula_text' => $metric['formula_text'] ?? ($metric['formula'] ?? null),
+                'description' => 'Not Available / No checks',
+                'card_helper' => 'Not Available / No checks',
+                'display_mode' => 'attention',
+                'attention_text' => (string) $count,
+                'attention_count' => $count,
+            ]);
+        }
 
         if ($unit === null && is_numeric($value) && $this->isPercentMetricField($field, $metric)) {
             $unit = '%';
@@ -596,6 +665,7 @@ class KpiDashboardService
                 'complaint_resolution_rate',
                 'dc_visit_completion',
                 'ac_visit_completion',
+                'review_completion_rate',
                 'ac_visit_achievement',
                 'compliance_rate',
                 'resolution_rate',
@@ -611,9 +681,21 @@ class KpiDashboardService
         Request $request,
         Collection $submissions,
         array $inspectionStatusCounts,
+        float $operationalTarget = 0,
+        float $operationalCompleted = 0,
     ): array {
+        if ($card->slug === 'inspection-of-health-facilities') {
+            return $this->healthVisitMetricContext(
+                $card,
+                $user,
+                $request,
+                $submissions,
+                $operationalTarget,
+                $operationalCompleted,
+            );
+        }
+
         if (! in_array($card->slug, [
-            'inspection-of-health-facilities',
             'inspection-of-educational-institutions',
         ], true)) {
             return [];
@@ -626,9 +708,7 @@ class KpiDashboardService
         $totalVisits = $approved + $pending + $rejected;
         $achieved = $approved + $pending;
 
-        $totalField = $card->slug === 'inspection-of-health-facilities'
-            ? 'total_health_facilities'
-            : 'total_institutions';
+        $totalField = 'total_institutions';
         $totalInventory = $this->inventoryTotalForUser($user, $card->slug, $submissions, $totalField);
         $uniqueInspected = $inspections->pluck('entity_name')->filter()->unique()->count();
         $notInspected = max(0, $totalInventory - $uniqueInspected);
@@ -640,23 +720,15 @@ class KpiDashboardService
         $issues = $this->issueCountsFromInspections($inspections, $card->slug);
         $acTarget = 2;
         $dcTarget = 2;
-        $role = $user->role?->slug ?? '';
         $districtAcTarget = $this->districtAcVisitTarget($inspections);
 
-        if ($card->slug === 'inspection-of-health-facilities' && in_array($role, ['ac', 'field_user'], true)) {
-            $acVisitsCapped = min($achieved, $acTarget);
-            $acVisitsDisplay = sprintf('%d / %d', $acVisitsCapped, $acTarget);
-            $acVisitAchievement = min(100.0, round(($acVisitsCapped / max(1, $acTarget)) * 100, 1));
-            $dcVisitsDisplay = sprintf('%d / %d', 0, $dcTarget);
-        } else {
-            $acVisits = (int) $submissions->sum(fn ($s) => (float) data_get($s->metric_snapshot, 'ac_visits', 0));
-            $dcVisits = (int) $submissions->sum(fn ($s) => (float) data_get($s->metric_snapshot, 'dc_visits', 0));
-            $acVisits = min($districtAcTarget ?: $acTarget, max($acVisits, min($achieved, $acTarget)));
-            $dcVisits = min($dcTarget, max($dcVisits, 0));
-            $acVisitsDisplay = sprintf('%d / %d', $acVisits, $districtAcTarget ?: $acTarget);
-            $dcVisitsDisplay = sprintf('%d / %d', $dcVisits, $dcTarget);
-            $acVisitAchievement = round(min(100, ($acVisits / max(1, $districtAcTarget ?: $acTarget)) * 100), 1);
-        }
+        $acVisits = (int) $submissions->sum(fn ($s) => (float) data_get($s->metric_snapshot, 'ac_visits', 0));
+        $dcVisits = (int) $submissions->sum(fn ($s) => (float) data_get($s->metric_snapshot, 'dc_visits', 0));
+        $acVisits = min($districtAcTarget ?: $acTarget, max($acVisits, min($achieved, $acTarget)));
+        $dcVisits = min($dcTarget, max($dcVisits, 0));
+        $acVisitsDisplay = sprintf('%d / %d', $acVisits, $districtAcTarget ?: $acTarget);
+        $dcVisitsDisplay = sprintf('%d / %d', $dcVisits, $dcTarget);
+        $acVisitAchievement = round(min(100, ($acVisits / max(1, $districtAcTarget ?: $acTarget)) * 100), 1);
 
         return [
             'total_visits' => $totalVisits,
@@ -680,6 +752,216 @@ class KpiDashboardService
             'districts_reporting' => $submissions->pluck('district_id')->filter()->unique()->count(),
             'issues' => $issues,
         ];
+    }
+
+    /** @return array<string, mixed> */
+    private function healthVisitMetricContext(
+        KpiCard $card,
+        User $user,
+        Request $request,
+        Collection $submissions,
+        float $operationalTarget,
+        float $operationalCompleted,
+    ): array {
+        $inspections = $this->inspectionService->healthInspectionsForMetrics($card, $user, $request);
+        $allInspections = $this->inspectionService->getInspectionsCollection($card, $user, $request);
+        $displayInspections = $this->healthDisplayInspections($inspections, $operationalCompleted);
+        $approved = $displayInspections->where('status', \App\Models\KpiInspection::STATUS_APPROVED)->count();
+        $pending = $displayInspections->where('status', \App\Models\KpiInspection::STATUS_PENDING)->count();
+        $rejected = $displayInspections->where('status', \App\Models\KpiInspection::STATUS_REJECTED)->count();
+        $facilitiesInspected = (int) max(0, round($operationalCompleted));
+        $totalInventory = $this->inventoryTotalForUser($user, $card->slug, $submissions, 'total_health_facilities');
+        $notInspected = max(0, $totalInventory - $facilitiesInspected);
+        $reviewTarget = $facilitiesInspected > 0
+            ? max(1, (int) ceil($facilitiesInspected * $this->validationRateForRole($user)))
+            : 0;
+        $reviewed = $approved + $rejected;
+        $reviewCompletionRate = $reviewTarget > 0
+            ? min(100.0, round(($reviewed / $reviewTarget) * 100, 1))
+            : 0.0;
+        $observations = $this->observationCountsFromInspections($displayInspections);
+        $acTarget = 2;
+        $dcTarget = 2;
+        $role = $user->role?->slug ?? '';
+        $districtAcTarget = $this->districtAcVisitTarget($allInspections);
+        $requiredInspections = in_array($role, ['ac', 'field_user'], true)
+            ? $acTarget
+            : ($districtAcTarget ?: $acTarget);
+        $completedInspections = $facilitiesInspected;
+        $acVisitAchievement = min(
+            100.0,
+            round(($completedInspections / max(1, $requiredInspections)) * 100, 1)
+        );
+        $dcOwnInspections = $this->healthDcOwnInspectionCount($allInspections, $submissions, $dcTarget);
+        $districtInspections = min($facilitiesInspected, $districtAcTarget + $dcTarget);
+
+        return [
+            'total_visits' => $facilitiesInspected,
+            'total_inspections' => $facilitiesInspected,
+            'inspection_records' => $facilitiesInspected,
+            'visits_achieved' => $facilitiesInspected,
+            'unique_facilities_inspected' => $facilitiesInspected,
+            'approved' => $approved,
+            'pending' => $pending,
+            'rejected' => $rejected,
+            'total_inventory' => $totalInventory,
+            'not_inspected' => $notInspected,
+            'review_target' => $reviewTarget,
+            'validation_target' => $reviewTarget,
+            'review_completion_rate' => $reviewCompletionRate,
+            'review_percentage' => $reviewCompletionRate,
+            'validated' => $reviewed,
+            'dc_visits_display' => sprintf('%d / %d', $dcOwnInspections, $dcTarget),
+            'dc_own_inspections' => $dcOwnInspections,
+            'ac_visits_display' => sprintf('%d / %d', min($facilitiesInspected, $districtAcTarget), $districtAcTarget),
+            'ac_visit_target' => $acTarget,
+            'district_ac_visit_target' => $districtAcTarget ?: $acTarget,
+            'required_inspections' => $requiredInspections,
+            'required_visits' => $requiredInspections,
+            'ac_visit_achievement' => $acVisitAchievement,
+            'district_inspections' => $districtInspections,
+            'district_visits' => $districtInspections,
+            'districts_reporting' => $submissions->pluck('district_id')->filter()->unique()->count(),
+            'observations' => $observations,
+            'issues' => [],
+        ];
+    }
+
+    private function healthReviewPercentage(
+        KpiCard $card,
+        User $user,
+        Request $request,
+        float $facilitiesInspected,
+    ): float {
+        if ($facilitiesInspected <= 0) {
+            return 0.0;
+        }
+
+        $inspections = $this->inspectionService->healthInspectionsForMetrics($card, $user, $request);
+        $display = $this->healthDisplayInspections($inspections, $facilitiesInspected);
+        $reviewed = $display->whereIn('status', [
+            \App\Models\KpiInspection::STATUS_APPROVED,
+            \App\Models\KpiInspection::STATUS_REJECTED,
+        ])->count();
+        $reviewTarget = max(1, (int) ceil($facilitiesInspected * $this->validationRateForRole($user)));
+
+        return min(100.0, round(($reviewed / $reviewTarget) * 100, 1));
+    }
+
+    private function healthDisplayInspections(Collection $inspections, float $facilitiesInspected): Collection
+    {
+        $limit = max(0, (int) round($facilitiesInspected));
+        if ($limit <= 0) {
+            return collect();
+        }
+
+        if ($inspections->count() <= $limit) {
+            return $inspections->values();
+        }
+
+        return $inspections
+            ->sortByDesc(fn ($inspection) => $inspection->inspection_datetime)
+            ->take($limit)
+            ->values();
+    }
+
+    private function healthDcOwnInspectionCount(Collection $inspections, Collection $submissions, int $dcTarget): int
+    {
+        $fromSubmissions = (int) $submissions->sum(fn ($s) => (float) data_get($s->metric_snapshot, 'dc_visits', 0));
+        if ($fromSubmissions > 0) {
+            return min($dcTarget, $fromSubmissions);
+        }
+
+        $dcInspections = $inspections->filter(function ($inspection) {
+            $role = $inspection->inspectedBy?->role?->slug;
+
+            return in_array($role, ['dc', 'commissioner'], true);
+        })->count();
+
+        return min($dcTarget, max($dcInspections, 0));
+    }
+
+    /** @return array<string, mixed> */
+    private function observationCountsFromInspections(Collection $inspections): array
+    {
+        $fields = [
+            'deep_cleaning' => 'deep_cleaning_available',
+            'staff_availability' => 'staff_available',
+            'medicine_flex' => 'medicine_flex_available',
+            'testing_equipment' => 'testing_equipment_available',
+            'drinking_water' => 'drinking_water_available',
+            'utilities' => 'utilities_available',
+        ];
+
+        $counts = [];
+        foreach ($fields as $key => $field) {
+            $counts[$key] = ['available' => 0, 'not_available' => 0];
+        }
+        $counts['uhi_compliance'] = ['yes' => 0, 'no' => 0];
+        $counts['attention_required'] = 0;
+
+        foreach ($inspections as $inspection) {
+            $detail = is_array($inspection->detail_data)
+                ? $inspection->detail_data
+                : (json_decode($inspection->detail_data ?? '[]', true) ?: []);
+
+            foreach ($fields as $key => $field) {
+                $value = strtolower((string) ($detail[$field] ?? $this->legacyHealthObservationValue($detail, $field)));
+                if ($value === 'available' || $value === 'yes') {
+                    $counts[$key]['available']++;
+                } elseif ($value === 'not_available' || $value === 'no') {
+                    $counts[$key]['not_available']++;
+                    $counts['attention_required']++;
+                }
+            }
+
+            $uhi = strtolower((string) ($detail['uhi_compliance'] ?? ''));
+            if ($uhi === 'yes') {
+                $counts['uhi_compliance']['yes']++;
+            } elseif ($uhi === 'no') {
+                $counts['uhi_compliance']['no']++;
+                $counts['attention_required']++;
+            }
+        }
+
+        return $counts;
+    }
+
+    /** @param  array<string, mixed>  $detail */
+    private function legacyHealthObservationValue(array $detail, string $field): string
+    {
+        return match ($field) {
+            'deep_cleaning_available' => $this->isNegativeHealthSignal($detail['cleanliness'] ?? null) ? 'not_available' : 'available',
+            'staff_available' => (($detail['staff_present'] ?? 'Yes') === 'No') ? 'not_available' : 'available',
+            'medicine_flex_available' => (($detail['medicines_ok'] ?? 'Yes') === 'No') ? 'not_available' : 'available',
+            'testing_equipment_available' => in_array($detail['equipment_status'] ?? '', ['Non-Operational', 'Partial'], true)
+                || ($detail['equipment_ok'] ?? 'Yes') === 'No'
+                ? 'not_available'
+                : 'available',
+            'drinking_water_available' => ($detail['drinking_water_available'] ?? ($detail['utilities_ok'] ?? 'Yes')) === 'No'
+                ? 'not_available'
+                : 'available',
+            'utilities_available' => ($detail['utilities_ok'] ?? 'Yes') === 'No' ? 'not_available' : 'available',
+            default => '',
+        };
+    }
+
+    private function formatAvailabilityObservation(array $counts): string
+    {
+        return sprintf(
+            'Available %d / Not %d',
+            (int) ($counts['available'] ?? 0),
+            (int) ($counts['not_available'] ?? 0),
+        );
+    }
+
+    private function formatYesNoObservation(array $counts): string
+    {
+        return sprintf(
+            'Yes %d / No %d',
+            (int) ($counts['yes'] ?? 0),
+            (int) ($counts['no'] ?? 0),
+        );
     }
 
     private function inventoryTotalForUser(User $user, string $slug, Collection $submissions, string $field): int
@@ -805,26 +1087,26 @@ class KpiDashboardService
         if ($slug === 'inspection-of-health-facilities') {
             return match ($role) {
                 'ac', 'field_user' => [
-                    ['type' => 'bar', 'title' => 'Inspection Status', 'subtitle' => 'Approved, pending, and rejected inspection records.', 'key' => 'inspection_status_breakdown'],
-                    ['type' => 'donut', 'title' => 'Issues Found', 'subtitle' => 'Issues found during health inspections.', 'key' => 'health_issue_breakdown'],
+                    ['type' => 'bar', 'title' => 'Review Status', 'subtitle' => 'Approved, pending review, and rejected inspection records.', 'key' => 'inspection_status_breakdown'],
+                    ['type' => 'grouped_bar', 'title' => 'Observation Availability — Available vs Not Available', 'subtitle' => 'Shows checklist results from selected health inspections.', 'key' => 'health_observation_availability'],
                 ],
                 'dc' => [
-                    ['type' => 'bar', 'title' => 'Visit Target Completion', 'subtitle' => 'AC and DC health visit target completion.', 'key' => 'dc_ac_visit_completion'],
-                    ['type' => 'bar', 'title' => 'Tehsil Comparison — Inspection Records', 'subtitle' => 'Shows health inspection records by tehsil in selected period.', 'key' => 'tehsil_comparison'],
-                    ['type' => 'donut', 'title' => 'Issues Found', 'subtitle' => 'Issues found during selected period.', 'key' => 'health_issue_breakdown'],
-                    ['type' => 'bar', 'title' => 'Inspection Status', 'subtitle' => 'Approved, pending, and rejected inspection records.', 'key' => 'inspection_status_breakdown'],
+                    ['type' => 'bar', 'title' => 'Inspection Target Completion', 'subtitle' => 'AC and DC health inspection target completion.', 'key' => 'dc_ac_visit_completion'],
+                    ['type' => 'bar', 'title' => 'Tehsil Comparison — Inspections Completed', 'subtitle' => 'Completed inspections by tehsil in selected period.', 'key' => 'tehsil_comparison'],
+                    ['type' => 'grouped_bar', 'title' => 'Observation Availability — Available vs Not Available', 'subtitle' => 'Shows checklist results from selected health inspections.', 'key' => 'health_observation_availability'],
+                    ['type' => 'bar', 'title' => 'Review Status', 'subtitle' => 'Approved, pending review, and rejected inspection records.', 'key' => 'inspection_status_breakdown'],
                 ],
                 'commissioner' => [
-                    ['type' => 'bar', 'title' => 'District Comparison — Inspection Records', 'subtitle' => 'Shows health inspection records by district in selected period.', 'key' => 'district_comparison'],
-                    ['type' => 'donut', 'title' => 'Issues Found', 'subtitle' => 'Issues found during selected period.', 'key' => 'health_issue_breakdown'],
-                    ['type' => 'bar', 'title' => 'Visit Target Completion', 'subtitle' => 'AC and DC health visit target completion.', 'key' => 'dc_ac_visit_completion'],
-                    ['type' => 'bar', 'title' => 'Inspection Status', 'subtitle' => 'Approved, pending, and rejected inspection records.', 'key' => 'inspection_status_breakdown'],
+                    ['type' => 'bar', 'title' => 'District Comparison — Inspections Completed', 'subtitle' => 'Completed inspections by district in selected period.', 'key' => 'district_comparison'],
+                    ['type' => 'grouped_bar', 'title' => 'Observation Availability — Available vs Not Available', 'subtitle' => 'Shows checklist results from selected health inspections.', 'key' => 'health_observation_availability'],
+                    ['type' => 'bar', 'title' => 'Inspection Target Completion', 'subtitle' => 'AC and DC health inspection target completion.', 'key' => 'dc_ac_visit_completion'],
+                    ['type' => 'bar', 'title' => 'Review Status', 'subtitle' => 'Approved, pending review, and rejected inspection records.', 'key' => 'inspection_status_breakdown'],
                 ],
                 default => [
-                    ['type' => 'bar', 'title' => 'District Comparison — Inspection Records', 'subtitle' => 'Shows health inspection records across Punjab in selected period.', 'key' => 'district_comparison'],
-                    ['type' => 'donut', 'title' => 'Issues Found', 'subtitle' => 'Issues found during selected period.', 'key' => 'health_issue_breakdown'],
-                    ['type' => 'bar', 'title' => 'Inspection Status', 'subtitle' => 'Approved, pending, and rejected inspection records.', 'key' => 'inspection_status_breakdown'],
-                    ['type' => 'bar', 'title' => 'Visit Target Completion', 'subtitle' => 'AC and DC health visit target completion.', 'key' => 'dc_ac_visit_completion'],
+                    ['type' => 'bar', 'title' => 'District/Division Comparison — Inspections Completed', 'subtitle' => 'Completed inspections across Punjab in selected period.', 'key' => 'district_comparison'],
+                    ['type' => 'grouped_bar', 'title' => 'Observation Availability — Available vs Not Available', 'subtitle' => 'Shows checklist results from selected health inspections.', 'key' => 'health_observation_availability'],
+                    ['type' => 'bar', 'title' => 'Inspection Target Completion', 'subtitle' => 'AC and DC health inspection target completion.', 'key' => 'dc_ac_visit_completion'],
+                    ['type' => 'bar', 'title' => 'Review Status', 'subtitle' => 'Approved, pending review, and rejected inspection records.', 'key' => 'inspection_status_breakdown'],
                 ],
             };
         }
@@ -922,7 +1204,7 @@ class KpiDashboardService
         ?User $user = null,
         ?string $cardSlug = null,
         array $operational = [],
-    ): float|string|int {
+    ): float|string|int|array {
         if ($cardSlug === 'price-of-roti' && $operational !== []) {
             $override = match ($field) {
                 'tandoor_inspections' => $operational['completed'] ?? null,
@@ -937,10 +1219,11 @@ class KpiDashboardService
 
         if ($visitContext !== []) {
             $issues = $visitContext['issues'] ?? [];
+            $observations = $visitContext['observations'] ?? [];
 
             return match ($field) {
                 'target_completed' => (float) ($operational['completed'] ?? 0),
-                'total_visits', 'inspection_records' => (int) $visitContext['inspection_records'],
+                'total_visits', 'inspection_records', 'total_inspections' => (int) ($visitContext['total_inspections'] ?? $visitContext['inspection_records']),
                 'visits_achieved' => (int) $visitContext['visits_achieved'],
                 'facilities_inspected', 'institutions_inspected' => (int) $visitContext['unique_facilities_inspected'],
                 'facilities_not_inspected' => (int) $visitContext['not_inspected'],
@@ -950,16 +1233,27 @@ class KpiDashboardService
                 'inspections_pending' => (int) $visitContext['pending'],
                 'inspections_approved' => (int) $visitContext['approved'],
                 'inspections_rejected' => (int) $visitContext['rejected'],
-                'validation_target' => (int) $visitContext['validation_target'],
+                'review_target', 'validation_target' => (int) ($visitContext['review_target'] ?? $visitContext['validation_target'] ?? 0),
+                'review_completion_rate' => (float) ($visitContext['review_completion_rate'] ?? 0),
                 'validations_completed', 'validated_inspections' => (int) $visitContext['validated'],
+                'required_inspections', 'required_visits' => (int) ($visitContext['required_inspections'] ?? $visitContext['required_visits'] ?? 2),
+                'dc_own_inspections' => (int) ($visitContext['dc_own_inspections'] ?? 0),
+                'district_inspections' => (int) ($visitContext['district_inspections'] ?? $visitContext['district_visits'] ?? 0),
                 'dc_visits' => $visitContext['dc_visits_display'],
                 'ac_visits' => $visitContext['ac_visits_display'],
                 'ac_visit_target' => (int) ($visitContext['ac_visit_target'] ?? 2),
                 'district_ac_visit_target' => (int) ($visitContext['district_ac_visit_target'] ?? 2),
-                'required_visits' => (int) ($visitContext['required_visits'] ?? 2),
                 'ac_visit_achievement' => (float) ($visitContext['ac_visit_achievement'] ?? 0),
                 'district_visits' => (int) ($visitContext['district_visits'] ?? 0),
                 'districts_reporting' => (int) ($visitContext['districts_reporting'] ?? 0),
+                'observation_deep_cleaning' => $observations['deep_cleaning'] ?? ['available' => 0, 'not_available' => 0],
+                'observation_staff_availability' => $observations['staff_availability'] ?? ['available' => 0, 'not_available' => 0],
+                'observation_medicine_flex' => $observations['medicine_flex'] ?? ['available' => 0, 'not_available' => 0],
+                'observation_testing_equipment' => $observations['testing_equipment'] ?? ['available' => 0, 'not_available' => 0],
+                'observation_drinking_water' => $observations['drinking_water'] ?? ['available' => 0, 'not_available' => 0],
+                'observation_utilities' => $observations['utilities'] ?? ['available' => 0, 'not_available' => 0],
+                'observation_uhi_compliance' => $observations['uhi_compliance'] ?? ['yes' => 0, 'no' => 0],
+                'observation_attention_required' => (int) ($observations['attention_required'] ?? 0),
                 'issues_cleanliness' => (int) ($issues['cleanliness'] ?? 0),
                 'issues_staff_absence' => (int) ($issues['staff_absence'] ?? 0),
                 'issues_medicine_shortage' => (int) ($issues['medicine_shortage'] ?? 0),
@@ -1112,6 +1406,7 @@ class KpiDashboardService
                 'coverage_mobility_index',
                 'disposal_rate',
                 'school_council_activation',
+                'review_completion_rate',
             ], true);
     }
 
