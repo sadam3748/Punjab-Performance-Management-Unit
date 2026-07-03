@@ -459,6 +459,9 @@ class KpiInspectionSeeder extends Seeder
                 $detailData = \Database\Seeders\Support\KpiInspectionDetailFactory::forSlug($card->slug, $globalIndex);
                 if ($card->slug === 'inspection-of-health-facilities') {
                     $detailData = $this->healthObservationTemplate($i, $plan['tehsil_id']);
+                    if ($isHealthCompletedDayRecord) {
+                        $detailData['inspection_list_only'] = true;
+                    }
                 }
                 $location = $this->locationFor($side, $globalIndex);
                 $fullAddress = $this->fullAddress($side, $entity, $location);

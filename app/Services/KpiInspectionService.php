@@ -44,6 +44,7 @@ class KpiInspectionService
             ->with(['district:id,name', 'tehsil:id,name', 'inspectedBy:id,name', 'attachments'])
             ->withCount('attachments');
 
+        $this->excludeInspectionListOnlyRecords($query, $card);
         $this->applyListFilters($query, $request, $user);
 
         $perPage = min(50, max(10, (int) $request->input('insp_per_page', 10)));
@@ -58,6 +59,7 @@ class KpiInspectionService
     public function getInspectionsCollection(KpiCard $card, User $user, Request $request): Collection
     {
         $query = $this->baseQuery($card, $user);
+        $this->excludeInspectionListOnlyRecords($query, $card);
         $this->applyListFilters($query, $request, $user);
 
         return $query->with([
@@ -76,6 +78,7 @@ class KpiInspectionService
     public function countOperationalAchieved(KpiCard $card, User $user, Request $request): int
     {
         $query = $this->baseQuery($card, $user);
+        $this->excludeInspectionListOnlyRecords($query, $card);
         $this->applyListFilters($query, $request, $user);
 
         return (int) $query
@@ -99,6 +102,7 @@ class KpiInspectionService
     public function countScopedInspections(KpiCard $card, User $user, Request $request): int
     {
         $query = $this->baseQuery($card, $user);
+        $this->excludeInspectionListOnlyRecords($query, $card);
         $this->applyListFilters($query, $request, $user);
 
         return (int) $query->count();
@@ -135,6 +139,7 @@ class KpiInspectionService
     public function buildStatusCounts(KpiCard $card, User $user, Request $request): array
     {
         $query = $this->baseQuery($card, $user);
+        $this->excludeInspectionListOnlyRecords($query, $card);
         $this->applyListFilters($query, $request, $user, skipStatus: true);
 
         $counts = (clone $query)
@@ -431,6 +436,19 @@ class KpiInspectionService
     public function inspectionTimezone(): string
     {
         return (string) config('app.inspection_timezone', 'Asia/Karachi');
+    }
+
+    private function excludeInspectionListOnlyRecords(Builder $query, KpiCard $card): void
+    {
+        if ($card->slug !== 'inspection-of-health-facilities') {
+            return;
+        }
+
+        $query->where(function (Builder $query): void {
+            $query
+                ->whereNull('detail_data->inspection_list_only')
+                ->orWhere('detail_data->inspection_list_only', false);
+        });
     }
 
     /** @return list<array{label: string, value: string, key: string, observation_key?: string, has_evidence: bool, evidence_url?: string|null, evidence_anchor: string, status_tone: string}> */

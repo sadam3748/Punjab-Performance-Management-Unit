@@ -21,10 +21,11 @@
 
     <div class="header-spacer"></div>
 
-    <div class="header-search">
-        <i class="bi bi-search search-icon"></i>
-        <input type="text" placeholder="Search KPIs, locations, reports..." aria-label="Search">
-    </div>
+    @if(request()->routeIs('dashboard'))
+        <div class="ppmu-header-kpi-count" aria-label="{{ $cards->count() }} KPIs available">
+            <span id="kpiMainCount">{{ $cards->count() }}</span> KPIs
+        </div>
+    @endif
 
     <div class="header-actions">
         <button class="header-btn" type="button" title="Notifications"><i class="bi bi-bell"></i></button>

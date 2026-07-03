@@ -6708,3 +6708,58 @@ body:has(.ppmu-main-dashboard),
         font-size: 12px;
     }
 }
+
+/* Main home only: compact card chrome while preserving the image area. */
+.ppmu-header-kpi-count {
+    flex: 0 0 auto;
+    padding: 5px 10px;
+    border: 1px solid #d5e6dc;
+    border-radius: 999px;
+    color: #0f5132;
+    background: #f4faf7;
+    font-size: 11px;
+    font-weight: 800;
+    line-height: 1;
+    white-space: nowrap;
+}
+
+.ppmu-main-dashboard .ppmu-kpi-tile {
+    min-height: 198px;
+    max-height: 198px;
+    padding: 5px 8px 6px;
+}
+
+.ppmu-main-dashboard .ppmu-kpi-tile-hero {
+    flex: 0 0 125px;
+    min-height: 125px;
+    height: 125px;
+}
+
+.ppmu-main-dashboard .ppmu-kpi-tile-foot {
+    gap: 3px;
+}
+
+.ppmu-main-dashboard .ppmu-kpi-tile-title {
+    min-height: 29px;
+    max-height: 30px;
+    padding: 0 2px;
+    font-size: 12.5px;
+    font-weight: 800;
+    line-height: 1.15;
+}
+
+.ppmu-main-dashboard .ppmu-kpi-tile-btn {
+    height: 24px;
+    min-height: 24px;
+    margin-top: 2px;
+    padding: 0 7px;
+    border-radius: 5px;
+    font-size: 10px;
+}
+
+@media (min-width: 1200px) {
+    .ppmu-main-dashboard .ppmu-kpi-grid {
+        grid-auto-rows: 198px;
+        gap: 8px;
+    }
+}

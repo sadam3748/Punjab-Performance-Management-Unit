@@ -9,14 +9,6 @@
 @php
     $periodQuery = $periodQuery ?? app(\App\Services\KpiPeriodService::class)->queryString(request());
 @endphp
-<div class="ppmu-page-head ppmu-page-head-compact">
-    <h1>Home</h1>
-    <span class="ppmu-page-head-meta">
-        {{ $user->role?->name ?? 'User' }} · {{ $location }} ·
-        <span id="kpiMainCount">{{ $cards->count() }}</span> KPIs
-    </span>
-</div>
-
 <x-period-filter
     :filters="$filters"
     :period="$period"

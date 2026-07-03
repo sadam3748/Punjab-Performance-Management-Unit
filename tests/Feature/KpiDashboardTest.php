@@ -20,12 +20,25 @@ class KpiDashboardTest extends TestCase
         $card = KpiCard::where('slug', $slug)->firstOrFail();
         $admin = User::where('username', 'super_admin')->firstOrFail();
 
-        $this->actingAs($admin)->get('/dashboard')->assertOk()->assertSee('Home');
+        $this->actingAs($admin)
+            ->get('/dashboard')
+            ->assertOk()
+            ->assertDontSee('<h1>Home</h1>', false)
+            ->assertDontSee('Search KPIs, locations, reports...')
+            ->assertDontSee('header-search', false)
+            ->assertDontSee('ppmu-dashboard-summary', false)
+            ->assertSee('ppmu-header-kpi-count', false)
+            ->assertSee('23 KPIs');
         $this->actingAs($admin)->get('/dashboard')->assertDontSee('ppmu-kpi-tile-stats', false);
         $this->actingAs($admin)->get('/dashboard')->assertDontSee('ppmu-kpi-percent-badge', false);
         $this->actingAs($admin)->get('/dashboard')->assertDontSee('ppmu-kpi-tile-status', false);
         $this->actingAs($admin)->get('/dashboard')->assertSee('ppmu-main-dashboard', false);
-        $this->actingAs($admin)->get("/kpi/{$slug}/dashboard")->assertOk()->assertSee('Water Filtration');
+        $this->actingAs($admin)
+            ->get("/kpi/{$slug}/dashboard")
+            ->assertOk()
+            ->assertSee('Water Filtration')
+            ->assertDontSee('Search KPIs, locations, reports...')
+            ->assertDontSee('header-search', false);
         $this->actingAs($admin)->get('/manage-kpis')->assertOk()->assertSee('Manage KPI Cards');
 
         $ac = User::whereHas('role', fn ($query) => $query->where('slug', 'ac'))->whereNotNull('tehsil_id')->firstOrFail();
@@ -52,6 +65,10 @@ class KpiDashboardTest extends TestCase
 
             $response = $this->get('/dashboard');
             $response->assertOk()->assertSee('Water Filtration')->assertSee('Price of Roti')->assertSee('images/kpi-images/', false);
+            $response
+                ->assertSee('23 KPIs')
+                ->assertSee('ppmu-header-kpi-count', false)
+                ->assertDontSee('ppmu-dashboard-summary', false);
 
             $cardCount = substr_count($response->getContent(), 'data-kpi-card');
             $this->assertSame(23, $cardCount, "User {$login} should see 23 KPI cards");

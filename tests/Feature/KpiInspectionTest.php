@@ -44,6 +44,7 @@ class KpiInspectionTest extends TestCase
             ->assertDontSee('Yearly')
             ->assertDontSee('>Apply<', false)
             ->assertDontSee('ppmu-inspection-meta', false)
+            ->assertDontSee('header-search', false)
             ->assertSee('ppmu-inspections.js', false)
             ->assertSee('ppmu-inspection-view-icon', false)
             ->assertSee('Inspection of Health Facilities', false);
@@ -257,6 +258,7 @@ class KpiInspectionTest extends TestCase
             ->assertSee('</i> Back', false)
             ->assertDontSee('Back to KPI Dashboard')
             ->assertDontSee('Social Sector')
+            ->assertDontSee('header-search', false)
             ->assertDontSee('ppmu-inspection-summary-grid', false)
             ->assertSee('Observations')
             ->assertDontSee('KPI-Specific Details')
