@@ -384,6 +384,43 @@ function showToast(message, type = 'success') {
   setTimeout(() => toast.remove(), 3200);
 }
 
+// ── Scroll to top ─────────────────────────────────────────
+function initScrollToTop() {
+  const button = document.getElementById('ppmuScrollToTop');
+  if (!button) return;
+
+  const threshold = 300;
+  let ticking = false;
+
+  const updateVisibility = () => {
+    const scrolled = window.scrollY || document.documentElement.scrollTop || 0;
+    const visible = scrolled > threshold;
+
+    button.classList.toggle('is-visible', visible);
+    button.hidden = !visible;
+    ticking = false;
+  };
+
+  const onScroll = () => {
+    if (!ticking) {
+      ticking = true;
+      requestAnimationFrame(updateVisibility);
+    }
+  };
+
+  button.addEventListener('click', () => {
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    window.scrollTo({
+      top: 0,
+      behavior: prefersReducedMotion ? 'auto' : 'smooth',
+    });
+  });
+
+  window.addEventListener('scroll', onScroll, { passive: true });
+  updateVisibility();
+}
+
 // ── Filter reset ──────────────────────────────────────────
 function initFilterReset() {
   document.querySelectorAll('[data-reset-filters]').forEach(btn => {
@@ -406,6 +443,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initDropdowns();
   animateCounters();
   animateProgressBars();
+  initScrollToTop();
   initFilterReset();
 
   // Charts — dashboard

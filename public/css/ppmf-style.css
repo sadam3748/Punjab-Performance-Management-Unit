@@ -2764,3 +2764,56 @@ body {
     vertical-align: middle;
     border-bottom: 2px solid var(--gold) !important;
 }
+
+/* ── Scroll to Top ───────────────────────────────────────── */
+.ppmu-scroll-to-top {
+  position: fixed;
+  right: 1.25rem;
+  bottom: 1.25rem;
+  z-index: 1025;
+  width: 2.75rem;
+  height: 2.75rem;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--gov-green);
+  color: #fff;
+  font-size: 1.125rem;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(6, 107, 63, 0.35);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transform: translateY(0.5rem);
+  transition: opacity 0.2s ease, visibility 0.2s ease, transform 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+}
+
+.ppmu-scroll-to-top.is-visible {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+
+.ppmu-scroll-to-top:hover {
+  background: var(--gov-green-dark);
+  box-shadow: 0 6px 18px rgba(6, 77, 49, 0.4);
+}
+
+.ppmu-scroll-to-top:focus-visible {
+  outline: 2px solid var(--gov-green);
+  outline-offset: 3px;
+}
+
+@media (max-width: 768px) {
+  .ppmu-scroll-to-top {
+    right: 1rem;
+    bottom: 1rem;
+    width: 2.5rem;
+    height: 2.5rem;
+    font-size: 1rem;
+  }
+}
