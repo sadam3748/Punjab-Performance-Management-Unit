@@ -821,16 +821,21 @@ class KpiDashboardService
             : $districtDcTarget;
         $dcVisitsCompleted = in_array($role, ['dc'], true)
             ? $dcOwnInspections
-            : min(
-                $dcVisitTarget,
-                (int) $allInspections->filter(
-                    fn ($inspection) => $inspection->inspectedBy?->role?->slug === 'dc'
-                )->count()
-            );
+            : $this->inspectionService->healthDcVisitsCompleted($allInspections, $districtIds);
         $councilMeetingsHeld = min(
             $councilMeetingScopeTarget,
             (int) $submissions->sum(fn ($s) => (float) data_get($s->metric_snapshot, 'health_council_meeting', 0))
         );
+
+        $inspectionAchievementTarget = match ($role) {
+            'dc' => $districtAcTarget + $dcWeeklyTarget,
+            default => $districtAcTarget + $districtDcTarget,
+        };
+        $inspectionAchievementCompleted = min(
+            $inspectionAchievementTarget,
+            $acVisitsCompleted + $dcVisitsCompleted
+        );
+        $inspectionAchievementRemaining = max(0, $inspectionAchievementTarget - $inspectionAchievementCompleted);
 
         $requiredInspections = in_array($role, ['ac', 'field_user'], true) ? $acWeeklyTarget : $districtAcTarget;
         $acVisitAchievement = min(
@@ -874,6 +879,9 @@ class KpiDashboardService
             'issues' => [],
             'tehsil_ids' => $tehsilIds,
             'district_ids' => $districtIds,
+            'inspection_achievement_target' => $inspectionAchievementTarget,
+            'inspection_achievement_completed' => $inspectionAchievementCompleted,
+            'inspection_achievement_remaining' => $inspectionAchievementRemaining,
         ];
     }
 
@@ -1138,27 +1146,26 @@ class KpiDashboardService
         if ($slug === 'inspection-of-health-facilities') {
             return match ($role) {
                 'ac', 'field_user' => [
-                    ['type' => 'bar', 'title' => 'Review Status', 'subtitle' => 'Approved, pending review, and rejected inspection records.', 'key' => 'inspection_status_breakdown'],
-                    ['type' => 'stacked_bar', 'title' => 'Observation Availability', 'subtitle' => 'Available vs Not Available observations from inspected health facilities.', 'key' => 'health_observation_availability'],
+                    ['type' => 'bar', 'title' => 'Review Target Status', 'subtitle' => 'Approved, rejected, and pending reviews against AC review target.', 'key' => 'health_review_target_status'],
+                    ['type' => 'stacked_bar', 'title' => 'Observation Availability', 'subtitle' => 'Available vs not available observations from inspected health facilities.', 'key' => 'health_observation_availability'],
                 ],
                 'dc' => [
-                    ['type' => 'bar', 'title' => 'Tehsil Comparison — AC Visits', 'subtitle' => 'Weekly AC visits by tehsil, capped at 2 per tehsil.', 'key' => 'tehsil_comparison'],
-                    ['type' => 'bar', 'title' => 'Visit & Meeting Completion', 'subtitle' => 'DC visits and council meeting completion.', 'key' => 'dc_ac_visit_completion'],
-                    ['type' => 'stacked_bar', 'title' => 'Observation Availability', 'subtitle' => 'Available vs Not Available observations from inspected health facilities.', 'key' => 'health_observation_availability'],
-                    ['type' => 'bar', 'title' => 'Review Status', 'subtitle' => 'Approved, pending review, and rejected against review target.', 'key' => 'inspection_status_breakdown'],
+                    ['type' => 'bar', 'title' => 'Tehsil Inspection Progress', 'subtitle' => 'Weekly AC inspections by tehsil, capped at 2 per tehsil.', 'key' => 'health_tehsil_inspection_progress'],
+                    ['type' => 'bar', 'title' => 'Inspection Target Achievement', 'subtitle' => 'Completed inspections against weekly target.', 'key' => 'health_inspection_target_achievement'],
+                    ['type' => 'bar', 'title' => 'Review Target Status', 'subtitle' => 'Approved, rejected, and pending reviews against DC review target.', 'key' => 'health_review_target_status'],
+                    ['type' => 'stacked_bar', 'title' => 'Observation Availability', 'subtitle' => 'Available vs not available observations from inspected health facilities.', 'key' => 'health_observation_availability'],
                 ],
                 'commissioner' => [
-                    ['type' => 'bar', 'title' => 'District Comparison — Inspections Completed', 'subtitle' => 'Completed inspections by district, capped at district target.', 'key' => 'district_comparison'],
-                    ['type' => 'bar', 'title' => 'AC/DC Visit Completion', 'subtitle' => 'AC and DC health inspection target completion by district.', 'key' => 'dc_ac_visit_completion'],
-                    ['type' => 'stacked_bar', 'title' => 'Observation Availability', 'subtitle' => 'Available vs Not Available observations from inspected health facilities.', 'key' => 'health_observation_availability'],
-                    ['type' => 'bar', 'title' => 'Review Status', 'subtitle' => 'Approved, pending review, and rejected against review target.', 'key' => 'inspection_status_breakdown'],
+                    ['type' => 'bar', 'title' => 'District Inspection Progress', 'subtitle' => 'Completed inspections by district, capped against district target.', 'key' => 'health_district_inspection_progress'],
+                    ['type' => 'bar', 'title' => 'Inspection Target Achievement', 'subtitle' => 'Completed inspections against division weekly target.', 'key' => 'health_inspection_target_achievement'],
+                    ['type' => 'bar', 'title' => 'Review Target Status', 'subtitle' => 'Approved, rejected, and pending reviews against Commissioner review target.', 'key' => 'health_review_target_status'],
+                    ['type' => 'stacked_bar', 'title' => 'Observation Availability', 'subtitle' => 'Available vs not available observations from inspected health facilities.', 'key' => 'health_observation_availability'],
                 ],
                 default => [
-                    ['type' => 'bar', 'title' => 'District/Division Comparison — Inspections Completed', 'subtitle' => 'Completed inspections across Punjab in selected period.', 'key' => 'district_comparison'],
-                    ['type' => 'stacked_bar', 'title' => 'Observation Availability', 'subtitle' => 'Available vs Not Available observations from inspected health facilities.', 'key' => 'health_observation_availability'],
-                    ['type' => 'bar', 'title' => 'Inspection Target Completion', 'subtitle' => 'AC and DC health inspection target completion.', 'key' => 'dc_ac_visit_completion'],
-                    ['type' => 'bar', 'title' => 'Review Status', 'subtitle' => 'Approved, pending review, and rejected inspection records.', 'key' => 'inspection_status_breakdown'],
-                    ['type' => 'bar', 'title' => 'Council Meeting Completion', 'subtitle' => 'Health council meetings held against district targets.', 'key' => 'health_council_meeting_completion'],
+                    ['type' => 'bar', 'title' => 'District Inspection Progress', 'subtitle' => 'Completed inspections by district, capped against weekly target.', 'key' => 'health_district_inspection_progress'],
+                    ['type' => 'bar', 'title' => 'Inspection Target Achievement', 'subtitle' => 'Completed inspections against Punjab weekly target.', 'key' => 'health_inspection_target_achievement'],
+                    ['type' => 'bar', 'title' => 'Review Target Status', 'subtitle' => 'Approved, rejected, and pending reviews against CS review target.', 'key' => 'health_review_target_status'],
+                    ['type' => 'stacked_bar', 'title' => 'Observation Availability', 'subtitle' => 'Available vs not available observations from inspected health facilities.', 'key' => 'health_observation_availability'],
                 ],
             };
         }

@@ -52,9 +52,9 @@
         <div>
             <p id="inspectionDateRangeLabel">
                 <i class="bi bi-calendar3"></i>
-                Last completed day:
+                Inspections for
                 <strong>{{ $inspectionDateRange['start']->format('d M Y') }}</strong>
-                · 12:00 AM – 11:59 PM
+                · Till {{ $inspectionDateRange['end']->format('g:i A') }}
             </p>
             <p><strong id="inspectionListCount">{{ number_format($inspectionRecords->total()) }}</strong> inspection{{ $inspectionRecords->total() === 1 ? '' : 's' }} in scope</p>
         </div>

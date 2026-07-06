@@ -228,7 +228,8 @@
                 }
 
                 if (chartType === 'bar') {
-                    const horizontal = String(def.key || '').includes('comparison');
+                    const horizontal = String(def.key || '').includes('comparison')
+                        || String(def.key || '').includes('_progress');
                     charts['kpiChart_' + index] = new Chart(canvas, {
                         type: 'bar',
                         data: {

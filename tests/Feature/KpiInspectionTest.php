@@ -31,12 +31,13 @@ class KpiInspectionTest extends TestCase
             ->assertSee('Review Status')
             ->assertSee('Field inspections with status and quick view access.')
             ->assertSee('Action')
-            ->assertSee('Last completed day:')
+            ->assertSee('Inspections for')
             ->assertSee(
                 app(\App\Services\KpiInspectionService::class)->completedDayDateRange()['start']->format('d M Y')
             )
-            ->assertSee('12:00 AM')
-            ->assertSee('11:59 PM')
+            ->assertSee('Till 5:00 PM')
+            ->assertDontSee('12:00 AM')
+            ->assertDontSee('11:59 PM')
             ->assertDontSee('(Asia/Karachi)')
             ->assertDontSee('Main Dashboard')
             ->assertDontSee('Weekly')
@@ -97,13 +98,13 @@ class KpiInspectionTest extends TestCase
         $olderInspection = KpiInspection::where('kpi_card_id', $card->id)
             ->whereNotIn('id', [$lahoreInspection->id, $layyahInspection->id])
             ->firstOrFail();
-        $currentInspection = KpiInspection::where('kpi_card_id', $card->id)
+        $afterCutoffInspection = KpiInspection::where('kpi_card_id', $card->id)
             ->whereNotIn('id', [$lahoreInspection->id, $layyahInspection->id, $olderInspection->id])
             ->firstOrFail();
 
         $lahoreInspection->update(['inspection_datetime' => $range['start']->copy()]);
         $layyahInspection->update(['inspection_datetime' => $range['end']->copy()]);
-        $currentInspection->update(['inspection_datetime' => now()]);
+        $afterCutoffInspection->update(['inspection_datetime' => $range['end']->copy()->addSecond()]);
 
         $this->actingAs($admin)
             ->get(route('inspections.index'))
@@ -111,7 +112,7 @@ class KpiInspectionTest extends TestCase
             ->assertSee($lahoreInspection->reference_no)
             ->assertSee($layyahInspection->reference_no)
             ->assertDontSee($olderInspection->reference_no)
-            ->assertDontSee($currentInspection->reference_no)
+            ->assertDontSee($afterCutoffInspection->reference_no)
             ->assertViewHas('inspectionRecords', fn ($records) => $records->total() === 2);
 
         $this->actingAs($acLahore)

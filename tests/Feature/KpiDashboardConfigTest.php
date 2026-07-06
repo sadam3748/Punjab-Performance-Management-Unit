@@ -47,7 +47,7 @@ class KpiDashboardConfigTest extends TestCase
             ->assertSee('Deep Cleaning', false)
             ->assertDontSee('Submission Reports')
             ->assertSee('KPI Detail Dashboard')
-            ->assertSee('District/Division Comparison — Inspections Completed');
+            ->assertSee('District Inspection Progress');
     }
 
     public function test_health_facilities_uses_visit_header_labels(): void

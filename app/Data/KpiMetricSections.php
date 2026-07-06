@@ -24,26 +24,14 @@ class KpiMetricSections
      */
     private static function healthSections(?string $role): array
     {
-        $coverage = match ($role) {
-            'ac', 'field_user' => [
-                ['field' => 'total_health_facilities', 'label' => 'Total Health Facilities'],
-                ['field' => 'facilities_inspected', 'label' => 'Facilities Inspected'],
-                ['field' => 'review_target', 'label' => 'Review Target'],
-                ['field' => 'inspections_pending', 'label' => 'Pending Review'],
-                ['field' => 'inspections_approved', 'label' => 'Approved'],
-                ['field' => 'inspections_rejected', 'label' => 'Rejected'],
-            ],
-            default => [
-                ['field' => 'total_health_facilities', 'label' => 'Total Health Facilities'],
-                ['field' => 'facilities_inspected', 'label' => 'Facilities Inspected'],
-                ['field' => 'facilities_not_inspected', 'label' => 'Facilities Not Inspected'],
-                ['field' => 'review_target', 'label' => 'Review Target'],
-                ['field' => 'review_completion_rate', 'label' => 'Review Completion %'],
-                ['field' => 'inspections_pending', 'label' => 'Pending Review'],
-                ['field' => 'inspections_approved', 'label' => 'Approved'],
-                ['field' => 'inspections_rejected', 'label' => 'Rejected'],
-            ],
-        };
+        $coverage = [
+            ['field' => 'total_health_facilities', 'label' => 'Total Health Facilities'],
+            ['field' => 'facilities_inspected', 'label' => 'Facilities Inspected'],
+            ['field' => 'review_target', 'label' => 'Review Target'],
+            ['field' => 'inspections_pending', 'label' => 'Pending Review'],
+            ['field' => 'inspections_approved', 'label' => 'Approved'],
+            ['field' => 'inspections_rejected', 'label' => 'Rejected'],
+        ];
 
         $sections = [
             ['title' => 'Inspection Coverage', 'metrics' => $coverage],

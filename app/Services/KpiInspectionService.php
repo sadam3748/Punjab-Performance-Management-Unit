@@ -14,6 +14,8 @@ use Illuminate\Support\Facades\DB;
 
 class KpiInspectionService
 {
+    private const COMPLETED_DAY_CUTOFF_HOUR = 17;
+
     /** @var list<string> */
     private const OPERATIONAL_COUNT_STATUSES = [
         KpiInspection::STATUS_APPROVED,
@@ -139,21 +141,48 @@ class KpiInspectionService
         return $inspections;
     }
 
+    public function healthReviewTargetRate(User $user): float
+    {
+        return match ($user->role?->slug) {
+            'ac', 'field_user' => 0.20,
+            'dc', 'commissioner' => 0.05,
+            default => 0.03,
+        };
+    }
+
     public function healthReviewTarget(User $user, Collection $inspections, int $facilitiesInspected): int
     {
         $role = $user->role?->slug;
 
         if (in_array($role, ['ac', 'field_user'], true)) {
-            return $facilitiesInspected > 0
-                ? max(1, (int) ceil($facilitiesInspected * 0.20))
-                : 0;
+            if ($facilitiesInspected <= 0) {
+                return 0;
+            }
+
+            $target = (int) ceil($facilitiesInspected * 0.20);
+
+            return max(1, $target);
         }
 
         $eligible = $this->healthEligibleApprovedCount($user, $inspections);
+        $rate = $this->healthReviewTargetRate($user);
 
         return $eligible > 0
-            ? max(1, (int) ceil($eligible * 0.05))
+            ? max(1, (int) ceil($eligible * $rate))
             : 0;
+    }
+
+    /** @return array{labels: list<string>, values: list<int>} */
+    public function healthReviewTargetStatusChart(int $reviewTarget, int $approved, int $pending, int $rejected): array
+    {
+        if ($reviewTarget <= 0) {
+            return ['labels' => [], 'values' => []];
+        }
+
+        return [
+            'labels' => ['Approved', 'Rejected', 'Pending Review'],
+            'values' => [$approved, $rejected, $pending],
+        ];
     }
 
     /** @return array{approved: int, pending: int, rejected: int} */
@@ -317,6 +346,17 @@ class KpiInspectionService
 
         return (int) $tehsilIds->sum(function (int $tehsilId) use ($acInspections) {
             return min(2, $acInspections->where('tehsil_id', $tehsilId)->count());
+        });
+    }
+
+    public function healthDcVisitsCompleted(Collection $inspections, Collection $districtIds): int
+    {
+        $dcInspections = $inspections->filter(
+            fn (KpiInspection $inspection) => $inspection->inspectedBy?->role?->slug === 'dc'
+        );
+
+        return (int) $districtIds->sum(function (int $districtId) use ($dcInspections) {
+            return min(2, $dcInspections->where('district_id', $districtId)->count());
         });
     }
 
@@ -594,7 +634,7 @@ class KpiInspectionService
 
         return [
             'start' => $completedDay->copy()->startOfDay(),
-            'end' => $completedDay->copy()->endOfDay(),
+            'end' => $completedDay->copy()->setTime(self::COMPLETED_DAY_CUTOFF_HOUR, 0),
         ];
     }
 

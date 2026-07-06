@@ -42,7 +42,7 @@ class KpiDetailDataTest extends TestCase
             ->assertSee('Progress')
             ->assertSee('Total Health Facilities')
             ->assertDontSee('ppmu-pi-title">Inspection Records', false)
-            ->assertSee('District/Division Comparison — Inspections Completed');
+            ->assertSee('District Inspection Progress');
     }
 
     public function test_seeded_submission_volume_per_kpi(): void

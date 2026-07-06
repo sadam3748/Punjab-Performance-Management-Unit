@@ -376,7 +376,7 @@ class KpiDashboardTest extends TestCase
             ->assertForbidden();
     }
 
-    public function test_dc_layyah_health_dashboard_has_tehsil_comparison_chart(): void
+    public function test_dc_layyah_health_dashboard_has_tehsil_inspection_progress_chart(): void
     {
         $this->seed(PpmuSeeder::class);
         $user = User::where('username', 'dc.layyah')->firstOrFail();
@@ -391,16 +391,21 @@ class KpiDashboardTest extends TestCase
             ])
         );
 
-        $keys = collect($detail['charts']['definitions'])->pluck('key');
-        $this->assertTrue($keys->contains('tehsil_comparison'));
-        $comparison = collect($detail['charts']['definitions'])->firstWhere('key', 'tehsil_comparison');
-        $this->assertStringContainsString('Tehsil Comparison — AC Visits', (string) ($comparison['title'] ?? ''));
+        $keys = collect($detail['chartDefinitions'])->pluck('key');
+        $this->assertTrue($keys->contains('health_tehsil_inspection_progress'));
+        $this->assertTrue($keys->contains('health_inspection_target_achievement'));
+        $this->assertTrue($keys->contains('health_review_target_status'));
+        $this->assertFalse($keys->contains('dc_ac_visit_completion'));
+        $comparison = collect($detail['charts']['definitions'])->firstWhere('key', 'health_tehsil_inspection_progress');
+        $this->assertStringContainsString('Tehsil Inspection Progress', (string) ($comparison['title'] ?? ''));
         $this->assertStringContainsString('capped at 2 per tehsil', strtolower((string) ($comparison['subtitle'] ?? '')));
         $this->assertNotEmpty($comparison['data']['labels'] ?? []);
         $layyah = collect($comparison['data']['labels'] ?? [])->first(fn ($l) => str_contains((string) $l, 'Layyah'));
         $karor = collect($comparison['data']['labels'] ?? [])->first(fn ($l) => str_contains((string) $l, 'Karor'));
+        $chaubara = collect($comparison['data']['labels'] ?? [])->first(fn ($l) => str_contains((string) $l, 'Chaubara'));
         $this->assertNotNull($layyah);
         $this->assertNotNull($karor);
+        $this->assertNotNull($chaubara);
     }
 
     public function test_inspection_list_section_has_no_duplicate_summary_cards(): void
@@ -595,7 +600,8 @@ class KpiDashboardTest extends TestCase
         $keys = collect($detail['chartDefinitions'])->pluck('key');
         $this->assertFalse($keys->contains('dc_ac_visit_completion'));
         $this->assertFalse($keys->contains('tehsil_comparison'));
-        $this->assertTrue($keys->contains('inspection_status_breakdown'));
+        $this->assertFalse($keys->contains('district_comparison'));
+        $this->assertTrue($keys->contains('health_review_target_status'));
         $this->assertTrue($keys->contains('health_observation_availability'));
     }
 
@@ -761,11 +767,12 @@ class KpiDashboardTest extends TestCase
             $this->assertNotSame('Donut chart', $chart['subtitle'] ?? null);
         }
 
-        $dcComparison = collect($dc['chartDefinitions'])->firstWhere('key', 'tehsil_comparison');
-        $this->assertStringContainsString('Tehsil Comparison — AC Visits', (string) ($dcComparison['title'] ?? ''));
+        $dcComparison = collect($dc['chartDefinitions'])->firstWhere('key', 'health_tehsil_inspection_progress');
+        $this->assertStringContainsString('Tehsil Inspection Progress', (string) ($dcComparison['title'] ?? ''));
 
-        $csComparison = collect($cs['chartDefinitions'])->firstWhere('key', 'district_comparison');
-        $this->assertStringContainsString('District/Division Comparison — Inspections Completed', (string) ($csComparison['title'] ?? ''));
+        $csComparison = collect($cs['chartDefinitions'])->firstWhere('key', 'health_district_inspection_progress');
+        $this->assertStringContainsString('District Inspection Progress', (string) ($csComparison['title'] ?? ''));
+        $this->assertFalse(collect($cs['chartDefinitions'])->pluck('key')->contains('division_comparison'));
     }
 
     public function test_health_header_shows_inspection_target_inspected_and_review_percent(): void
@@ -799,29 +806,31 @@ class KpiDashboardTest extends TestCase
             ->assertDontSee('Review Completion %', false);
     }
 
-    public function test_health_coverage_shows_eight_cards_without_inspection_records(): void
+    public function test_health_coverage_shows_six_cards_for_all_roles(): void
     {
         $this->seed(PpmuSeeder::class);
         $card = KpiCard::where('slug', 'inspection-of-health-facilities')->firstOrFail();
         $period = app(KpiPeriodService::class);
-        $detail = app(KpiDashboardService::class)->detail(
-            $card,
-            User::where('username', 'dc.layyah')->firstOrFail(),
-            Request::create('/', 'GET', [
-                'period_type' => 'weekly',
-                'week_no' => $period->currentWeekNo(),
-            ])
-        );
+        $dashboard = app(KpiDashboardService::class);
+        $request = Request::create('/', 'GET', [
+            'period_type' => 'weekly',
+            'week_no' => $period->currentWeekNo(),
+        ]);
 
-        $coverage = collect($detail['metricSections'])->firstWhere('title', 'Inspection Coverage');
-        $labels = collect($coverage['metrics'])->pluck('label')->all();
+        foreach (['dc.layyah', 'ac.layyah', 'cs.pmru'] as $username) {
+            $detail = $dashboard->detail($card, User::where('username', $username)->firstOrFail(), $request);
+            $coverage = collect($detail['metricSections'])->firstWhere('title', 'Inspection Coverage');
+            $labels = collect($coverage['metrics'])->pluck('label')->all();
 
-        $this->assertCount(8, $labels);
-        $this->assertNotContains('Inspection Records', $labels);
-        $this->assertSame(
-            ['Total Health Facilities', 'Facilities Inspected', 'Facilities Not Inspected', 'Review Target', 'Review Completion %', 'Pending Review', 'Approved', 'Rejected'],
-            $labels
-        );
+            $this->assertCount(6, $labels, $username);
+            $this->assertSame(
+                ['Total Health Facilities', 'Facilities Inspected', 'Review Target', 'Pending Review', 'Approved', 'Rejected'],
+                $labels,
+                $username
+            );
+            $this->assertNotContains('Facilities Not Inspected', $labels, $username);
+            $this->assertNotContains('Review Completion %', $labels, $username);
+        }
     }
 
     public function test_health_review_target_formula_by_role(): void
@@ -847,7 +856,11 @@ class KpiDashboardTest extends TestCase
         $this->assertFalse($acValues->has('Review Completion %'));
         $this->assertSame(1, (int) $acValues['Approved'] + (int) $acValues['Pending Review'] + (int) $acValues['Rejected']);
         $this->assertGreaterThanOrEqual(1, (int) $dcValues['Review Target']);
-        $this->assertLessThanOrEqual(100.0, (float) $dcValues['Review Completion %']);
+        $this->assertFalse($dcValues->has('Review Completion %'));
+        $this->assertSame(
+            (int) $dcValues['Review Target'],
+            (int) $dcValues['Approved'] + (int) $dcValues['Pending Review'] + (int) $dcValues['Rejected']
+        );
     }
 
     public function test_health_observations_section_has_eight_cards(): void
@@ -902,7 +915,7 @@ class KpiDashboardTest extends TestCase
         $this->assertNotNull($chart);
         $this->assertSame('Observation Availability', $chart['title']);
         $this->assertSame('stacked_bar', $chart['type']);
-        $this->assertStringContainsString('Available vs Not Available observations from inspected health facilities', (string) ($chart['subtitle'] ?? ''));
+        $this->assertStringContainsString('Available vs not available observations from inspected health facilities', (string) ($chart['subtitle'] ?? ''));
         $this->assertCount(2, $chart['data']['datasets'] ?? []);
         $this->assertSame('Available', $chart['data']['datasets'][0]['label'] ?? null);
         $this->assertSame('Not Available', $chart['data']['datasets'][1]['label'] ?? null);
@@ -936,7 +949,7 @@ class KpiDashboardTest extends TestCase
         }
     }
 
-    public function test_dc_layyah_ac_visit_target_matches_active_tehsils(): void
+    public function test_dc_layyah_ac_visit_target_matches_official_tehsils(): void
     {
         $this->seed(PpmuSeeder::class);
         $card = KpiCard::where('slug', 'inspection-of-health-facilities')->firstOrFail();
@@ -950,14 +963,16 @@ class KpiDashboardTest extends TestCase
         $detail = app(KpiDashboardService::class)->detail($card, $user, $request);
         $visits = collect($detail['metricSections'])->firstWhere('title', 'Visits & Meetings');
         $visitValues = collect($visits['metrics'])->mapWithKeys(fn ($m) => [$m['label'] => $m['value']]);
-        $comparison = collect($detail['charts']['definitions'])->firstWhere('key', 'tehsil_comparison');
+        $comparison = collect($detail['charts']['definitions'])->firstWhere('key', 'health_tehsil_inspection_progress');
         $officialTehsils = app(KpiInspectionService::class)->officialTehsilIds($user, $request)->count();
-        $visitChart = collect($detail['charts']['definitions'])->firstWhere('key', 'dc_ac_visit_completion');
+        $achievement = collect($detail['charts']['definitions'])->firstWhere('key', 'health_inspection_target_achievement');
 
         $this->assertSame($officialTehsils, count($comparison['data']['labels'] ?? []));
         $this->assertSame($officialTehsils * 2, (int) explode(' / ', (string) $visitValues['ACs Visits'])[1]);
-        $this->assertStringContainsString('DC Visits', implode(',', $visitChart['data']['labels'] ?? []));
-        $this->assertLessThanOrEqual(100.0, max($visitChart['data']['values'] ?? [0]));
+        $this->assertContains('Target', $achievement['data']['labels'] ?? []);
+        $this->assertContains('Inspected', $achievement['data']['labels'] ?? []);
+        $this->assertContains('Remaining', $achievement['data']['labels'] ?? []);
+        $this->assertFalse(collect($detail['chartDefinitions'])->pluck('key')->contains('dc_ac_visit_completion'));
     }
 
     public function test_cs_health_demo_progress_is_not_critical(): void
