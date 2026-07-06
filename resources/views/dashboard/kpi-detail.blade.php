@@ -10,7 +10,6 @@
     $imageUrl  = asset($kpiCard->resolvedImagePath());
     $pct       = max(0, min(100, (float) $header['achievement_percentage']));
     $score     = (float) ($header['score'] ?? 0);
-    $marks     = (float) ($header['total_marks'] ?? $kpiCard->total_marks);
     $labels    = $header['labels'] ?? app(\App\Services\KpiDashboardConfigService::class)->headerLabelsFor($kpiCard->slug);
     $userScope = $header['scope_label'] ?? ($user->tehsil?->name ?? $user->district?->name ?? $user->division?->name ?? 'All Punjab');
     $statusDonut = $charts['status_donut'] ?? $charts['donut'];
@@ -36,13 +35,12 @@
         </div>
 
         <div class="ppmu-detail-info">
-            <span class="ppmu-detail-category">KPI Detail Dashboard · {{ $kpiCard->category }}</span>
+            <span class="ppmu-detail-category">KPI Detail Dashboard</span>
             <h1>{{ $kpiCard->title }}</h1>
             <div class="ppmu-detail-meta">
                 <span><i class="bi bi-person-badge-fill"></i>{{ $user->role?->name }}</span>
                 <span><i class="bi bi-geo-alt-fill"></i>{{ $userScope }}</span>
                 <span id="kpiDetailPeriodLabel"><i class="bi bi-calendar3"></i>{{ $header['period_label'] ?? 'All Periods' }}</span>
-                <span><i class="bi bi-award-fill"></i>{{ $kpiCard->total_marks }} marks</span>
             </div>
         </div>
 
