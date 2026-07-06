@@ -6426,6 +6426,36 @@ body:has(.ppmu-main-dashboard),
     transform: translateY(-1px);
 }
 
+/* Keep inspection-detail decision button text readable in every interaction state. */
+.ppmu-review-action-buttons .ppmu-review-btn,
+.ppmu-review-action-buttons .ppmu-review-btn:hover,
+.ppmu-review-action-buttons .ppmu-review-btn:focus,
+.ppmu-review-action-buttons .ppmu-review-btn:focus-visible,
+.ppmu-review-action-buttons .ppmu-review-btn:active {
+    color: #fff !important;
+    border-color: transparent !important;
+}
+
+.ppmu-review-action-buttons .ppmu-review-btn-approve,
+.ppmu-review-action-buttons .ppmu-review-btn-approve:hover,
+.ppmu-review-action-buttons .ppmu-review-btn-approve:focus,
+.ppmu-review-action-buttons .ppmu-review-btn-approve:active {
+    background: #087443 !important;
+}
+
+.ppmu-review-action-buttons .ppmu-review-btn-reject,
+.ppmu-review-action-buttons .ppmu-review-btn-reject:hover,
+.ppmu-review-action-buttons .ppmu-review-btn-reject:focus,
+.ppmu-review-action-buttons .ppmu-review-btn-reject:active {
+    background: #c62828 !important;
+}
+
+.ppmu-review-action-buttons .ppmu-review-btn:hover,
+.ppmu-review-action-buttons .ppmu-review-btn:focus-visible {
+    filter: brightness(.92);
+    transform: translateY(-1px);
+}
+
 @media (max-width: 991.98px) {
     .ppmu-detail-page .ppmu-kpi-specific-grid-count-3,
     .ppmu-detail-page .ppmu-kpi-specific-grid-count-4,
