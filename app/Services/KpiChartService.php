@@ -23,9 +23,10 @@ class KpiChartService
         float $achieved,
         Collection $areaScores,
         array $definitions,
+        array $healthContext = [],
     ): array {
         $legacy = $this->build($submissions, $user, $target, $achieved, $areaScores);
-        $datasets = $this->buildDatasets($slug, $submissions, $inspections, $user, $target, $achieved, $areaScores, $legacy);
+        $datasets = $this->buildDatasets($slug, $submissions, $inspections, $user, $target, $achieved, $areaScores, $legacy, $healthContext);
 
         $configured = collect($definitions)->map(function (array $definition) use ($datasets, $user): array {
             $key = $definition['key'];
@@ -113,6 +114,7 @@ class KpiChartService
         float $achieved,
         Collection $areaScores,
         array $legacy,
+        array $healthContext = [],
     ): array {
         $pct = $this->formula->achievementPercentage($achieved, $target);
 
@@ -127,6 +129,13 @@ class KpiChartService
         }
 
         $inspectionStatus = $inspections->countBy(fn (KpiInspection $item) => $item->statusLabel());
+        if ($slug === 'inspection-of-health-facilities' && ($healthContext['review_target'] ?? 0) > 0) {
+            $inspectionStatus = collect([
+                'Approved' => (int) ($healthContext['approved'] ?? 0),
+                'Pending Review' => (int) ($healthContext['pending'] ?? 0),
+                'Rejected' => (int) ($healthContext['rejected'] ?? 0),
+            ])->filter(fn ($count) => $count > 0);
+        }
         if ($inspectionStatus->isEmpty()) {
             $inspectionStatus = collect(['Pending Review' => 1]);
         }
@@ -208,21 +217,45 @@ class KpiChartService
         ]);
 
         if ($slug === 'inspection-of-health-facilities') {
-            $activeTehsils = max(1, $inspections->pluck('tehsil_id')->filter()->unique()->count());
-            $acTarget = max(2, $activeTehsils * 2);
-            $dcTarget = 2;
-            $acCompleted = (int) $inspections->count();
-            $dcCompleted = $this->healthDcCompletedCount($inspections, $submissions, $dcTarget);
+            $inspectionService = app(KpiInspectionService::class);
+            $request = request();
+            $role = $user->role?->slug ?? '';
+            $tehsilIds = $healthContext['tehsil_ids'] ?? $inspectionService->officialTehsilIds($user, $request);
+            $districtIds = $healthContext['district_ids'] ?? $inspectionService->officialDistrictIds($user, $request);
+            $acTarget = (int) ($healthContext['ac_visit_target'] ?? max(2, $tehsilIds->count() * 2));
+            $dcTarget = (int) ($healthContext['dc_visit_target'] ?? 2);
+            $acCompleted = (int) ($healthContext['ac_visits_completed'] ?? $inspectionService->healthAcVisitsCompleted($inspections, $tehsilIds));
+            $dcCompleted = (int) ($healthContext['dc_own_inspections'] ?? $this->healthDcCompletedCount($inspections, $submissions, $dcTarget));
+            $councilHeld = (int) ($healthContext['health_council_meeting'] ?? 0);
+            $councilTarget = (int) ($healthContext['health_council_meeting_target'] ?? 2);
 
-            if (in_array($user->role?->slug, ['ac', 'field_user'], true)) {
+            if (in_array($role, ['ac', 'field_user'], true)) {
                 $acTarget = 2;
                 $acCompleted = min($acCompleted, $acTarget);
             }
 
-            $dcAcVisitCompletion = collect([
-                'AC Inspection Target %' => min(100.0, $this->formula->percentage(min($acCompleted, $acTarget), $acTarget)),
-                'DC Inspection Target %' => min(100.0, $this->formula->percentage(min($dcCompleted, $dcTarget), $dcTarget)),
-            ]);
+            $tehsilComparison = $inspectionService->healthTehsilComparison($user, $request, $inspections);
+            $districtComparison = $inspectionService->healthDistrictComparison($user, $request, $inspections);
+
+            $dcAcVisitCompletion = match ($role) {
+                'dc' => collect([
+                    'DC Visits' => min(100.0, $this->formula->percentage($dcCompleted, $dcTarget)),
+                    'Council Meetings' => min(100.0, $this->formula->percentage($councilHeld, $councilTarget)),
+                ]),
+                'commissioner', 'chief_secretary', 'super_admin', 'pmru_user', 'viewer' => collect([
+                    'AC Visits' => min(100.0, $this->formula->percentage($acCompleted, $acTarget)),
+                    'DC Visits' => min(100.0, $this->formula->percentage($dcCompleted, max(2, $districtIds->count() * 2))),
+                ]),
+                default => collect([
+                    'AC Inspection Target %' => min(100.0, $this->formula->percentage(min($acCompleted, $acTarget), $acTarget)),
+                    'DC Inspection Target %' => min(100.0, $this->formula->percentage(min($dcCompleted, $dcTarget), $dcTarget)),
+                ]),
+            };
+
+            $healthCouncilMeetingCompletion = $toChart(collect([
+                'Held' => $councilHeld,
+                'Target' => max(0, $councilTarget - $councilHeld),
+            ]));
         }
 
         return [
@@ -295,6 +328,7 @@ class KpiChartService
                 'UHI Compliance' => $submissions->sum(fn ($i) => (float) data_get($i->metric_snapshot, 'observation_uhi_no', 0)),
                 'Attention Required' => $submissions->sum(fn ($i) => (float) data_get($i->metric_snapshot, 'observation_attention_required', 0)),
             ])->filter(fn ($v) => $v > 0)),
+            'health_council_meeting_completion' => $healthCouncilMeetingCompletion ?? $toChart(collect(['Held' => 0, 'Target' => 2])),
             'shops_handcarts_comparison' => $toChart(collect([
                 'Shops' => $inspections->avg(fn ($i) => (float) data_get($i->detail_data, 'shops_checked', 0)) ?: 0,
                 'Handcarts' => $inspections->avg(fn ($i) => (float) data_get($i->detail_data, 'handcarts_checked', 0)) ?: 0,

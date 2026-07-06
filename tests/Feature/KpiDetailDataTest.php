@@ -40,7 +40,7 @@ class KpiDetailDataTest extends TestCase
             ->assertSee('Facilities Inspected')
             ->assertDontSee('data-stat="reported"', false)
             ->assertSee('Progress')
-            ->assertSee('Total Facilities')
+            ->assertSee('Total Health Facilities')
             ->assertDontSee('ppmu-pi-title">Inspection Records', false)
             ->assertSee('District/Division Comparison — Inspections Completed');
     }

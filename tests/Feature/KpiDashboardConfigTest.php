@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Data\KpiDashboardDefinitions;
 use App\Models\KpiCard;
+use App\Models\User;
 use App\Services\KpiDashboardConfigService;
 use Database\Seeders\PpmuSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -35,11 +36,11 @@ class KpiDashboardConfigTest extends TestCase
         $this->seed(PpmuSeeder::class);
         $slug = 'inspection-of-health-facilities';
 
-        $this->actingAs(\App\Models\User::where('username', 'super_admin')->firstOrFail())
+        $this->actingAs(User::where('username', 'super_admin')->firstOrFail())
             ->get("/kpi/{$slug}/dashboard")
             ->assertOk()
             ->assertSee('KPI Performance Cards')
-            ->assertSee('Total Facilities')
+            ->assertSee('Total Health Facilities')
             ->assertSee('Facilities Inspected')
             ->assertDontSee('ppmu-pi-title">Inspection Records', false)
             ->assertSee('Observations', false)
@@ -74,7 +75,7 @@ class KpiDashboardConfigTest extends TestCase
     {
         $this->seed(PpmuSeeder::class);
 
-        $this->actingAs(\App\Models\User::where('username', 'super_admin')->firstOrFail())
+        $this->actingAs(User::where('username', 'super_admin')->firstOrFail())
             ->get('/kpi/repair-of-small-roads/dashboard')
             ->assertOk()
             ->assertSee('Repair', false);

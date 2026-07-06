@@ -138,23 +138,20 @@ class KpiOperationalService
             return 2;
         }
 
-        if ($card?->slug === 'inspection-of-health-facilities' && is_array($activeScope) && ($activeScope['tehsils'] ?? 0) > 0) {
-            $activeTehsils = (int) $activeScope['tehsils'];
-            $activeDistricts = max(1, (int) ($activeScope['districts'] ?? 1));
-
+        if ($card?->slug === 'inspection-of-health-facilities') {
             if ($request->filled('geo_district')) {
-                return ($activeTehsils * 2) + 2;
+                return $this->districtWeeklyTarget((int) $request->input('geo_district'));
             }
 
             if ($request->filled('geo_division')) {
-                return ($activeTehsils * 2) + ($activeDistricts * 2);
+                return $this->divisionWeeklyTarget((int) $request->input('geo_division'));
             }
 
             return match ($user->role?->slug) {
                 'ac', 'field_user' => 2,
-                'dc' => ($activeTehsils * 2) + 2,
-                'commissioner' => ($activeTehsils * 2) + ($activeDistricts * 2),
-                default => ($activeTehsils * 2) + ($activeDistricts * 2),
+                'dc' => $this->districtWeeklyTarget((int) $user->district_id),
+                'commissioner' => $this->divisionWeeklyTarget((int) $user->division_id),
+                default => $this->provinceWeeklyTarget(),
             };
         }
 

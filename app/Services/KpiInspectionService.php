@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\KpiCard;
 use App\Models\KpiInspection;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -13,7 +14,7 @@ use Illuminate\Support\Facades\DB;
 
 class KpiInspectionService
 {
-  /** @var list<string> */
+    /** @var list<string> */
     private const OPERATIONAL_COUNT_STATUSES = [
         KpiInspection::STATUS_APPROVED,
         KpiInspection::STATUS_PENDING,
@@ -67,6 +68,8 @@ class KpiInspectionService
             'tehsil:id,name',
             'inspectedBy:id,name,role_id',
             'inspectedBy.role:id,slug',
+            'reviewedBy:id,role_id',
+            'reviewedBy.role:id,slug',
         ])->get();
     }
 
@@ -134,6 +137,187 @@ class KpiInspectionService
         }
 
         return $inspections;
+    }
+
+    public function healthReviewTarget(User $user, Collection $inspections, int $facilitiesInspected): int
+    {
+        $role = $user->role?->slug;
+
+        if (in_array($role, ['ac', 'field_user'], true)) {
+            return $facilitiesInspected > 0
+                ? max(1, (int) ceil($facilitiesInspected * 0.20))
+                : 0;
+        }
+
+        $eligible = $this->healthEligibleApprovedCount($user, $inspections);
+
+        return $eligible > 0
+            ? max(1, (int) ceil($eligible * 0.05))
+            : 0;
+    }
+
+    /** @return array{approved: int, pending: int, rejected: int} */
+    public function healthReviewStatusCounts(Collection $inspections, int $reviewTarget): array
+    {
+        if ($reviewTarget <= 0) {
+            return ['approved' => 0, 'pending' => 0, 'rejected' => 0];
+        }
+
+        $approved = min(
+            $reviewTarget,
+            $inspections->where('status', KpiInspection::STATUS_APPROVED)->count()
+        );
+        $rejected = min(
+            max(0, $reviewTarget - $approved),
+            $inspections->where('status', KpiInspection::STATUS_REJECTED)->count()
+        );
+        $pending = max(0, $reviewTarget - $approved - $rejected);
+
+        return compact('approved', 'pending', 'rejected');
+    }
+
+    public function healthEligibleApprovedCount(User $user, Collection $inspections): int
+    {
+        return match ($user->role?->slug) {
+            'dc' => $inspections
+                ->where('status', KpiInspection::STATUS_APPROVED)
+                ->filter(fn (KpiInspection $inspection) => in_array(
+                    $inspection->inspectedBy?->role?->slug,
+                    ['ac', 'field_user'],
+                    true
+                ))
+                ->count(),
+            'commissioner' => $inspections
+                ->where('status', KpiInspection::STATUS_APPROVED)
+                ->filter(fn (KpiInspection $inspection) => $inspection->inspectedBy?->role?->slug === 'dc')
+                ->count(),
+            default => $inspections
+                ->where('status', KpiInspection::STATUS_APPROVED)
+                ->filter(fn (KpiInspection $inspection) => in_array(
+                    $inspection->inspectedBy?->role?->slug,
+                    ['commissioner'],
+                    true
+                ) || $inspection->reviewedBy?->role?->slug === 'commissioner')
+                ->count() ?: $inspections->where('status', KpiInspection::STATUS_APPROVED)->count(),
+        };
+    }
+
+    /** @return Collection<int, int> */
+    public function officialTehsilIds(User $user, Request $request): Collection
+    {
+        $query = DB::table('tehsils')->where('is_active', true);
+
+        if ($request->filled('geo_tehsil')) {
+            return collect([(int) $request->input('geo_tehsil')]);
+        }
+
+        if ($request->filled('geo_district')) {
+            $query->where('district_id', (int) $request->input('geo_district'));
+        } elseif ($request->filled('geo_division')) {
+            $districtIds = DB::table('districts')
+                ->where('division_id', (int) $request->input('geo_division'))
+                ->where('is_active', true)
+                ->pluck('id');
+            $query->whereIn('district_id', $districtIds);
+        } else {
+            return match ($user->role?->slug) {
+                'ac', 'field_user' => collect(array_filter([(int) $user->tehsil_id])),
+                'dc' => $query->where('district_id', (int) $user->district_id)->pluck('id'),
+                'commissioner' => $query->whereIn(
+                    'district_id',
+                    DB::table('districts')
+                        ->where('division_id', (int) $user->division_id)
+                        ->where('is_active', true)
+                        ->pluck('id')
+                )->pluck('id'),
+                default => $query->pluck('id'),
+            };
+        }
+
+        return $query->pluck('id');
+    }
+
+    /** @return Collection<int, int> */
+    public function officialDistrictIds(User $user, Request $request): Collection
+    {
+        $query = DB::table('districts')->where('is_active', true);
+
+        if ($request->filled('geo_district')) {
+            return collect([(int) $request->input('geo_district')]);
+        }
+
+        if ($request->filled('geo_division')) {
+            $query->where('division_id', (int) $request->input('geo_division'));
+        } else {
+            return match ($user->role?->slug) {
+                'dc' => collect(array_filter([(int) $user->district_id])),
+                'commissioner' => $query->where('division_id', (int) $user->division_id)->pluck('id'),
+                default => $query->pluck('id'),
+            };
+        }
+
+        return $query->pluck('id');
+    }
+
+    /** @return Collection<string, int> */
+    public function healthTehsilComparison(User $user, Request $request, Collection $inspections): Collection
+    {
+        $tehsilNames = DB::table('tehsils')
+            ->whereIn('id', $this->officialTehsilIds($user, $request))
+            ->orderBy('name')
+            ->pluck('name', 'id');
+
+        $acInspections = $inspections->filter(
+            fn (KpiInspection $inspection) => in_array(
+                $inspection->inspectedBy?->role?->slug,
+                ['ac', 'field_user'],
+                true
+            )
+        );
+
+        return $tehsilNames->mapWithKeys(function (string $name, int $tehsilId) use ($acInspections) {
+            $count = $acInspections->where('tehsil_id', $tehsilId)->count();
+
+            return [$name => min(2, $count)];
+        });
+    }
+
+    /** @return Collection<string, int> */
+    public function healthDistrictComparison(User $user, Request $request, Collection $inspections): Collection
+    {
+        $districtIds = $this->officialDistrictIds($user, $request);
+        $districtNames = DB::table('districts')
+            ->whereIn('id', $districtIds)
+            ->orderBy('name')
+            ->pluck('name', 'id');
+        $tehsilsPerDistrict = DB::table('tehsils')
+            ->whereIn('district_id', $districtIds)
+            ->where('is_active', true)
+            ->select('district_id', DB::raw('count(*) as total'))
+            ->groupBy('district_id')
+            ->pluck('total', 'district_id');
+
+        return $districtNames->mapWithKeys(function (string $name, int $districtId) use ($inspections, $tehsilsPerDistrict) {
+            $districtTarget = ((int) ($tehsilsPerDistrict[$districtId] ?? 0) * 2) + 2;
+            $count = $inspections->where('district_id', $districtId)->count();
+
+            return [$name => min($districtTarget, $count)];
+        });
+    }
+
+    public function healthAcVisitsCompleted(Collection $inspections, Collection $tehsilIds): int
+    {
+        $acInspections = $inspections->filter(
+            fn (KpiInspection $inspection) => in_array(
+                $inspection->inspectedBy?->role?->slug,
+                ['ac', 'field_user'],
+                true
+            )
+        );
+
+        return (int) $tehsilIds->sum(function (int $tehsilId) use ($acInspections) {
+            return min(2, $acInspections->where('tehsil_id', $tehsilId)->count());
+        });
     }
 
     public function buildStatusCounts(KpiCard $card, User $user, Request $request): array
@@ -257,7 +441,7 @@ class KpiInspectionService
         ];
     }
 
-    /** @return \Illuminate\Support\Collection<int, KpiCard> */
+    /** @return Collection<int, KpiCard> */
     public function accessibleKpiCards(User $user): Collection
     {
         return KpiCard::query()
@@ -403,7 +587,7 @@ class KpiInspectionService
         }
     }
 
-    /** @return array{start: \Carbon\Carbon, end: \Carbon\Carbon} */
+    /** @return array{start: Carbon, end: Carbon} */
     public function completedDayDateRange(): array
     {
         $completedDay = now($this->inspectionTimezone())->subDay();
@@ -414,7 +598,7 @@ class KpiInspectionService
         ];
     }
 
-    /** @return array{start: \Carbon\Carbon, end: \Carbon\Carbon} */
+    /** @return array{start: Carbon, end: Carbon} */
     public function completedDayDatabaseRange(): array
     {
         $range = $this->completedDayDateRange();

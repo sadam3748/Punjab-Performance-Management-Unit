@@ -24,60 +24,70 @@ class KpiMetricSections
      */
     private static function healthSections(?string $role): array
     {
-        $coverage = [
-            ['field' => 'total_health_facilities', 'label' => 'Total Facilities'],
-            ['field' => 'facilities_inspected', 'label' => 'Facilities Inspected'],
-            ['field' => 'facilities_not_inspected', 'label' => 'Facilities Not Inspected'],
-            ['field' => 'review_target', 'label' => 'Review Target'],
-            ['field' => 'review_completion_rate', 'label' => 'Review Completion %'],
-            ['field' => 'inspections_pending', 'label' => 'Pending Review'],
-            ['field' => 'inspections_approved', 'label' => 'Approved'],
-            ['field' => 'inspections_rejected', 'label' => 'Rejected'],
-        ];
-
-        $visits = match ($role) {
+        $coverage = match ($role) {
             'ac', 'field_user' => [
-                ['field' => 'required_inspections', 'label' => 'Required Inspections'],
-                ['field' => 'target_completed', 'label' => 'Completed Inspections'],
-                ['field' => 'ac_visit_achievement', 'label' => 'Target Achievement'],
-            ],
-            'dc' => [
-                ['field' => 'district_ac_visit_target', 'label' => 'AC Inspection Target'],
-                ['field' => 'dc_own_inspections', 'label' => 'DC Own Inspections'],
-                ['field' => 'health_council_meeting', 'label' => 'Council Meetings'],
-            ],
-            'commissioner' => [
-                ['field' => 'district_inspections', 'label' => 'District Inspections'],
-                ['field' => 'dc_own_inspections', 'label' => 'DC Inspections'],
-                ['field' => 'health_council_meeting', 'label' => 'Meetings Held'],
-            ],
-            'chief_secretary', 'super_admin', 'pmru_user', 'viewer' => [
-                ['field' => 'districts_reporting', 'label' => 'Districts Reporting'],
-                ['field' => 'total_inspections', 'label' => 'Total Inspections'],
-                ['field' => 'health_council_meeting', 'label' => 'Meetings Held'],
-                ['field' => 'achievement_rate', 'label' => 'Achievement %'],
+                ['field' => 'total_health_facilities', 'label' => 'Total Health Facilities'],
+                ['field' => 'facilities_inspected', 'label' => 'Facilities Inspected'],
+                ['field' => 'review_target', 'label' => 'Review Target'],
+                ['field' => 'inspections_pending', 'label' => 'Pending Review'],
+                ['field' => 'inspections_approved', 'label' => 'Approved'],
+                ['field' => 'inspections_rejected', 'label' => 'Rejected'],
             ],
             default => [
-                ['field' => 'ac_visits', 'label' => 'AC Inspections'],
-                ['field' => 'dc_own_inspections', 'label' => 'DC Inspections'],
-                ['field' => 'health_council_meeting', 'label' => 'Health Council Meeting'],
+                ['field' => 'total_health_facilities', 'label' => 'Total Health Facilities'],
+                ['field' => 'facilities_inspected', 'label' => 'Facilities Inspected'],
+                ['field' => 'facilities_not_inspected', 'label' => 'Facilities Not Inspected'],
+                ['field' => 'review_target', 'label' => 'Review Target'],
+                ['field' => 'review_completion_rate', 'label' => 'Review Completion %'],
+                ['field' => 'inspections_pending', 'label' => 'Pending Review'],
+                ['field' => 'inspections_approved', 'label' => 'Approved'],
+                ['field' => 'inspections_rejected', 'label' => 'Rejected'],
             ],
         };
 
-        return [
+        $sections = [
             ['title' => 'Inspection Coverage', 'metrics' => $coverage],
-            ['title' => 'Visits & Meetings', 'metrics' => $visits],
-            ['title' => 'Observations', 'metrics' => [
-                ['field' => 'observation_deep_cleaning', 'label' => 'Deep Cleaning'],
-                ['field' => 'observation_staff_availability', 'label' => 'Staff Availability'],
-                ['field' => 'observation_medicine_flex', 'label' => 'Medicine Flex'],
-                ['field' => 'observation_testing_equipment', 'label' => 'Testing Equipment'],
-                ['field' => 'observation_drinking_water', 'label' => 'Drinking Water'],
-                ['field' => 'observation_utilities', 'label' => 'Utilities'],
-                ['field' => 'observation_uhi_compliance', 'label' => 'UHI Compliance'],
-                ['field' => 'observation_attention_required', 'label' => 'Observation Issues'],
-            ]],
         ];
+
+        if (! in_array($role, ['ac', 'field_user'], true)) {
+            $visits = match ($role) {
+                'dc' => [
+                    ['field' => 'ac_visits', 'label' => 'ACs Visits'],
+                    ['field' => 'dc_own_inspections', 'label' => 'DC Visits'],
+                    ['field' => 'health_council_meeting', 'label' => 'Council Meetings'],
+                ],
+                'commissioner' => [
+                    ['field' => 'ac_visits', 'label' => 'ACs Visits'],
+                    ['field' => 'dc_own_inspections', 'label' => 'DC Visits'],
+                    ['field' => 'health_council_meeting', 'label' => 'Council Meetings'],
+                ],
+                'chief_secretary', 'super_admin', 'pmru_user', 'viewer' => [
+                    ['field' => 'ac_visits', 'label' => 'ACs Visits'],
+                    ['field' => 'dc_own_inspections', 'label' => 'DC Visits'],
+                    ['field' => 'health_council_meeting', 'label' => 'Council Meetings'],
+                ],
+                default => [
+                    ['field' => 'ac_visits', 'label' => 'AC Inspections'],
+                    ['field' => 'dc_own_inspections', 'label' => 'DC Inspections'],
+                    ['field' => 'health_council_meeting', 'label' => 'Health Council Meeting'],
+                ],
+            };
+
+            $sections[] = ['title' => 'Visits & Meetings', 'metrics' => $visits];
+        }
+
+        $sections[] = ['title' => 'Observations', 'metrics' => [
+            ['field' => 'observation_deep_cleaning', 'label' => 'Deep Cleaning'],
+            ['field' => 'observation_staff_availability', 'label' => 'Staff Availability'],
+            ['field' => 'observation_medicine_flex', 'label' => 'Medicine Flex'],
+            ['field' => 'observation_testing_equipment', 'label' => 'Testing Equipment'],
+            ['field' => 'observation_drinking_water', 'label' => 'Drinking Water'],
+            ['field' => 'observation_utilities', 'label' => 'Utilities'],
+            ['field' => 'observation_uhi_compliance', 'label' => 'UHI Compliance'],
+            ['field' => 'observation_attention_required', 'label' => 'Observation Issues'],
+        ]];
+
+        return $sections;
     }
 
     /**
