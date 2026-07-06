@@ -5218,8 +5218,10 @@ body:has(.ppmu-main-dashboard) {
 .ppmu-map-open-btn,
 .ppmu-map-open-btn:visited {
     color: #fff !important;
-    background: linear-gradient(180deg, #0b7f4d, #087443) !important;
+    background-color: #087443 !important;
+    background-image: linear-gradient(180deg, #0b7f4d, #087443) !important;
     border-color: #087443 !important;
+    transition: filter .15s ease, transform .15s ease, box-shadow .15s ease;
 }
 
 .ppmu-map-open-btn i {
@@ -5227,10 +5229,14 @@ body:has(.ppmu-main-dashboard) {
 }
 
 .ppmu-map-open-btn:hover,
-.ppmu-map-open-btn:focus-visible {
+.ppmu-map-open-btn:focus,
+.ppmu-map-open-btn:focus-visible,
+.ppmu-map-open-btn:active {
     color: #fff !important;
-    background: #075f3a !important;
+    background-color: #087443 !important;
+    background-image: linear-gradient(180deg, #0b7f4d, #087443) !important;
     border-color: #075f3a !important;
+    filter: brightness(.9);
 }
 
 .ppmu-detail-page #kpiDetailMetrics .ppmu-pi-card {
@@ -6791,5 +6797,218 @@ body:has(.ppmu-main-dashboard),
     .ppmu-main-dashboard .ppmu-kpi-grid {
         grid-auto-rows: 198px;
         gap: 8px;
+    }
+}
+
+/* Inspection detail page — compact layout */
+.ppmu-detail-page .ppmu-inspection-detail-compact {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.ppmu-detail-page .ppmu-inspection-panel-compact {
+    padding: 8px 10px;
+}
+
+.ppmu-detail-page .ppmu-inspection-panel-compact h3 {
+    margin-bottom: 6px;
+    font-size: 14px;
+}
+
+.ppmu-detail-page .ppmu-info-grid-compact {
+    gap: 4px 6px;
+}
+
+.ppmu-detail-page .ppmu-info-grid-compact .ppmu-info-item {
+    min-height: 0;
+    padding: 5px 8px;
+}
+
+.ppmu-detail-page .ppmu-info-grid-compact .ppmu-info-item dt {
+    margin-bottom: 2px;
+    font-size: 9.5px;
+}
+
+.ppmu-detail-page .ppmu-info-grid-compact .ppmu-info-item dd {
+    font-size: 12.5px;
+    line-height: 1.3;
+}
+
+.ppmu-detail-page .ppmu-info-grid-compact .ppmu-address-text {
+    font-size: 12px !important;
+    line-height: 1.35 !important;
+}
+
+.ppmu-detail-page .ppmu-info-grid-inspection,
+.ppmu-detail-page .ppmu-info-grid-location {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.ppmu-detail-page .ppmu-info-grid-inspection .ppmu-info-item-span-2 {
+    grid-column: span 2;
+}
+
+.ppmu-detail-page .ppmu-info-grid-location .ppmu-info-item-wide {
+    grid-column: 1 / -1;
+}
+
+.ppmu-detail-page .ppmu-inspection-evidence-map-rows {
+    align-items: stretch;
+}
+
+.ppmu-detail-page .ppmu-inspection-evidence-map-rows > [class*="col-"] {
+    display: flex;
+}
+
+.ppmu-detail-page .ppmu-evidence-panel-compact {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    height: 100%;
+}
+
+.ppmu-detail-page .ppmu-evidence-panel-compact h3 {
+    flex: 0 0 auto;
+    margin-bottom: 6px;
+}
+
+.ppmu-detail-page .ppmu-evidence-gallery-scroll {
+    flex: 0 1 auto;
+    max-height: 200px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-right: 2px;
+}
+
+.ppmu-detail-page .ppmu-evidence-gallery-compact {
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    gap: 7px;
+    align-content: start;
+}
+
+.ppmu-detail-page .ppmu-evidence-gallery-compact .ppmu-evidence-item img {
+    height: 96px;
+}
+
+.ppmu-detail-page .ppmu-evidence-gallery-compact .ppmu-evidence-item figcaption {
+    padding: 5px 7px;
+}
+
+.ppmu-detail-page .ppmu-evidence-gallery-compact .ppmu-evidence-item figcaption strong {
+    font-size: 10.5px;
+    line-height: 1.25;
+}
+
+.ppmu-detail-page .ppmu-evidence-gallery-compact .ppmu-evidence-item figcaption small {
+    font-size: 9.5px;
+}
+
+.ppmu-detail-page .ppmu-evidence-empty {
+    font-size: 12.5px;
+    margin: 0;
+}
+
+.ppmu-detail-page .ppmu-map-panel-compact {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.ppmu-detail-page .ppmu-map-panel-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    flex: 0 0 auto;
+    margin-bottom: 6px;
+}
+
+.ppmu-detail-page .ppmu-map-panel-head h3 {
+    margin-bottom: 0;
+}
+
+.ppmu-detail-page .ppmu-map-frame-wrap {
+    flex: 1 1 auto;
+    min-height: 0;
+    height: 200px;
+}
+
+.ppmu-detail-page .ppmu-map-panel-compact .ppmu-inspection-map-frame {
+    width: 100%;
+    height: 200px;
+    min-height: 200px;
+    max-height: 200px;
+}
+
+.ppmu-detail-page .ppmu-review-card-compact h3 {
+    margin-bottom: 4px;
+}
+
+.ppmu-detail-page .ppmu-review-card-compact .ppmu-review-helper {
+    margin: 0 0 8px;
+    color: #64748b;
+    font-size: 11px;
+    line-height: 1.3;
+}
+
+.ppmu-detail-page .ppmu-review-card-compact .ppmu-review-actions-unified {
+    padding-top: 0;
+}
+
+.ppmu-detail-page .ppmu-review-card-compact .ppmu-review-actions-unified .form-label {
+    margin-bottom: 4px;
+    font-size: 11.5px;
+}
+
+.ppmu-detail-page .ppmu-review-card-compact .ppmu-review-actions-unified textarea {
+    min-height: 48px;
+    max-height: 72px;
+    padding-top: 5px;
+    padding-bottom: 5px;
+    line-height: 1.35;
+}
+
+.ppmu-detail-page .ppmu-review-card-compact .ppmu-review-actions-unified .ppmu-review-action-buttons {
+    margin-top: 8px;
+    padding-top: 0;
+    border-top: 0;
+}
+
+.ppmu-detail-page .ppmu-review-card-compact .ppmu-review-decision p {
+    margin-bottom: 5px;
+    font-size: 12.5px;
+}
+
+@media (max-width: 991.98px) {
+    .ppmu-detail-page .ppmu-info-grid-inspection,
+    .ppmu-detail-page .ppmu-info-grid-location {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .ppmu-detail-page .ppmu-info-grid-inspection .ppmu-info-item-span-2 {
+        grid-column: span 1;
+    }
+
+    .ppmu-detail-page .ppmu-info-grid-location .ppmu-info-item-wide {
+        grid-column: 1 / -1;
+    }
+
+    .ppmu-detail-page .ppmu-evidence-gallery-scroll {
+        max-height: 180px;
+    }
+
+    .ppmu-detail-page .ppmu-map-frame-wrap,
+    .ppmu-detail-page .ppmu-map-panel-compact .ppmu-inspection-map-frame {
+        height: 180px;
+        min-height: 180px;
+        max-height: 180px;
+    }
+}
+
+@media (min-width: 992px) {
+    .ppmu-detail-page .ppmu-kpi-specific-grid {
+        gap: 7px;
     }
 }

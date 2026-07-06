@@ -44,32 +44,28 @@
     </div>
 </div>
 
-<div class="row g-3 ppmu-inspection-detail-rows">
+<div class="ppmu-inspection-detail-compact">
+<div class="row g-2 ppmu-inspection-detail-rows">
     <div class="col-lg-6 d-flex">
-        <div class="card-ppmf ppmu-inspection-panel h-100 w-100">
+        <div class="card-ppmf ppmu-inspection-panel ppmu-inspection-panel-compact h-100 w-100">
             <h3><i class="bi bi-info-circle"></i> Inspection Information</h3>
-            <dl class="ppmu-info-grid ppmu-info-grid-balanced mb-0">
+            <dl class="ppmu-info-grid ppmu-info-grid-balanced ppmu-info-grid-compact ppmu-info-grid-inspection mb-0">
                 <div class="ppmu-info-item"><dt>Reference No.</dt><dd>{{ $inspection->reference_no }}</dd></div>
-                <div class="ppmu-info-item"><dt>Entity Name</dt><dd>{{ $inspection->entity_name ?? '—' }}</dd></div>
+                <div class="ppmu-info-item ppmu-info-item-span-2"><dt>Entity Name</dt><dd>{{ $inspection->entity_name ?? '—' }}</dd></div>
                 <div class="ppmu-info-item"><dt>Entity Type</dt><dd>{{ $inspection->entity_type ?? '—' }}</dd></div>
                 <div class="ppmu-info-item"><dt>Identifier</dt><dd>{{ $inspection->identifier ?? '—' }}</dd></div>
-                <div class="ppmu-info-item ppmu-info-item-wide"><dt>Inspection Title</dt><dd>{{ $inspection->inspection_title }}</dd></div>
+                <div class="ppmu-info-item"><dt>Inspection Title</dt><dd>{{ $inspection->inspection_title }}</dd></div>
             </dl>
         </div>
     </div>
     <div class="col-lg-6 d-flex">
-        <div class="card-ppmf ppmu-inspection-panel h-100 w-100">
+        <div class="card-ppmf ppmu-inspection-panel ppmu-inspection-panel-compact h-100 w-100">
             <h3><i class="bi bi-geo-alt"></i> Location Details</h3>
-            <dl class="ppmu-info-grid ppmu-info-grid-balanced mb-0">
+            <dl class="ppmu-info-grid ppmu-info-grid-balanced ppmu-info-grid-compact ppmu-info-grid-location mb-0">
                 <div class="ppmu-info-item ppmu-info-item-wide"><dt>Full Address</dt><dd class="ppmu-address-text">{{ $inspection->address ?? '—' }}</dd></div>
                 <div class="ppmu-info-item"><dt>Tehsil</dt><dd>{{ $inspection->tehsil?->name ?? '—' }}</dd></div>
-                <div class="ppmu-info-item ppmu-coordinate-info-item">
-                    <dt>Coordinates</dt>
-                    <dd class="ppmu-coordinate-values">
-                        <span><small>Latitude</small>{{ $inspection->latitude ?? '—' }}</span>
-                        <span><small>Longitude</small>{{ $inspection->longitude ?? '—' }}</span>
-                    </dd>
-                </div>
+                <div class="ppmu-info-item"><dt>Latitude</dt><dd>{{ $inspection->latitude ?? '—' }}</dd></div>
+                <div class="ppmu-info-item"><dt>Longitude</dt><dd>{{ $inspection->longitude ?? '—' }}</dd></div>
             </dl>
         </div>
     </div>
@@ -77,7 +73,7 @@
 
 @if(!empty($observationCards))
     @php $detailFieldCount = count($observationCards); @endphp
-    <div class="card-ppmf ppmu-inspection-panel mt-3">
+    <div class="card-ppmf ppmu-inspection-panel ppmu-inspection-panel-compact">
         <h3><i class="bi bi-list-check"></i> Observations</h3>
         <div class="ppmu-kpi-specific-grid ppmu-kpi-specific-grid-count-{{ $detailFieldCount }}">
             @foreach($observationCards as $observation)
@@ -113,79 +109,74 @@
     </div>
 @endif
 
-<div class="card-ppmf ppmu-inspection-panel mt-3" id="evidence-images">
-    <h3><i class="bi bi-images"></i> Evidence Images</h3>
-    @if($inspection->attachments->isNotEmpty())
-        <div class="ppmu-evidence-gallery">
-            @foreach($inspection->attachments as $attachment)
-                @php
-                    $url = $attachment->resolvedUrl($fallbackImage);
-                    $evidenceId = $attachment->observation_key
-                        ? 'evidence-'.$attachment->observation_key
-                        : 'evidence-general-'.$loop->index;
-                @endphp
-                <figure class="ppmu-evidence-item" id="{{ $evidenceId }}">
-                    <a href="{{ $url }}" target="_blank" rel="noopener noreferrer" class="ppmu-evidence-open" data-evidence-url="{{ $url }}">
-                        <img src="{{ $url }}" alt="{{ $attachment->caption ?? 'Evidence image' }}" loading="lazy">
-                    </a>
-                    <figcaption>
-                        <strong>Field evidence photo {{ $loop->iteration }}</strong>
-                        <small>{{ $attachment->created_at?->format('d M Y') }}</small>
-                    </figcaption>
-                </figure>
-            @endforeach
-        </div>
-    @else
-        <p class="text-muted mb-0">No evidence image available.</p>
-    @endif
-</div>
-
-<div class="card-ppmf ppmu-inspection-panel mt-3 ppmu-map-panel">
-    <div class="d-flex align-items-start justify-content-between flex-wrap gap-2 mb-2">
-        <div>
-            <h3 class="mb-1"><i class="bi bi-map"></i> Map Location</h3>
-            @if($inspection->address)
-                <p class="ppmu-map-address mb-0"><i class="bi bi-geo-alt-fill"></i>{{ $inspection->address }}</p>
+<div class="row g-2 ppmu-inspection-evidence-map-rows">
+    <div class="col-lg-4 d-flex">
+        <div class="card-ppmf ppmu-inspection-panel ppmu-inspection-panel-compact ppmu-evidence-panel-compact h-100 w-100" id="evidence-images">
+            <h3><i class="bi bi-images"></i> Evidence Images</h3>
+            @if($inspection->attachments->isNotEmpty())
+                <div class="ppmu-evidence-gallery-scroll">
+                    <div class="ppmu-evidence-gallery ppmu-evidence-gallery-compact">
+                        @foreach($inspection->attachments as $attachment)
+                            @php
+                                $url = $attachment->resolvedUrl($fallbackImage);
+                                $evidenceId = $attachment->observation_key
+                                    ? 'evidence-'.$attachment->observation_key
+                                    : 'evidence-general-'.$loop->index;
+                            @endphp
+                            <figure class="ppmu-evidence-item" id="{{ $evidenceId }}">
+                                <a href="{{ $url }}" target="_blank" rel="noopener noreferrer" class="ppmu-evidence-open" data-evidence-url="{{ $url }}">
+                                    <img src="{{ $url }}" alt="{{ $attachment->caption ?? 'Evidence image' }}" loading="lazy">
+                                </a>
+                                <figcaption>
+                                    <strong>Field evidence photo {{ $loop->iteration }}</strong>
+                                    <small>{{ $attachment->created_at?->format('d M Y') }}</small>
+                                </figcaption>
+                            </figure>
+                        @endforeach
+                    </div>
+                </div>
+            @else
+                <p class="text-muted mb-0 ppmu-evidence-empty">No evidence image available.</p>
             @endif
         </div>
-        @if($mapsUrl)
-            <a href="{{ $mapsUrl }}" target="_blank" rel="noopener noreferrer" class="btn btn-sm ppmu-map-open-btn">
-                <i class="bi bi-box-arrow-up-right"></i> Open in Maps
-            </a>
-        @endif
     </div>
-    @if($inspection->latitude && $inspection->longitude)
-        <div class="ppmu-map-coordinate-strip">
-            <span><i class="bi bi-crosshair"></i> Latitude <strong>{{ number_format((float) $inspection->latitude, 6) }}</strong></span>
-            <span><i class="bi bi-crosshair2"></i> Longitude <strong>{{ number_format((float) $inspection->longitude, 6) }}</strong></span>
+    <div class="col-lg-8 d-flex">
+        <div class="card-ppmf ppmu-inspection-panel ppmu-inspection-panel-compact ppmu-map-panel ppmu-map-panel-compact h-100 w-100">
+            <div class="ppmu-map-panel-head">
+                <h3 class="mb-0"><i class="bi bi-map"></i> Map Location</h3>
+                @if($mapsUrl)
+                    <a href="{{ $mapsUrl }}" target="_blank" rel="noopener noreferrer" class="btn btn-sm ppmu-map-open-btn">
+                        <i class="bi bi-box-arrow-up-right"></i> Open in Maps
+                    </a>
+                @endif
+            </div>
+            @if($inspection->latitude && $inspection->longitude)
+                <div class="ppmu-map-frame-wrap">
+                    @if(!empty($googleMapsKey))
+                        <iframe
+                            class="ppmu-inspection-map-frame"
+                            loading="lazy"
+                            referrerpolicy="no-referrer-when-downgrade"
+                            src="https://www.google.com/maps/embed/v1/place?key={{ $googleMapsKey }}&q={{ urlencode($inspection->address ?: ($inspection->latitude.','.$inspection->longitude)) }}&zoom=16"
+                            allowfullscreen></iframe>
+                    @else
+                        <div id="ppmuInspectionMap"
+                             class="ppmu-inspection-map-frame"
+                             data-lat="{{ $inspection->latitude }}"
+                             data-lng="{{ $inspection->longitude }}"
+                             data-address="{{ $inspection->address }}"></div>
+                    @endif
+                </div>
+            @else
+                <p class="text-muted mb-0">Location coordinates are not available for this inspection.</p>
+            @endif
         </div>
-        @if(!empty($googleMapsKey))
-            <iframe
-                class="ppmu-inspection-map-frame"
-                loading="lazy"
-                referrerpolicy="no-referrer-when-downgrade"
-                src="https://www.google.com/maps/embed/v1/place?key={{ $googleMapsKey }}&q={{ urlencode($inspection->address ?: ($inspection->latitude.','.$inspection->longitude)) }}&zoom=16"
-                allowfullscreen></iframe>
-        @else
-            <div id="ppmuInspectionMap"
-                 class="ppmu-inspection-map-frame"
-                 data-lat="{{ $inspection->latitude }}"
-                 data-lng="{{ $inspection->longitude }}"
-                 data-address="{{ $inspection->address }}"></div>
-        @endif
-    @else
-        <p class="text-muted mb-0">Location coordinates are not available for this inspection.</p>
-    @endif
+    </div>
 </div>
 
-<div class="card-ppmf ppmu-inspection-panel ppmu-review-card mt-3">
-    <div class="ppmu-review-head">
-        <div>
-            <h3><i class="bi bi-check2-square"></i> Review Decision</h3>
-            <p class="ppmu-panel-sub">Approve verified evidence or reject with a clear reason.</p>
-        </div>
-        <span class="ppmu-inspection-status ppmu-inspection-status-{{ $inspection->status }}">{{ $inspection->statusLabel() }}</span>
-    </div>
+<div class="card-ppmf ppmu-inspection-panel ppmu-inspection-panel-compact ppmu-review-card ppmu-review-card-compact">
+    <h3><i class="bi bi-check2-square"></i> Review Decision</h3>
+    <p class="ppmu-review-helper">Approve verified evidence or reject with a clear reason.</p>
 
     @if($inspection->isPending() && $canReview)
         <div class="ppmu-review-actions-unified">
@@ -193,7 +184,7 @@
             <textarea
                 id="review-remarks"
                 class="form-control @error('review_remarks') is-invalid @enderror @error('rejection_reason') is-invalid @enderror"
-                rows="4"
+                rows="2"
                 placeholder="Add approval or rejection remarks (optional)">{{ old('review_remarks', old('rejection_reason')) }}</textarea>
             @error('review_remarks')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
             @error('rejection_reason')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
@@ -252,6 +243,7 @@
             @endif
         </div>
     @endif
+</div>
 </div>
 
 <div class="modal fade" id="ppmuObservationEvidenceModal" tabindex="-1" aria-labelledby="ppmuObservationEvidenceTitle" aria-hidden="true">
