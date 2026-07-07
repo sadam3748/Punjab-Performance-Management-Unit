@@ -35,7 +35,7 @@ class UserService
             ->when(! empty($filters['tehsil_id']), function ($query) use ($filters) {
                 $query->where('tehsil_id', $filters['tehsil_id']);
             })
-            ->when($filters['is_active'] !== null && $filters['is_active'] !== '', function ($query) use ($filters) {
+            ->when(array_key_exists('is_active', $filters) && $filters['is_active'] !== '' && $filters['is_active'] !== null, function ($query) use ($filters) {
                 $query->where('is_active', $filters['is_active']);
             })
             ->when(! empty($filters['search']), function ($query) use ($filters) {
