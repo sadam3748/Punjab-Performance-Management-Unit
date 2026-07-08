@@ -12,6 +12,11 @@
 @php
     $imageUrl = asset($kpiCard->resolvedImagePath());
     $mapsUrl = $inspection->googleMapsUrl();
+    $inspectionType = $inspection->entity_type ?: $inspection->inspection_title ?: '—';
+    $inspectionDateTime = $inspection->inspection_datetime
+        ->copy()
+        ->timezone(config('app.inspection_timezone', 'Asia/Karachi'))
+        ->format('d M Y, h:i A');
 @endphp
 
 @if(session('success'))
@@ -50,11 +55,10 @@
         <div class="card-ppmf ppmu-inspection-panel ppmu-inspection-panel-compact h-100 w-100">
             <h3><i class="bi bi-info-circle"></i> Inspection Information</h3>
             <dl class="ppmu-info-grid ppmu-info-grid-balanced ppmu-info-grid-compact ppmu-info-grid-inspection mb-0">
-                <div class="ppmu-info-item"><dt>Reference No.</dt><dd>{{ $inspection->reference_no }}</dd></div>
-                <div class="ppmu-info-item ppmu-info-item-span-2"><dt>Entity Name</dt><dd>{{ $inspection->entity_name ?? '—' }}</dd></div>
-                <div class="ppmu-info-item"><dt>Entity Type</dt><dd>{{ $inspection->entity_type ?? '—' }}</dd></div>
-                <div class="ppmu-info-item"><dt>Identifier</dt><dd>{{ $inspection->identifier ?? '—' }}</dd></div>
-                <div class="ppmu-info-item"><dt>Inspection Title</dt><dd>{{ $inspection->inspection_title }}</dd></div>
+                <div class="ppmu-info-item"><dt>Inspection ID</dt><dd>{{ $inspection->reference_no }}</dd></div>
+                <div class="ppmu-info-item"><dt>Inspection Type</dt><dd>{{ $inspectionType }}</dd></div>
+                <div class="ppmu-info-item"><dt>Inspection Name</dt><dd>{{ $inspection->entity_name ?? '—' }}</dd></div>
+                <div class="ppmu-info-item"><dt>Date &amp; Time</dt><dd>{{ $inspectionDateTime }}</dd></div>
             </dl>
         </div>
     </div>

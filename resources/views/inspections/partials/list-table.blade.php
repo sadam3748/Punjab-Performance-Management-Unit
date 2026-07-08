@@ -2,28 +2,37 @@
     <table class="table-ppmf ppmu-table inspection-table inspection-table-compact ppmu-inspection-table">
         <thead>
             <tr>
-                <th>Ref.</th>
-                <th>Facility Name</th>
-                <th>Type</th>
-                <th>Tehsil</th>
-                <th>Date</th>
-                <th>Review Status</th>
-                <th class="ppmu-th-action">Action</th>
+                <th data-col="sr">Sr. No.</th>
+                <th data-col="reference_no">Inspection ID</th>
+                <th data-col="inspection_type">Inspection Type</th>
+                <th data-col="inspection_name">Inspection Name</th>
+                <th data-col="tehsil">Tehsil</th>
+                <th data-col="district">District</th>
+                <th data-col="inspection_date">Date &amp; Time</th>
+                <th data-col="status">Review Status</th>
+                <th class="ppmu-th-action" data-col="action">Action</th>
             </tr>
         </thead>
         <tbody>
             @forelse($inspectionRecords as $inspection)
-                @php $card = $inspection->kpiCard; @endphp
+                @php
+                    $card = $inspection->kpiCard;
+                    $inspectionType = $inspection->entity_type ?: $inspection->inspection_title ?: '—';
+                    $inspectionName = $inspection->entity_name ?? '—';
+                    $serialNo = ($inspectionRecords->firstItem() ?? 0) + $loop->index;
+                @endphp
                 <tr>
-                    <td><strong class="ppmu-inspection-ref">{{ $inspection->reference_no }}</strong></td>
-                    <td title="{{ $inspection->entity_name }}">{{ \Illuminate\Support\Str::limit($inspection->entity_name ?? '—', 24) }}</td>
-                    <td>{{ $inspection->entity_type ?? '—' }}</td>
-                    <td>{{ $inspection->tehsil?->name ?? '—' }}</td>
-                    <td>{{ $inspection->inspection_datetime->copy()->timezone(config('app.inspection_timezone', 'Asia/Karachi'))->format('d M Y, h:i A') }}</td>
-                    <td>
+                    <td data-col="sr" class="ppmu-inspection-sr">{{ $serialNo }}</td>
+                    <td data-col="reference_no"><strong class="ppmu-inspection-ref">{{ $inspection->reference_no }}</strong></td>
+                    <td data-col="inspection_type" title="{{ $inspectionType }}">{{ \Illuminate\Support\Str::limit($inspectionType, 22) }}</td>
+                    <td data-col="inspection_name" class="ppmu-inspection-name-cell" title="{{ $inspectionName }}">{{ \Illuminate\Support\Str::limit($inspectionName, 28) }}</td>
+                    <td data-col="tehsil">{{ $inspection->tehsil?->name ?? '—' }}</td>
+                    <td data-col="district">{{ $inspection->district?->name ?? '—' }}</td>
+                    <td data-col="inspection_date">{{ $inspection->inspection_datetime->copy()->timezone(config('app.inspection_timezone', 'Asia/Karachi'))->format('d M Y, h:i A') }}</td>
+                    <td data-col="status">
                         <span class="ppmu-inspection-status ppmu-inspection-status-{{ $inspection->status }}">{{ $inspection->statusLabel() }}</span>
                     </td>
-                    <td class="text-center ppmu-td-action">
+                    <td class="text-center ppmu-td-action" data-col="action">
                         @if($card)
                             <a href="{{ route('kpi.inspections.show', [$card, $inspection, 'return_url' => route('inspections.index', request()->query())]) }}"
                                class="ppmu-inspection-view-icon"
@@ -36,7 +45,7 @@
                 </tr>
             @empty
                 <tr>
-                    <td colspan="7">
+                    <td colspan="9">
                         <div class="ppmu-empty-state py-4">
                             <i class="bi bi-clipboard2-check"></i>
                             <h5>No inspection records</h5>

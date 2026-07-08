@@ -6841,7 +6841,10 @@ body:has(.ppmu-main-dashboard),
     line-height: 1.35 !important;
 }
 
-.ppmu-detail-page .ppmu-info-grid-inspection,
+.ppmu-detail-page .ppmu-info-grid-inspection {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .ppmu-detail-page .ppmu-info-grid-location {
     grid-template-columns: repeat(3, minmax(0, 1fr));
 }
@@ -7010,5 +7013,89 @@ body:has(.ppmu-main-dashboard),
 @media (min-width: 992px) {
     .ppmu-detail-page .ppmu-kpi-specific-grid {
         gap: 7px;
+    }
+}
+
+/* Inspection list — PPMF standard columns */
+.ppmu-inspections-page .ppmu-inspection-table th[data-col="sr"],
+.ppmu-inspections-page .ppmu-inspection-table td[data-col="sr"] {
+    width: 5%;
+    text-align: center;
+}
+
+.ppmu-inspections-page .ppmu-inspection-table th[data-col="reference_no"],
+.ppmu-inspections-page .ppmu-inspection-table td[data-col="reference_no"] {
+    width: 11%;
+}
+
+.ppmu-inspections-page .ppmu-inspection-table th[data-col="inspection_type"],
+.ppmu-inspections-page .ppmu-inspection-table td[data-col="inspection_type"] {
+    width: 14%;
+}
+
+.ppmu-inspections-page .ppmu-inspection-table th[data-col="inspection_name"],
+.ppmu-inspections-page .ppmu-inspection-table td[data-col="inspection_name"] {
+    width: 20%;
+}
+
+.ppmu-inspections-page .ppmu-inspection-table th[data-col="tehsil"],
+.ppmu-inspections-page .ppmu-inspection-table td[data-col="tehsil"] {
+    width: 9%;
+}
+
+.ppmu-inspections-page .ppmu-inspection-table th[data-col="district"],
+.ppmu-inspections-page .ppmu-inspection-table td[data-col="district"] {
+    width: 9%;
+}
+
+.ppmu-inspections-page .ppmu-inspection-table th[data-col="inspection_date"],
+.ppmu-inspections-page .ppmu-inspection-table td[data-col="inspection_date"] {
+    width: 14%;
+    font-size: 11px;
+}
+
+.ppmu-inspections-page .ppmu-inspection-table th[data-col="status"],
+.ppmu-inspections-page .ppmu-inspection-table td[data-col="status"] {
+    width: 13%;
+}
+
+.ppmu-inspections-page .ppmu-inspection-table th[data-col="action"],
+.ppmu-inspections-page .ppmu-inspection-table td[data-col="action"] {
+    width: 5%;
+    min-width: 44px;
+}
+
+.ppmu-inspections-page .ppmu-inspection-table .ppmu-inspection-ref {
+    color: #0a5f3a;
+    font-weight: 800;
+    font-size: 11px;
+}
+
+.ppmu-inspections-page .ppmu-inspection-table .ppmu-inspection-name-cell {
+    color: #102a1f;
+    font-weight: 700;
+}
+
+.ppmu-inspections-page .ppmu-inspection-table .ppmu-inspection-status {
+    width: auto;
+    max-width: 100%;
+    display: inline-flex;
+    padding: 3px 7px;
+    font-size: 9px;
+}
+
+@media (max-width: 1199.98px) {
+    .ppmu-inspections-page .ppmu-inspection-table th[data-col="inspection_type"],
+    .ppmu-inspections-page .ppmu-inspection-table td[data-col="inspection_type"],
+    .ppmu-inspections-page .ppmu-inspection-table th[data-col="district"],
+    .ppmu-inspections-page .ppmu-inspection-table td[data-col="district"] {
+        display: none;
+    }
+}
+
+@media (max-width: 767.98px) {
+    .ppmu-inspections-page .ppmu-inspection-table th[data-col="sr"],
+    .ppmu-inspections-page .ppmu-inspection-table td[data-col="sr"] {
+        display: none;
     }
 }

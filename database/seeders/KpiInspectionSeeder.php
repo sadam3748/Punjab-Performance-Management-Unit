@@ -291,15 +291,40 @@ class KpiInspectionSeeder extends Seeder
                 ['title' => 'School Council Review', 'name' => 'Govt Girls High School', 'type' => 'School', 'id' => 'EDU-241', 'address' => 'Civil Lines'],
             ],
             'inspection-of-health-facilities' => [
-                ['title' => 'DHQ Hospital Inspection', 'name' => 'DHQ Hospital', 'type' => 'Hospital', 'id' => 'HSP-101', 'address' => 'Hospital Road'],
-                ['title' => 'RHC Field Visit', 'name' => 'Rural Health Center', 'type' => 'RHC', 'id' => 'HSP-118', 'address' => 'Tehsil Road'],
-                ['title' => 'BHU Inspection', 'name' => 'Basic Health Unit Township', 'type' => 'BHU', 'id' => 'HSP-132', 'address' => 'Township'],
-                ['title' => 'Dispensary Check', 'name' => 'Govt Dispensary', 'type' => 'Dispensary', 'id' => 'HSP-145', 'address' => 'Health Avenue'],
+                ['title' => 'Health Facility Site Visit', 'name' => 'Municipal Facility A', 'type' => 'Health Facility Site Visit', 'id' => 'HSP-101', 'address' => 'Hospital Road'],
+                ['title' => 'AC RHC Field Visit', 'name' => 'Rural Health Center', 'type' => 'AC RHC Field Visit', 'id' => 'HSP-118', 'address' => 'Tehsil Road'],
+                ['title' => 'AC BHU Field Visit', 'name' => 'Basic Health Unit', 'type' => 'AC BHU Field Visit', 'id' => 'HSP-132', 'address' => 'Township'],
+                ['title' => 'DC Health Facility Review', 'name' => 'THQ Hospital', 'type' => 'DC Health Facility Review', 'id' => 'HSP-145', 'address' => 'Health Avenue'],
+                ['title' => 'Commissioner District Health Review', 'name' => 'District Health Facility', 'type' => 'Commissioner District Health Review', 'id' => 'HSP-201', 'address' => 'District Office Road'],
             ],
             default => [],
         };
 
         return array_values(array_merge($specific, $generic));
+    }
+
+    /** @return list<array{title:string,name:string,type:string,id:string,address:string}> */
+    private function healthFacilityEntities(): array
+    {
+        return [
+            ['title' => 'Health Facility Site Visit', 'name' => 'Municipal Facility A', 'type' => 'Health Facility Site Visit', 'id' => 'HSP-101', 'address' => 'Hospital Road'],
+            ['title' => 'AC RHC Field Visit', 'name' => 'Rural Health Center', 'type' => 'AC RHC Field Visit', 'id' => 'HSP-118', 'address' => 'Tehsil Road'],
+            ['title' => 'AC BHU Field Visit', 'name' => 'Basic Health Unit', 'type' => 'AC BHU Field Visit', 'id' => 'HSP-132', 'address' => 'Township'],
+            ['title' => 'DC Health Facility Review', 'name' => 'THQ Hospital', 'type' => 'DC Health Facility Review', 'id' => 'HSP-145', 'address' => 'Health Avenue'],
+            ['title' => 'Commissioner District Health Review', 'name' => 'District Health Facility', 'type' => 'Commissioner District Health Review', 'id' => 'HSP-201', 'address' => 'District Office Road'],
+        ];
+    }
+
+    private function healthFacilityInspectionName(array $entity, string $tehsilName, int $index): string
+    {
+        return match ($entity['id']) {
+            'HSP-132' => sprintf('Basic Health Unit — Weekly Visit #%02d', $index + 1),
+            'HSP-118' => sprintf('Rural Health Center — Weekly Visit #%02d', $index + 1),
+            'HSP-101' => sprintf('Municipal Facility A — %s #%02d', $tehsilName, $index + 1),
+            'HSP-145' => 'THQ Hospital — Health Facility Review',
+            'HSP-201' => 'District Health Facility — Review Visit',
+            default => sprintf('%s — %s #%02d', $entity['name'], $tehsilName, $index + 1),
+        };
     }
 
     /** @param  array<string, mixed>  $side */
@@ -403,7 +428,9 @@ class KpiInspectionSeeder extends Seeder
     private function buildVisitKpiInspections(object $card, $users, int &$refCounter, Carbon $now, string $batch): array
     {
         $statuses = $this->statusSequence();
-        $entities = $this->entitiesForSlug($card->slug, $card->title);
+        $entities = $card->slug === 'inspection-of-health-facilities'
+            ? $this->healthFacilityEntities()
+            : $this->entitiesForSlug($card->slug, $card->title);
         $tehsilPlan = [
             ['tehsil_id' => 81, 'district_id' => 23, 'division_id' => 6, 'count' => 10, 'tehsil_name' => 'Lahore City', 'district_name' => 'Lahore', 'lat' => 31.5204, 'lng' => 74.3587],
             ['tehsil_id' => 82, 'district_id' => 23, 'division_id' => 6, 'count' => 8, 'tehsil_name' => 'Lahore Cantonment', 'district_name' => 'Lahore', 'lat' => 31.5320, 'lng' => 74.3420],
@@ -465,6 +492,12 @@ class KpiInspectionSeeder extends Seeder
                 }
                 $location = $this->locationFor($side, $globalIndex);
                 $fullAddress = $this->fullAddress($side, $entity, $location);
+                $inspectionType = $card->slug === 'inspection-of-health-facilities'
+                    ? $entity['type']
+                    : $entity['title'];
+                $inspectionName = $card->slug === 'inspection-of-health-facilities'
+                    ? $this->healthFacilityInspectionName($entity, $plan['tehsil_name'], $i)
+                    : sprintf('%s — %s #%02d', $entity['name'], $plan['tehsil_name'], $i + 1);
 
                 $rows[] = [
                     'uuid' => (string) Str::uuid(),
@@ -476,8 +509,8 @@ class KpiInspectionSeeder extends Seeder
                     'tehsil_id' => $side['tehsil_id'],
                     'inspected_by' => $inspector?->id,
                     'reviewed_by' => $status === 'pending_review' ? null : $reviewer?->id,
-                    'inspection_title' => $entity['title'],
-                    'entity_name' => sprintf('%s — %s #%02d', $entity['name'], $plan['tehsil_name'], $i + 1),
+                    'inspection_title' => $inspectionType,
+                    'entity_name' => $inspectionName,
                     'entity_type' => $entity['type'],
                     'identifier' => $entity['id'].'-'.$plan['tehsil_id'],
                     'address' => $fullAddress,
@@ -532,7 +565,7 @@ class KpiInspectionSeeder extends Seeder
 
         $dcInspector = $users->get('dc.layyah');
         $reviewer = $users->get('dc.layyah');
-        $entities = $this->entitiesForSlug($card->slug, $card->title);
+        $entities = $this->healthFacilityEntities();
         $side = [
             'division_id' => 2,
             'district_id' => 7,
@@ -564,9 +597,9 @@ class KpiInspectionSeeder extends Seeder
                 'tehsil_id' => $side['tehsil_id'],
                 'inspected_by' => $dcInspector?->id,
                 'reviewed_by' => $plan['status'] === 'pending_review' ? null : $reviewer?->id,
-                'inspection_title' => 'DC '.$entity['title'],
-                'entity_name' => sprintf('%s — DC Review #%02d', $entity['name'], $offset + 1),
-                'entity_type' => $entity['type'],
+                'inspection_title' => 'DC Health Facility Review',
+                'entity_name' => 'District Health Facility — Review Visit',
+                'entity_type' => 'DC Health Facility Review',
                 'identifier' => $entity['id'].'-dc-'.$offset,
                 'address' => $fullAddress,
                 'latitude' => $location['lat'],
@@ -634,7 +667,9 @@ class KpiInspectionSeeder extends Seeder
     private function buildRotiTehsilInspections(object $card, $users, int &$refCounter, Carbon $now, string $batch): array
     {
         $statuses = $this->statusSequence();
-        $entities = $this->entitiesForSlug($card->slug, $card->title);
+        $entities = $card->slug === 'inspection-of-health-facilities'
+            ? $this->healthFacilityEntities()
+            : $this->entitiesForSlug($card->slug, $card->title);
         $tehsilPlan = [
             ['tehsil_id' => 81, 'district_id' => 23, 'division_id' => 6, 'count' => 14, 'tehsil_name' => 'Lahore City', 'district_name' => 'Lahore', 'lat' => 31.5204, 'lng' => 74.3587, 'inspector' => 'ac.lahore'],
             ['tehsil_id' => 24, 'district_id' => 7, 'division_id' => 2, 'count' => 12, 'tehsil_name' => 'Layyah', 'district_name' => 'Layyah', 'lat' => 30.9617, 'lng' => 70.9397, 'inspector' => 'ac.layyah'],
