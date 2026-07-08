@@ -41,13 +41,27 @@
         return Array.from({ length: count }, (_, i) => palette[i % palette.length]);
     }
 
+    function ensureChartCanvas(index) {
+        const id = 'kpiChart_' + index;
+        let canvas = document.getElementById(id);
+        if (canvas) return canvas;
+
+        const cards = document.querySelectorAll('#kpiDetailCharts .ppmu-chart-card');
+        const card = cards[index];
+        const body = card?.querySelector('.card-ppmf-body');
+        if (!body) return null;
+
+        body.innerHTML = `<canvas id="${id}"></canvas>`;
+        return document.getElementById(id);
+    }
+
     function buildCharts(data) {
         destroyCharts();
         const definitions = data.definitions || cfg.chartDefinitions || [];
 
         if (definitions.length) {
             definitions.forEach((def, index) => {
-                const canvas = document.getElementById('kpiChart_' + index);
+                const canvas = ensureChartCanvas(index);
                 if (!canvas) return;
 
                 const payload = def.data || {};
@@ -405,7 +419,7 @@
             if (el.value) params.set(el.dataset.inspFilter, el.value);
         });
 
-        document.querySelectorAll('#kpiGeoFilter [name]').forEach(el => {
+        document.querySelectorAll('#kpiGeoFilter [data-geo-filter]').forEach(el => {
             if (el.name && el.value) params.set(el.name, el.value);
         });
 

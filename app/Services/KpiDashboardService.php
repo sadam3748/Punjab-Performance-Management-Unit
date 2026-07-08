@@ -91,9 +91,10 @@ class KpiDashboardService
 
     public function detail(KpiCard $card, User $user, Request $request): array
     {
+        $allowFallback = ! $this->hasExplicitDashboardFilter($request);
         $request = $this->requestWithKpiPeriodDefaults($card, $request);
 
-        [$submissions, $usedFallback] = $this->loadSubmissions($card, $user, $request);
+        [$submissions, $usedFallback] = $this->loadSubmissions($card, $user, $request, $allowFallback);
 
         $perPage = min(50, max(10, (int) $request->input('per_page', 15)));
 
@@ -239,7 +240,7 @@ class KpiDashboardService
     }
 
     /** @return array{0: Collection<int, KpiSubmission>, 1: bool} */
-    private function loadSubmissions(KpiCard $card, User $user, Request $request): array
+    private function loadSubmissions(KpiCard $card, User $user, Request $request, bool $allowFallback = true): array
     {
         $query = $this->filteredSubmissions(
             KpiSubmission::query()->where('kpi_card_id', $card->id),
@@ -254,6 +255,10 @@ class KpiDashboardService
 
         if ($submissions->isNotEmpty()) {
             return [$submissions, false];
+        }
+
+        if (! $allowFallback) {
+            return [collect(), false];
         }
 
         $fallback = $this->scopedSubmissions($card, $user, $request)
@@ -1135,6 +1140,28 @@ class KpiDashboardService
         return $request->duplicate(
             array_merge($request->query(), $defaults)
         );
+    }
+
+    private function hasExplicitDashboardFilter(Request $request): bool
+    {
+        foreach ([
+            'period_type',
+            'week_no',
+            'month',
+            'year',
+            'date',
+            'geo_division',
+            'geo_district',
+            'geo_tehsil',
+            'geo_date_from',
+            'geo_date_to',
+        ] as $key) {
+            if ($request->filled($key)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /** @param  list<array{type: string, title: string, key: string}>  $definitions */

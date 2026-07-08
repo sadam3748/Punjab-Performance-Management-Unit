@@ -110,7 +110,10 @@ class KpiPeriodService
             $weekNo = $params['week_no'] ?: $this->currentWeekNo();
             $range = $this->getWeekDateRange((string) $weekNo);
             if ($range['start'] && $range['end']) {
-                return $query->whereBetween($dateColumn, [$range['start']->toDateString(), $range['end']->toDateString()]);
+                return $query->whereBetween($dateColumn, [
+                    $range['start']->copy()->startOfDay(),
+                    $range['end']->copy()->endOfDay(),
+                ]);
             }
         }
 

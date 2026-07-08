@@ -464,23 +464,15 @@ class KpiInspectionSeeder extends Seeder
             for ($i = 0; $i < $plan['count']; $i++) {
                 $demoStatuses = $this->demoTehsilStatusPlan($plan['tehsil_id']);
                 $status = $demoStatuses[$i] ?? $statuses[$globalIndex % count($statuses)];
-                $completedDayRecordCount = $demoStatuses !== null
-                    ? min(6, max(1, $plan['count'] - 2))
-                    : 0;
+                $completedDayRecordCount = $this->healthCompletedDayRecordCount($card->slug, $demoStatuses, $plan['count']);
                 $isHealthCompletedDayRecord = $card->slug === 'inspection-of-health-facilities'
                     && $demoStatuses !== null
                     && $i < $completedDayRecordCount;
-                $isHealthCurrentPeriodRecord = $card->slug === 'inspection-of-health-facilities'
-                    && $demoStatuses !== null
-                    && $i >= $completedDayRecordCount
-                    && $i < $completedDayRecordCount + 2;
-                $inspectedAt = $isHealthCompletedDayRecord
-                    ? $this->latestCompletedDayDateForIndex($i)
-                    : ($isHealthCurrentPeriodRecord
-                        ? $now->copy()->setTime(9 + ($i % 6), 15 * ($i % 4), 0)
-                        : ($demoStatuses !== null && isset($demoStatuses[$i])
+                $inspectedAt = $card->slug === 'inspection-of-health-facilities'
+                    ? $this->healthInspectionDateForIndex($i, $globalIndex, $plan['count'], $completedDayRecordCount, $demoStatuses !== null)
+                    : ($demoStatuses !== null && isset($demoStatuses[$i])
                         ? $this->activeWeekDateForIndex($i)
-                        : $this->visitInspectionDateForIndex($globalIndex, $plan['count'])));
+                        : $this->visitInspectionDateForIndex($globalIndex, $plan['count']));
                 $entity = $entities[$globalIndex % count($entities)];
                 $reference = sprintf('INSP-%s-%06d', $now->format('Y'), $refCounter++);
                 $detailData = \Database\Seeders\Support\KpiInspectionDetailFactory::forSlug($card->slug, $globalIndex);
@@ -648,6 +640,61 @@ class KpiInspectionSeeder extends Seeder
         }
 
         return $now->copy()->subMonths(1 + ($index % 3))->subDays($index % 10)->setTime(9 + ($index % 5), 20 * ($index % 3), 0);
+    }
+
+    /** @param list<string>|null $demoStatuses */
+    private function healthCompletedDayRecordCount(string $slug, ?array $demoStatuses, int $tehsilTotal): int
+    {
+        if ($slug !== 'inspection-of-health-facilities' || $demoStatuses === null) {
+            return 0;
+        }
+
+        return min(4, max(1, $tehsilTotal - 4));
+    }
+
+    private function healthInspectionDateForIndex(
+        int $index,
+        int $globalIndex,
+        int $tehsilTotal,
+        int $completedDayRecordCount,
+        bool $priorityTehsil
+    ): Carbon {
+        if ($completedDayRecordCount > 0 && $index < $completedDayRecordCount) {
+            return $this->latestCompletedDayDateForIndex($index);
+        }
+
+        $activeWeekSlots = $priorityTehsil ? 3 : max(2, (int) ceil($tehsilTotal * 0.45));
+        if ($index < $completedDayRecordCount + $activeWeekSlots) {
+            return $this->activeWeekDateForIndex($index + $globalIndex);
+        }
+
+        return $this->currentMonthPreviousWeekDateForIndex($globalIndex);
+    }
+
+    private function currentMonthPreviousWeekDateForIndex(int $index): Carbon
+    {
+        $tz = config('app.inspection_timezone', 'Asia/Karachi');
+        $databaseTimezone = config('app.timezone', 'UTC');
+        $now = now($tz);
+        $period = app(\App\Services\KpiPeriodService::class);
+        $range = $period->getWeekDateRange($period->currentWeekNo());
+        $currentWeekStart = $range['start'] ?? null;
+        $currentWeekStart = $currentWeekStart?->copy()->setTimezone($tz)->startOfDay();
+        $monthStart = $now->copy()->startOfMonth()->startOfDay();
+        $windowEnd = ($currentWeekStart ?? $now->copy()->startOfWeek())->copy()->subDay()->endOfDay();
+
+        if ($windowEnd->lt($monthStart)) {
+            $windowEnd = $now->copy()->subDay()->endOfDay();
+        }
+
+        $daysAvailable = max(1, $monthStart->diffInDays($windowEnd) + 1);
+        $dayOffset = $index % $daysAvailable;
+
+        return $windowEnd
+            ->copy()
+            ->subDays($dayOffset)
+            ->setTime(9 + ($index % 7), 10 * ($index % 5), 0)
+            ->setTimezone($databaseTimezone);
     }
 
     /** @return list<string>|null */
@@ -877,21 +924,37 @@ class KpiInspectionSeeder extends Seeder
 
     private function activeWeekDateForIndex(int $index): Carbon
     {
+        $tz = config('app.inspection_timezone', 'Asia/Karachi');
+        $databaseTimezone = config('app.timezone', 'UTC');
         $period = app(\App\Services\KpiPeriodService::class);
         $range = $period->getWeekDateRange($period->currentWeekNo());
-        $start = $range['start'] ?? now()->startOfDay();
-        $dayOffset = min(5, $index % 6);
+        $start = ($range['start'] ?? now($tz)->startOfDay())->copy()->setTimezone($tz);
+        $now = now($tz);
+        $elapsedDays = max(0, min(6, $start->copy()->startOfDay()->diffInDays($now->copy()->startOfDay())));
+        $dayOffset = min($elapsedDays, $index % 6);
 
-        return $start->copy()->addDays($dayOffset)->startOfDay()->addHours(10);
+        $candidate = $start
+            ->copy()
+            ->addDays($dayOffset)
+            ->startOfDay()
+            ->setTime(9 + ($index % 7), 10 * ($index % 5), 0);
+
+        if ($candidate->gt($now)) {
+            $candidate = $now->copy();
+        }
+
+        return $candidate->setTimezone($databaseTimezone);
     }
 
     private function latestCompletedDayDateForIndex(int $index): Carbon
     {
+        $completedHour = min(16, 8 + ($index % 9));
+
         return now(config('app.inspection_timezone', 'Asia/Karachi'))
             ->subDay()
             ->startOfDay()
             ->setTime(
-                8 + ($index % 10),
+                $completedHour,
                 10 * ($index % 6),
                 0,
             )
