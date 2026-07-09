@@ -351,7 +351,7 @@ class KpiDashboardDefinitions
             'inspection-of-health-facilities' => array_merge($detailFields, [
                 ['label' => 'Deep Cleaning', 'field' => 'deep_cleaning_available'],
                 ['label' => 'Staff Availability', 'field' => 'staff_available'],
-                ['label' => 'Medicine Flex', 'field' => 'medicine_flex_available'],
+                ['label' => 'Medicine Availability', 'field' => 'medicine_flex_available'],
                 ['label' => 'Testing Equipment', 'field' => 'testing_equipment_available'],
                 ['label' => 'Drinking Water', 'field' => 'drinking_water_available'],
                 ['label' => 'Utilities', 'field' => 'utilities_available'],

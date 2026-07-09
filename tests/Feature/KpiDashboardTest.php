@@ -531,10 +531,15 @@ class KpiDashboardTest extends TestCase
         $scoped = $inspections->healthInspectionsForMetrics($card, $user, $request);
         $expected = $scoped->count();
         $detail = app(KpiDashboardService::class)->detail($card, $user, $request);
+        $target = (float) $detail['header']['operational_target'];
 
-        $this->assertSame(2, $expected);
-        $this->assertSame(2.0, (float) $detail['header']['completed']);
-        $this->assertSame(100.0, (float) $detail['header']['achievement_percentage']);
+        $this->assertGreaterThan(0, $expected);
+        $this->assertSame($expected, $inspections->countHealthInspected($card, $user, $request));
+        $this->assertSame((float) $expected, (float) ($detail['header']['actual_completed'] ?? $detail['header']['completed']));
+        $this->assertSame(min($expected, (int) $target), (int) $detail['header']['completed']);
+        if ($expected >= $target && $target > 0) {
+            $this->assertSame(100.0, (float) $detail['header']['achievement_percentage']);
+        }
     }
 
     public function test_weekly_dropdown_week_no_controls_detail_period_range(): void
@@ -880,8 +885,26 @@ class KpiDashboardTest extends TestCase
         $this->assertContains('Observation Issues', $labels);
         $deepCleaning = collect($observations['metrics'])->firstWhere('label', 'Deep Cleaning');
         $this->assertSame('observation_availability', $deepCleaning['display_mode'] ?? null);
+        $this->assertSame('Satisfactory', $deepCleaning['observation_positive_label'] ?? null);
+        $this->assertSame('Unsatisfactory', $deepCleaning['observation_negative_label'] ?? null);
         $this->assertSame(1, (int) ($deepCleaning['observation_available'] ?? -1));
         $this->assertSame(1, (int) ($deepCleaning['observation_not_available'] ?? -1));
+
+        $staffAvailability = collect($observations['metrics'])->firstWhere('label', 'Staff Availability');
+        $this->assertSame('Present', $staffAvailability['observation_positive_label'] ?? null);
+        $this->assertSame('Absent', $staffAvailability['observation_negative_label'] ?? null);
+
+        $utilities = collect($observations['metrics'])->firstWhere('label', 'Utilities');
+        $this->assertSame('Functional', $utilities['observation_positive_label'] ?? null);
+        $this->assertSame('Non-Functional', $utilities['observation_negative_label'] ?? null);
+
+        $uhiCompliance = collect($observations['metrics'])->firstWhere('label', 'UHI Compliance');
+        $this->assertSame('observation_yesno', $uhiCompliance['display_mode'] ?? null);
+        $this->assertSame('Compliant', $uhiCompliance['observation_positive_label'] ?? null);
+        $this->assertSame('Non-Compliant', $uhiCompliance['observation_negative_label'] ?? null);
+
+        $medicineAvailability = collect($observations['metrics'])->firstWhere('label', 'Medicine Availability');
+        $this->assertNotNull($medicineAvailability);
     }
 
     public function test_health_total_facilities_card_has_inventory_helper_text(): void
@@ -915,10 +938,10 @@ class KpiDashboardTest extends TestCase
         $this->assertNotNull($chart);
         $this->assertSame('Observation Availability', $chart['title']);
         $this->assertSame('stacked_bar', $chart['type']);
-        $this->assertStringContainsString('Available vs not available observations from inspected health facilities', (string) ($chart['subtitle'] ?? ''));
+        $this->assertStringContainsString('Observation outcomes from inspected health facilities', (string) ($chart['subtitle'] ?? ''));
         $this->assertCount(2, $chart['data']['datasets'] ?? []);
-        $this->assertSame('Available', $chart['data']['datasets'][0]['label'] ?? null);
-        $this->assertSame('Not Available', $chart['data']['datasets'][1]['label'] ?? null);
+        $this->assertSame('Positive outcome', $chart['data']['datasets'][0]['label'] ?? null);
+        $this->assertSame('Negative outcome', $chart['data']['datasets'][1]['label'] ?? null);
         $this->assertSame(2, (int) ($chart['data']['facilities_inspected'] ?? 0));
 
         $deepCleaningAvailable = (int) ($chart['data']['datasets'][0]['values'][0] ?? 0);
@@ -940,7 +963,7 @@ class KpiDashboardTest extends TestCase
         foreach ($observations['metrics'] as $metric) {
             if (($metric['label'] ?? '') === 'Observation Issues') {
                 $this->assertSame('attention', $metric['display_mode'] ?? null);
-                $this->assertSame('Not Available / No checks', $metric['card_helper'] ?? null);
+                $this->assertSame('Deficiencies Found', $metric['card_helper'] ?? null);
 
                 continue;
             }

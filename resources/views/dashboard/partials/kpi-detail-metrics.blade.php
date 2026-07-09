@@ -25,6 +25,8 @@
                         :observation-not-available="$metric['observation_not_available'] ?? null"
                         :observation-yes="$metric['observation_yes'] ?? null"
                         :observation-no="$metric['observation_no'] ?? null"
+                        :observation-positive-label="$metric['observation_positive_label'] ?? null"
+                        :observation-negative-label="$metric['observation_negative_label'] ?? null"
                         :attention-text="$metric['attention_text'] ?? null"
                         :card-helper="$metric['card_helper'] ?? null"/>
                 @endforeach
@@ -49,6 +51,8 @@
                 :observation-not-available="$metric['observation_not_available'] ?? null"
                 :observation-yes="$metric['observation_yes'] ?? null"
                 :observation-no="$metric['observation_no'] ?? null"
+                :observation-positive-label="$metric['observation_positive_label'] ?? null"
+                :observation-negative-label="$metric['observation_negative_label'] ?? null"
                 :attention-text="$metric['attention_text'] ?? null"
                 :card-helper="$metric['card_helper'] ?? null"/>
         @endforeach

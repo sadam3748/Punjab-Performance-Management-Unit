@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Data\HealthObservationLabels;
 use App\Data\KpiDashboardDefinitions;
 use App\Data\KpiMetricSections;
 use App\Models\KpiCard;
@@ -617,6 +618,8 @@ class KpiDashboardService
         }
 
         if (is_array($value) && array_key_exists('available', $value)) {
+            $labels = HealthObservationLabels::meta($field);
+
             return array_merge($metric, [
                 'value' => '',
                 'unit' => null,
@@ -625,10 +628,14 @@ class KpiDashboardService
                 'display_mode' => 'observation_availability',
                 'observation_available' => (int) ($value['available'] ?? 0),
                 'observation_not_available' => (int) ($value['not_available'] ?? 0),
+                'observation_positive_label' => $labels['positive'],
+                'observation_negative_label' => $labels['negative'],
             ]);
         }
 
         if (is_array($value) && array_key_exists('yes', $value)) {
+            $labels = HealthObservationLabels::meta($field);
+
             return array_merge($metric, [
                 'value' => '',
                 'unit' => null,
@@ -637,19 +644,22 @@ class KpiDashboardService
                 'display_mode' => 'observation_yesno',
                 'observation_yes' => (int) ($value['yes'] ?? 0),
                 'observation_no' => (int) ($value['no'] ?? 0),
+                'observation_positive_label' => $labels['positive'],
+                'observation_negative_label' => $labels['negative'],
             ]);
         }
 
         if ($field === 'observation_attention_required') {
             $count = (int) $value;
+            $helper = HealthObservationLabels::ATTENTION_HELPER;
 
             return array_merge($metric, [
                 'value' => '',
                 'unit' => null,
                 'hint' => $this->shortCardHint($metric),
                 'formula_text' => $metric['formula_text'] ?? ($metric['formula'] ?? null),
-                'description' => 'Not Available / No checks',
-                'card_helper' => 'Not Available / No checks',
+                'description' => $helper,
+                'card_helper' => $helper,
                 'display_mode' => 'attention',
                 'attention_text' => (string) $count,
                 'attention_count' => $count,
@@ -1174,25 +1184,25 @@ class KpiDashboardService
             return match ($role) {
                 'ac', 'field_user' => [
                     ['type' => 'bar', 'title' => 'Review Target Status', 'subtitle' => 'Approved, rejected, and pending reviews against AC review target.', 'key' => 'health_review_target_status'],
-                    ['type' => 'stacked_bar', 'title' => 'Observation Availability', 'subtitle' => 'Available vs not available observations from inspected health facilities.', 'key' => 'health_observation_availability'],
+                    ['type' => 'stacked_bar', 'title' => 'Observation Availability', 'subtitle' => 'Observation outcomes from inspected health facilities.', 'key' => 'health_observation_availability'],
                 ],
                 'dc' => [
                     ['type' => 'bar', 'title' => 'Tehsil Inspection Progress', 'subtitle' => 'Weekly AC inspections by tehsil, capped at 2 per tehsil.', 'key' => 'health_tehsil_inspection_progress'],
                     ['type' => 'bar', 'title' => 'Inspection Target Achievement', 'subtitle' => 'Completed inspections against weekly target.', 'key' => 'health_inspection_target_achievement'],
                     ['type' => 'bar', 'title' => 'Review Target Status', 'subtitle' => 'Approved, rejected, and pending reviews against DC review target.', 'key' => 'health_review_target_status'],
-                    ['type' => 'stacked_bar', 'title' => 'Observation Availability', 'subtitle' => 'Available vs not available observations from inspected health facilities.', 'key' => 'health_observation_availability'],
+                    ['type' => 'stacked_bar', 'title' => 'Observation Availability', 'subtitle' => 'Observation outcomes from inspected health facilities.', 'key' => 'health_observation_availability'],
                 ],
                 'commissioner' => [
                     ['type' => 'bar', 'title' => 'District Inspection Progress', 'subtitle' => 'Completed inspections by district, capped against district target.', 'key' => 'health_district_inspection_progress'],
                     ['type' => 'bar', 'title' => 'Inspection Target Achievement', 'subtitle' => 'Completed inspections against division weekly target.', 'key' => 'health_inspection_target_achievement'],
                     ['type' => 'bar', 'title' => 'Review Target Status', 'subtitle' => 'Approved, rejected, and pending reviews against Commissioner review target.', 'key' => 'health_review_target_status'],
-                    ['type' => 'stacked_bar', 'title' => 'Observation Availability', 'subtitle' => 'Available vs not available observations from inspected health facilities.', 'key' => 'health_observation_availability'],
+                    ['type' => 'stacked_bar', 'title' => 'Observation Availability', 'subtitle' => 'Observation outcomes from inspected health facilities.', 'key' => 'health_observation_availability'],
                 ],
                 default => [
                     ['type' => 'bar', 'title' => 'District Inspection Progress', 'subtitle' => 'Completed inspections by district, capped against weekly target.', 'key' => 'health_district_inspection_progress'],
                     ['type' => 'bar', 'title' => 'Inspection Target Achievement', 'subtitle' => 'Completed inspections against Punjab weekly target.', 'key' => 'health_inspection_target_achievement'],
                     ['type' => 'bar', 'title' => 'Review Target Status', 'subtitle' => 'Approved, rejected, and pending reviews against CS review target.', 'key' => 'health_review_target_status'],
-                    ['type' => 'stacked_bar', 'title' => 'Observation Availability', 'subtitle' => 'Available vs not available observations from inspected health facilities.', 'key' => 'health_observation_availability'],
+                    ['type' => 'stacked_bar', 'title' => 'Observation Availability', 'subtitle' => 'Observation outcomes from inspected health facilities.', 'key' => 'health_observation_availability'],
                 ],
             };
         }

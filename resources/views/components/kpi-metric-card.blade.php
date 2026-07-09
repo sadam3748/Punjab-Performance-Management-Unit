@@ -13,6 +13,8 @@
     'observationNotAvailable' => null,
     'observationYes' => null,
     'observationNo' => null,
+    'observationPositiveLabel' => null,
+    'observationNegativeLabel' => null,
     'attentionText' => null,
     'cardHelper' => null,
 ])
@@ -47,13 +49,13 @@
     <div class="ppmu-pi-card-foot">
         @if($displayMode === 'observation_availability')
             <div class="ppmu-observation-chips" aria-label="{{ $label }} availability counts">
-                <span class="ppmu-obs-chip ppmu-obs-chip-available">Available: {{ (int) $observationAvailable }}</span>
-                <span class="ppmu-obs-chip ppmu-obs-chip-unavailable">Not Available: {{ (int) $observationNotAvailable }}</span>
+                <span class="ppmu-obs-chip ppmu-obs-chip-available">{{ $observationPositiveLabel ?? 'Available' }}: {{ (int) $observationAvailable }}</span>
+                <span class="ppmu-obs-chip ppmu-obs-chip-unavailable">{{ $observationNegativeLabel ?? 'Not Available' }}: {{ (int) $observationNotAvailable }}</span>
             </div>
         @elseif($displayMode === 'observation_yesno')
             <div class="ppmu-observation-chips" aria-label="{{ $label }} compliance counts">
-                <span class="ppmu-obs-chip ppmu-obs-chip-available">Yes: {{ (int) $observationYes }}</span>
-                <span class="ppmu-obs-chip ppmu-obs-chip-unavailable">No: {{ (int) $observationNo }}</span>
+                <span class="ppmu-obs-chip ppmu-obs-chip-available">{{ $observationPositiveLabel ?? 'Yes' }}: {{ (int) $observationYes }}</span>
+                <span class="ppmu-obs-chip ppmu-obs-chip-unavailable">{{ $observationNegativeLabel ?? 'No' }}: {{ (int) $observationNo }}</span>
             </div>
         @elseif($displayMode === 'attention')
             <strong class="ppmu-pi-value">{{ $attentionText }}</strong>

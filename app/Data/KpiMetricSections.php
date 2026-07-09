@@ -67,7 +67,7 @@ class KpiMetricSections
         $sections[] = ['title' => 'Observations', 'metrics' => [
             ['field' => 'observation_deep_cleaning', 'label' => 'Deep Cleaning'],
             ['field' => 'observation_staff_availability', 'label' => 'Staff Availability'],
-            ['field' => 'observation_medicine_flex', 'label' => 'Medicine Flex'],
+            ['field' => 'observation_medicine_flex', 'label' => 'Medicine Availability'],
             ['field' => 'observation_testing_equipment', 'label' => 'Testing Equipment'],
             ['field' => 'observation_drinking_water', 'label' => 'Drinking Water'],
             ['field' => 'observation_utilities', 'label' => 'Utilities'],

@@ -179,7 +179,7 @@ class KpiInspectionTest extends TestCase
             ->assertSee('Date &amp; Time', false)
             ->assertSee('Deep Cleaning')
             ->assertSee('Staff Availability')
-            ->assertSee('Medicine Flex')
+            ->assertSee('Medicine Availability')
             ->assertSee('Testing Equipment')
             ->assertSee('Drinking Water')
             ->assertSee('Utilities')

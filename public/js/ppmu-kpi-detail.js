@@ -84,6 +84,8 @@
                     const isStacked = def.type === 'stacked_bar';
                     const horizontal = def.type === 'grouped_bar' || def.type === 'stacked_bar' || String(def.key || '').includes('observation');
                     const facilitiesInspected = Number(payload.facilities_inspected ?? 0);
+                    const categoryLabelPairs = Array.isArray(payload.category_label_pairs) ? payload.category_label_pairs : [];
+                    const isHealthObservationChart = String(def.key || '') === 'health_observation_availability';
                     const datasets = payload.datasets.map((series, seriesIndex) => ({
                         label: series.label || ('Series ' + (seriesIndex + 1)),
                         data: series.values || [],
@@ -172,6 +174,13 @@
                                     callbacks: {
                                         label(context) {
                                             const value = context.parsed?.x ?? context.parsed?.y ?? 0;
+                                            if (isHealthObservationChart && categoryLabelPairs.length) {
+                                                const pair = categoryLabelPairs[context.dataIndex] || {};
+                                                const seriesLabel = context.datasetIndex === 0
+                                                    ? (pair.positive || 'Positive outcome')
+                                                    : (pair.negative || 'Negative outcome');
+                                                return ` ${seriesLabel}: ${value}`;
+                                            }
                                             const series = context.dataset?.label || 'Value';
                                             return ` ${series}: ${value}`;
                                         },

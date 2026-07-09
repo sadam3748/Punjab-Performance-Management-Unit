@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Data\HealthObservationLabels;
 use App\Models\KpiCard;
 use App\Models\KpiInspection;
 use App\Models\User;
@@ -699,15 +700,22 @@ class KpiInspectionService
                 ->all();
         }
 
-        $fields = [
-            'deep_cleaning_available' => ['label' => 'Deep Cleaning', 'observation_key' => 'deep_cleaning'],
-            'staff_available' => ['label' => 'Staff Availability', 'observation_key' => 'staff_availability'],
-            'medicine_flex_available' => ['label' => 'Medicine Flex', 'observation_key' => 'medicine_flex'],
-            'testing_equipment_available' => ['label' => 'Testing Equipment', 'observation_key' => 'testing_equipment'],
-            'drinking_water_available' => ['label' => 'Drinking Water', 'observation_key' => 'drinking_water'],
-            'utilities_available' => ['label' => 'Utilities', 'observation_key' => 'utilities'],
-            'uhi_compliance' => ['label' => 'UHI Compliance', 'observation_key' => 'uhi_compliance'],
-        ];
+        $fields = collect(HealthObservationLabels::chartCategories())
+            ->mapWithKeys(fn (string $detailField, string $title) => [
+                $detailField => [
+                    'label' => $title,
+                    'observation_key' => match ($detailField) {
+                        'deep_cleaning_available' => 'deep_cleaning',
+                        'staff_available' => 'staff_availability',
+                        'medicine_flex_available' => 'medicine_flex',
+                        'testing_equipment_available' => 'testing_equipment',
+                        'drinking_water_available' => 'drinking_water',
+                        'utilities_available' => 'utilities',
+                        default => 'uhi_compliance',
+                    },
+                ],
+            ])
+            ->all();
 
         $detail = is_array($inspection->detail_data)
             ? $inspection->detail_data
@@ -715,7 +723,7 @@ class KpiInspectionService
 
         $cards = collect($fields)->map(function (array $meta, string $key) use ($inspection, $detail, $fallbackImage): array {
             $rawValue = $detail[$key] ?? $this->legacyHealthObservationDetailValue($detail, $key);
-            $displayValue = $this->displayObservationValue($rawValue);
+            $displayValue = HealthObservationLabels::displayValue($key, $rawValue);
             $evidence = $this->observationEvidence($inspection, $meta['observation_key'], $fallbackImage);
 
             return [
@@ -726,12 +734,12 @@ class KpiInspectionService
                 'has_evidence' => $evidence['has'],
                 'evidence_url' => $evidence['url'],
                 'evidence_anchor' => $evidence['anchor'],
-                'status_tone' => in_array($displayValue, ['Not Available', 'No'], true) ? 'warning' : 'success',
+                'status_tone' => HealthObservationLabels::isNegativeDisplayValue($key, $displayValue) ? 'warning' : 'success',
             ];
         });
 
         $attentionRequired = $cards->contains(
-            fn (array $card): bool => in_array($card['value'], ['Not Available', 'No'], true)
+            fn (array $card): bool => HealthObservationLabels::isNegativeDisplayValue((string) $card['key'], (string) $card['value'])
         );
 
         $cards->push([

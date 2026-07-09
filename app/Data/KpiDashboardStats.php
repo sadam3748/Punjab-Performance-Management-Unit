@@ -646,11 +646,11 @@ class KpiDashboardStats
                 'weekly'
             ),
             self::card(
-                'Medicine Flex',
+                'Medicine Availability',
                 'observation_medicine_flex',
                 'bi-capsule',
                 'blue',
-                'Medicine flex display observed during inspections.',
+                'Medicine availability observed during inspections.',
                 '',
                 'weekly'
             ),
@@ -695,8 +695,8 @@ class KpiDashboardStats
                 'observation_attention_required',
                 'bi-exclamation-triangle',
                 'red',
-                'Not Available / No checks',
-                'Sum of Not Available and No observations',
+                'Deficiencies Found',
+                'Total negative observations across inspected facilities',
                 'weekly'
             ),
         ];

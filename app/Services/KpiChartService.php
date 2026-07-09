@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Data\HealthObservationLabels;
 use App\Models\KpiInspection;
 use App\Models\User;
 use Illuminate\Support\Collection;
@@ -311,7 +312,7 @@ class KpiChartService
             'health_issue_breakdown' => $toChart($healthIssues->isNotEmpty() ? $healthIssues : collect([
                 'Deep Cleaning' => $submissions->sum(fn ($i) => (float) data_get($i->metric_snapshot, 'observation_deep_cleaning_not', 0)),
                 'Staff Availability' => $submissions->sum(fn ($i) => (float) data_get($i->metric_snapshot, 'observation_staff_not', 0)),
-                'Medicine Flex' => $submissions->sum(fn ($i) => (float) data_get($i->metric_snapshot, 'observation_medicine_not', 0)),
+                'Medicine Availability' => $submissions->sum(fn ($i) => (float) data_get($i->metric_snapshot, 'observation_medicine_not', 0)),
                 'Testing Equipment' => $submissions->sum(fn ($i) => (float) data_get($i->metric_snapshot, 'observation_equipment_not', 0)),
                 'Drinking Water' => $submissions->sum(fn ($i) => (float) data_get($i->metric_snapshot, 'observation_water_not', 0)),
                 'Utilities' => $submissions->sum(fn ($i) => (float) data_get($i->metric_snapshot, 'observation_utilities_not', 0)),
@@ -376,15 +377,7 @@ class KpiChartService
     /** @return array{labels: list<string>, datasets: list<array{label: string, values: list<int>, color: string}>, facilities_inspected: int} */
     private function healthObservationAvailabilityFromInspections(Collection $inspections, int $facilitiesInspected): array
     {
-        $categories = [
-            'Deep Cleaning' => 'deep_cleaning_available',
-            'Staff Availability' => 'staff_available',
-            'Medicine Flex' => 'medicine_flex_available',
-            'Testing Equipment' => 'testing_equipment_available',
-            'Drinking Water' => 'drinking_water_available',
-            'Utilities' => 'utilities_available',
-            'UHI Compliance' => 'uhi_compliance',
-        ];
+        $categories = HealthObservationLabels::chartCategories();
 
         $limit = max(0, $facilitiesInspected);
         $scoped = $limit > 0 && $inspections->count() > $limit
@@ -398,10 +391,16 @@ class KpiChartService
 
         $available = [];
         $notAvailable = [];
+        $labelPairs = [];
 
         foreach ($categories as $label => $field) {
+            $meta = HealthObservationLabels::meta($field);
             $available[$label] = 0;
             $notAvailable[$label] = 0;
+            $labelPairs[] = [
+                'positive' => $meta['positive'],
+                'negative' => $meta['negative'],
+            ];
 
             foreach ($scoped as $inspection) {
                 $detail = is_array($inspection->detail_data)
@@ -434,63 +433,41 @@ class KpiChartService
             'labels' => $labels,
             'datasets' => [
                 [
-                    'label' => 'Available',
+                    'label' => 'Positive outcome',
                     'values' => array_map(fn (string $label) => $available[$label], $labels),
                     'color' => '#087443',
                 ],
                 [
-                    'label' => 'Not Available',
+                    'label' => 'Negative outcome',
                     'values' => array_map(fn (string $label) => $notAvailable[$label], $labels),
                     'color' => '#dc2626',
                 ],
             ],
+            'category_label_pairs' => $labelPairs,
             'facilities_inspected' => $inspectedTotal,
         ];
     }
 
     private function healthIssueBreakdownFromInspections(Collection $inspections): Collection
     {
-        $counts = [
-            'Deep Cleaning' => 0,
-            'Staff Availability' => 0,
-            'Medicine Flex' => 0,
-            'Testing Equipment' => 0,
-            'Drinking Water' => 0,
-            'Utilities' => 0,
-            'UHI Compliance' => 0,
-            'Attention Required' => 0,
-        ];
+        $counts = array_fill_keys(array_keys(HealthObservationLabels::chartCategories()), 0);
+        $counts['Attention Required'] = 0;
 
         foreach ($inspections as $inspection) {
             $detail = is_array($inspection->detail_data)
                 ? $inspection->detail_data
                 : (json_decode($inspection->detail_data ?? '[]', true) ?: []);
 
-            $fieldMap = [
-                'Deep Cleaning' => 'deep_cleaning_available',
-                'Staff Availability' => 'staff_available',
-                'Medicine Flex' => 'medicine_flex_available',
-                'Testing Equipment' => 'testing_equipment_available',
-                'Drinking Water' => 'drinking_water_available',
-                'Utilities' => 'utilities_available',
-            ];
-
-            foreach ($fieldMap as $label => $field) {
+            foreach (HealthObservationLabels::chartCategories() as $label => $field) {
                 $value = strtolower((string) ($detail[$field] ?? $this->legacyHealthObservationChartValue($detail, $field)));
                 if ($value === 'not_available' || $value === 'no') {
                     $counts[$label]++;
                     $counts['Attention Required']++;
                 }
             }
-
-            $uhi = strtolower((string) ($detail['uhi_compliance'] ?? ''));
-            if ($uhi === 'no') {
-                $counts['UHI Compliance']++;
-                $counts['Attention Required']++;
-            }
         }
 
-        return collect($counts)->filter(fn ($v) => $v > 0);
+        return collect($counts)->filter(fn ($value) => $value > 0);
     }
 
     /** @param  array<string, mixed>  $detail */

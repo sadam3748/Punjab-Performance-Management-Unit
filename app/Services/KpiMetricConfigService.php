@@ -103,7 +103,7 @@ class KpiMetricConfigService
                 $m('DC Meeting on Health Council Held', 'health_council_meeting', 'bi-people', 'blue'),
                 $m('Deep Cleaning', 'observation_deep_cleaning', 'bi-stars', 'yellow'),
                 $m('Staff Availability', 'observation_staff_availability', 'bi-person-check', 'blue'),
-                $m('Medicine Flex', 'observation_medicine_flex', 'bi-capsule', 'blue'),
+                $m('Medicine Availability', 'observation_medicine_flex', 'bi-capsule', 'blue'),
                 $m('Testing Equipment', 'observation_testing_equipment', 'bi-tools', 'yellow'),
                 $m('Drinking Water', 'observation_drinking_water', 'bi-droplet', 'blue'),
                 $m('Utilities', 'observation_utilities', 'bi-lightning', 'yellow'),
