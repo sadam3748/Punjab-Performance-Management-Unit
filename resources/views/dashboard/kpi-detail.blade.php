@@ -3,6 +3,9 @@
 @section('content_class', 'ppmu-dashboard-content ppmu-detail-page')
 @push('styles')
 <link rel="stylesheet" href="{{ asset('css/ppmu-kpi.css') }}?v={{ filemtime(public_path('css/ppmu-kpi.css')) }}">
+@if($kpiCard->slug === 'inspection-of-health-facilities')
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+@endif
 @endpush
 
 @section('content')
@@ -20,6 +23,7 @@
         $v >= 85 ? '#087443' : ($v >= 70 ? '#2563eb' : ($v >= 50 ? '#e07b00' : '#dc2626'))
     );
     $periodTypesForJs = $filters['period_types'] ?? ['daily', 'weekly', 'monthly', 'yearly'];
+    $isHealthDashboard = $kpiCard->slug === 'inspection-of-health-facilities';
 @endphp
 
 <div class="ppmu-detail-hero card-ppmf" id="kpiDetailHero">
@@ -102,6 +106,10 @@
         @include('dashboard.partials.kpi-detail-metrics', ['metrics' => $metrics, 'metricSections' => $metricSections ?? []])
     </div>
 
+    @if($isHealthDashboard)
+        @include('dashboard.partials.kpi-detail-health-map', ['healthMap' => $healthMap ?? []])
+    @endif
+
     <div class="ppmu-section-head mt-4">
         <div>
             <h2><i class="bi bi-bar-chart-fill"></i> KPI Charts</h2>
@@ -121,7 +129,7 @@
         @endforeach
     </div>
 
-    @if($kpiCard->slug !== 'inspection-of-health-facilities')
+    @if(!$isHealthDashboard)
     <div id="kpiDetailRecords">
         @include('dashboard.partials.kpi-detail-records', [
             'kpiCard' => $kpiCard,
@@ -159,7 +167,12 @@ window.PPMU_KPI_DETAIL = {
         attention: 'Attention',
         critical: 'Critical',
     },
+    isHealthDashboard: @json($isHealthDashboard),
+    healthMap: @json($healthMap ?? []),
 };
 </script>
+@if($isHealthDashboard)
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+@endif
 <script src="{{ asset('js/ppmu-kpi-detail.js') }}?v={{ filemtime(public_path('js/ppmu-kpi-detail.js')) }}"></script>
 @endpush

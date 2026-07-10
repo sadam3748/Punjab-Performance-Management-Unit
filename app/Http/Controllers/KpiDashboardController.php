@@ -65,6 +65,7 @@ class KpiDashboardController extends Controller
             'period_description' => $data['period_description'],
             'period_query' => $service->periodQueryString($request),
             'period_filters' => $service->filterOptionsForView($kpiCard->slug),
+            'health_map' => $data['healthMap'] ?? [],
         ]);
     }
 }

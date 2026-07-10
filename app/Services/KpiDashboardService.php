@@ -26,6 +26,7 @@ class KpiDashboardService
         private readonly KpiGeoFilterService $geoFilterService,
         private readonly KpiOperationalService $operationalService,
         private readonly KpiFrequencyService $frequencyService,
+        private readonly HealthInspectionMapService $healthMapService,
     ) {}
 
     public function assignedCards(User $user, ?Request $request = null): Collection
@@ -112,6 +113,16 @@ class KpiDashboardService
             : $this->inspectionService->getInspectionsCollection($card, $user, $request);
         $inspectionStatusCounts = $this->inspectionService->buildStatusCounts($card, $user, $request);
         $inspectionTableColumns = $this->inspectionService->getTableColumnsForKpi($card->slug);
+        $healthVisitContext = $card->slug === 'inspection-of-health-facilities'
+            ? $this->healthVisitMetricContext(
+                $card,
+                $user,
+                $request,
+                $submissions,
+                (float) $headerMetrics['operational_target'],
+                (float) $headerMetrics['completed'],
+            )
+            : [];
 
         return [
             'kpiConfig' => $kpiConfig,
@@ -191,6 +202,14 @@ class KpiDashboardService
             'inspectionStatusCounts' => $inspectionStatusCounts,
             'inspectionFilters' => $this->inspectionService->filterOptions($user),
             'canReviewInspections' => $this->inspectionService->canReviewInspections($user),
+            'healthMap' => $card->slug === 'inspection-of-health-facilities'
+                ? $this->healthMapService->forDashboard($card, $user, $request, [
+                    'facilities_inspected' => (int) ($healthVisitContext['unique_facilities_inspected'] ?? 0),
+                    'approved' => (int) ($healthVisitContext['approved'] ?? 0),
+                    'pending' => (int) ($healthVisitContext['pending'] ?? 0),
+                    'rejected' => (int) ($healthVisitContext['rejected'] ?? 0),
+                ])
+                : [],
         ];
     }
 
@@ -1042,9 +1061,9 @@ class KpiDashboardService
     {
         $demo = match ($user->username) {
             'ac.lahore' => $slug === 'inspection-of-health-facilities' ? 48 : 156,
-            'ac.layyah' => $slug === 'inspection-of-health-facilities' ? 34 : 112,
+            'ac.layyah' => $slug === 'inspection-of-health-facilities' ? 20 : 112,
             'ac.karor' => $slug === 'inspection-of-health-facilities' ? 28 : 98,
-            'dc.layyah' => $slug === 'inspection-of-health-facilities' ? 62 : 210,
+            'dc.layyah' => $slug === 'inspection-of-health-facilities' ? 48 : 210,
             'com.dgkhan', 'com.lahore' => $slug === 'inspection-of-health-facilities' ? 120 : 380,
             'cs.pmru', 'super_admin' => $slug === 'inspection-of-health-facilities' ? 186 : 620,
             default => 0,

@@ -346,6 +346,20 @@ class KpiInspectionSeeder extends Seeder
                 ['street' => 'Thal Hospital Road', 'lat' => 30.9685, 'lng' => 70.9510],
                 ['street' => 'Railway Road, Layyah City', 'lat' => 30.9580, 'lng' => 70.9325],
                 ['street' => 'College Road, Layyah', 'lat' => 30.9655, 'lng' => 70.9410],
+                ['street' => 'Hospital Road, Layyah', 'lat' => 30.9638, 'lng' => 70.9362],
+                ['street' => 'Fatehpur Road', 'lat' => 30.9742, 'lng' => 70.9488],
+                ['street' => 'Chaubara Road', 'lat' => 30.9564, 'lng' => 70.9441],
+                ['street' => 'Mandi Town Road', 'lat' => 30.9698, 'lng' => 70.9310],
+                ['street' => 'Canal View Road', 'lat' => 30.9536, 'lng' => 70.9524],
+                ['street' => 'Shah Jamal Road', 'lat' => 30.9771, 'lng' => 70.9375],
+                ['street' => 'Chowk Sarwar Shaheed', 'lat' => 30.9602, 'lng' => 70.9268],
+                ['street' => 'Tehsil Complex Road', 'lat' => 30.9669, 'lng' => 70.9493],
+                ['street' => 'Bazaar Road, Layyah', 'lat' => 30.9573, 'lng' => 70.9388],
+                ['street' => 'Grid Station Road', 'lat' => 30.9726, 'lng' => 70.9337],
+                ['street' => 'Bypass Road, Layyah', 'lat' => 30.9549, 'lng' => 70.9466],
+                ['street' => 'Model Town Layyah', 'lat' => 30.9714, 'lng' => 70.9429],
+                ['street' => 'Civil Hospital Lane', 'lat' => 30.9625, 'lng' => 70.9344],
+                ['street' => 'District Council Road', 'lat' => 30.9680, 'lng' => 70.9276],
             ];
 
         $spot = $spots[$i % count($spots)];
@@ -437,7 +451,7 @@ class KpiInspectionSeeder extends Seeder
             ['tehsil_id' => 83, 'district_id' => 23, 'division_id' => 6, 'count' => 5, 'tehsil_name' => 'Model Town', 'district_name' => 'Lahore', 'lat' => 31.4834, 'lng' => 74.3250],
             ['tehsil_id' => 84, 'district_id' => 23, 'division_id' => 6, 'count' => 4, 'tehsil_name' => 'Raiwind', 'district_name' => 'Lahore', 'lat' => 31.2484, 'lng' => 74.2203],
             ['tehsil_id' => 85, 'district_id' => 23, 'division_id' => 6, 'count' => 4, 'tehsil_name' => 'Shalimar', 'district_name' => 'Lahore', 'lat' => 31.5870, 'lng' => 74.3805],
-            ['tehsil_id' => 24, 'district_id' => 7, 'division_id' => 2, 'count' => 11, 'tehsil_name' => 'Layyah', 'district_name' => 'Layyah', 'lat' => 30.9617, 'lng' => 70.9397, 'inspector' => 'ac.layyah'],
+            ['tehsil_id' => 24, 'district_id' => 7, 'division_id' => 2, 'count' => 22, 'tehsil_name' => 'Layyah', 'district_name' => 'Layyah', 'lat' => 30.9617, 'lng' => 70.9397, 'inspector' => 'ac.layyah'],
             ['tehsil_id' => 25, 'district_id' => 7, 'division_id' => 2, 'count' => 7, 'tehsil_name' => 'Karor Lal Esan', 'district_name' => 'Layyah', 'lat' => 30.9520, 'lng' => 70.9280, 'inspector' => 'ac.karor'],
             ['tehsil_id' => 27, 'district_id' => 8, 'division_id' => 2, 'count' => 9, 'tehsil_name' => 'Muzaffargarh', 'district_name' => 'Muzaffargarh', 'lat' => 30.0703, 'lng' => 71.1933, 'inspector' => 'dc.layyah'],
         ];
@@ -464,12 +478,15 @@ class KpiInspectionSeeder extends Seeder
             for ($i = 0; $i < $plan['count']; $i++) {
                 $demoStatuses = $this->demoTehsilStatusPlan($plan['tehsil_id']);
                 $status = $demoStatuses[$i] ?? $statuses[$globalIndex % count($statuses)];
+                if ($card->slug === 'inspection-of-health-facilities' && (int) $plan['tehsil_id'] === 24 && $i >= 2) {
+                    $status = 'pending_review';
+                }
                 $completedDayRecordCount = $this->healthCompletedDayRecordCount($card->slug, $demoStatuses, $plan['count']);
                 $isHealthCompletedDayRecord = $card->slug === 'inspection-of-health-facilities'
                     && $demoStatuses !== null
                     && $i < $completedDayRecordCount;
                 $inspectedAt = $card->slug === 'inspection-of-health-facilities'
-                    ? $this->healthInspectionDateForIndex($i, $globalIndex, $plan['count'], $completedDayRecordCount, $demoStatuses !== null)
+                    ? $this->healthInspectionDateForIndex($i, $globalIndex, $plan['count'], $completedDayRecordCount, $demoStatuses !== null, (int) $plan['tehsil_id'])
                     : ($demoStatuses !== null && isset($demoStatuses[$i])
                         ? $this->activeWeekDateForIndex($i)
                         : $this->visitInspectionDateForIndex($globalIndex, $plan['count']));
@@ -478,7 +495,7 @@ class KpiInspectionSeeder extends Seeder
                 $detailData = \Database\Seeders\Support\KpiInspectionDetailFactory::forSlug($card->slug, $globalIndex);
                 if ($card->slug === 'inspection-of-health-facilities') {
                     $detailData = $this->healthObservationTemplate($i, $plan['tehsil_id']);
-                    if ($isHealthCompletedDayRecord) {
+                    if ($isHealthCompletedDayRecord && $plan['tehsil_id'] !== 24) {
                         $detailData['inspection_list_only'] = true;
                     }
                 }
@@ -490,6 +507,38 @@ class KpiInspectionSeeder extends Seeder
                 $inspectionName = $card->slug === 'inspection-of-health-facilities'
                     ? $this->healthFacilityInspectionName($entity, $plan['tehsil_name'], $i)
                     : sprintf('%s — %s #%02d', $entity['name'], $plan['tehsil_name'], $i + 1);
+                $identifier = $entity['id'].'-'.$plan['tehsil_id'];
+
+                if ($card->slug === 'inspection-of-health-facilities') {
+                    $baseline = DB::table('health_facility_baselines')
+                        ->where('tehsil_id', $plan['tehsil_id'])
+                        ->orderBy('facility_code')
+                        ->offset(min($i, 19))
+                        ->limit(1)
+                        ->first();
+
+                    if ($baseline) {
+                        $inspectionName = (string) $baseline->name;
+                        $identifier = (string) $baseline->facility_code;
+                        $fullAddress = (string) $baseline->address;
+                        $location = [
+                            'street' => $plan['tehsil_name'],
+                            'lat' => (float) $baseline->latitude,
+                            'lng' => (float) $baseline->longitude,
+                        ];
+
+                        if ($plan['tehsil_id'] === 24 && $i < 2) {
+                            $location['lat'] = round($location['lat'] + ($i * 0.006), 7);
+                            $location['lng'] = round($location['lng'] + ($i * 0.005), 7);
+                        }
+
+                        if ($plan['tehsil_id'] === 24 && $i >= 2) {
+                            $spread = $i - 2;
+                            $location['lat'] = round($location['lat'] + (($spread % 5) * 0.0025), 7);
+                            $location['lng'] = round($location['lng'] + ((int) floor($spread / 5) * 0.0025), 7);
+                        }
+                    }
+                }
 
                 $rows[] = [
                     'uuid' => (string) Str::uuid(),
@@ -504,7 +553,7 @@ class KpiInspectionSeeder extends Seeder
                     'inspection_title' => $inspectionType,
                     'entity_name' => $inspectionName,
                     'entity_type' => $entity['type'],
-                    'identifier' => $entity['id'].'-'.$plan['tehsil_id'],
+                    'identifier' => $identifier,
                     'address' => $fullAddress,
                     'latitude' => $location['lat'],
                     'longitude' => $location['lng'],
@@ -551,72 +600,78 @@ class KpiInspectionSeeder extends Seeder
     {
         [$rows, $attachments] = $this->buildVisitKpiInspections($card, $users, $refCounter, $now, $batch);
 
-        if ($card->slug !== 'inspection-of-health-facilities') {
-            return [$rows, $attachments];
-        }
-
-        $dcInspector = $users->get('dc.layyah');
-        $reviewer = $users->get('dc.layyah');
         $entities = $this->healthFacilityEntities();
-        $side = [
-            'division_id' => 2,
-            'district_id' => 7,
-            'tehsil_id' => 24,
-            'tehsil_name' => 'Layyah',
-            'district_name' => 'Layyah',
-            'lat' => 30.9617,
-            'lng' => 70.9397,
-        ];
 
         foreach ([
-            ['status' => 'approved', 'index' => 0],
-            ['status' => 'pending_review', 'index' => 1],
-        ] as $offset => $plan) {
-            $entity = $entities[$offset % count($entities)];
-            $inspectedAt = $this->activeWeekDateForIndex($offset + 2);
-            $reference = sprintf('INSP-%s-%06d', $now->format('Y'), $refCounter++);
-            $detailData = $this->healthObservationTemplate($plan['index'], 24);
-            $location = $this->locationFor($side, $offset + 20);
-            $fullAddress = $this->fullAddress($side, $entity, $location);
+            ['tehsil_id' => 81, 'district_id' => 23, 'division_id' => 6, 'tehsil_name' => 'Lahore City', 'district_name' => 'Lahore', 'inspector' => 'ac.lahore'],
+            ['tehsil_id' => 25, 'district_id' => 7, 'division_id' => 2, 'tehsil_name' => 'Karor Lal Esan', 'district_name' => 'Layyah', 'inspector' => 'ac.karor'],
+        ] as $sideConfig) {
+            for ($i = 0; $i < 3; $i++) {
+                $entity = $entities[$i % count($entities)];
+                $inspectedAt = $this->latestCompletedDayDateForIndex($i + 10);
+                $reference = sprintf('INSP-%s-%06d', $now->format('Y'), $refCounter++);
+                $detailData = $this->healthObservationTemplate($i, (int) $sideConfig['tehsil_id']);
+                $detailData['inspection_list_only'] = true;
+                $side = [
+                    'division_id' => $sideConfig['division_id'],
+                    'district_id' => $sideConfig['district_id'],
+                    'tehsil_id' => $sideConfig['tehsil_id'],
+                    'tehsil_name' => $sideConfig['tehsil_name'],
+                    'district_name' => $sideConfig['district_name'],
+                    'lat' => match ($sideConfig['tehsil_id']) {
+                        81 => 31.5204,
+                        25 => 30.9520,
+                        default => 30.9617,
+                    },
+                    'lng' => match ($sideConfig['tehsil_id']) {
+                        81 => 74.3587,
+                        25 => 70.9280,
+                        default => 70.9397,
+                    },
+                ];
+                $location = $this->locationFor($side, $i + 30);
+                $fullAddress = $this->fullAddress($side, $entity, $location);
+                $inspector = $users->get($sideConfig['inspector']);
 
-            $rows[] = [
-                'uuid' => (string) Str::uuid(),
-                'reference_no' => $reference,
-                'kpi_card_id' => $card->id,
-                'kpi_submission_id' => null,
-                'division_id' => $side['division_id'],
-                'district_id' => $side['district_id'],
-                'tehsil_id' => $side['tehsil_id'],
-                'inspected_by' => $dcInspector?->id,
-                'reviewed_by' => $plan['status'] === 'pending_review' ? null : $reviewer?->id,
-                'inspection_title' => 'DC Health Facility Review',
-                'entity_name' => 'District Health Facility — Review Visit',
-                'entity_type' => 'DC Health Facility Review',
-                'identifier' => $entity['id'].'-dc-'.$offset,
-                'address' => $fullAddress,
-                'latitude' => $location['lat'],
-                'longitude' => $location['lng'],
-                'inspection_datetime' => $inspectedAt,
-                'status' => $plan['status'],
-                'observations' => json_encode(['DC-led health facility inspection completed.']),
-                'actions_required' => json_encode(['Continue district monitoring during current reporting week.']),
-                'actions_taken' => json_encode(['Evidence uploaded and checklist completed.']),
-                'detail_data' => json_encode($detailData),
-                'review_remarks' => $plan['status'] === 'approved' ? 'DC inspection evidence verified and accepted.' : null,
-                'rejection_reason' => null,
-                'reviewed_at' => $plan['status'] === 'pending_review' ? null : $inspectedAt->copy()->addHours(4),
-                'is_demo' => true,
-                'seed_batch' => $batch,
-                'created_at' => $inspectedAt,
-                'updated_at' => $plan['status'] === 'pending_review' ? $inspectedAt : $inspectedAt->copy()->addHours(4),
-            ];
+                $rows[] = [
+                    'uuid' => (string) Str::uuid(),
+                    'reference_no' => $reference,
+                    'kpi_card_id' => $card->id,
+                    'kpi_submission_id' => null,
+                    'division_id' => $side['division_id'],
+                    'district_id' => $side['district_id'],
+                    'tehsil_id' => $side['tehsil_id'],
+                    'inspected_by' => $inspector?->id,
+                    'reviewed_by' => $inspector?->id,
+                    'inspection_title' => $entity['title'],
+                    'entity_name' => $entity['name'],
+                    'entity_type' => $entity['type'],
+                    'identifier' => $entity['id'].'-cd-'.$sideConfig['tehsil_id'].'-'.$i,
+                    'address' => $fullAddress,
+                    'latitude' => $location['lat'],
+                    'longitude' => $location['lng'],
+                    'inspection_datetime' => $inspectedAt,
+                    'status' => 'approved',
+                    'observations' => json_encode(['Completed-day health inspection evidence captured.']),
+                    'actions_required' => json_encode(['Continue routine monitoring during current reporting week.']),
+                    'actions_taken' => json_encode(['Evidence uploaded and checklist completed.']),
+                    'detail_data' => json_encode($detailData),
+                    'review_remarks' => 'Completed-day inspection verified.',
+                    'rejection_reason' => null,
+                    'reviewed_at' => $inspectedAt->copy()->addHours(3),
+                    'is_demo' => true,
+                    'seed_batch' => $batch,
+                    'created_at' => $inspectedAt,
+                    'updated_at' => $inspectedAt->copy()->addHours(3),
+                ];
 
-            $attachments[] = [
-                'reference_no' => $reference,
-                'slug' => $card->slug,
-                'count' => 1,
-                'ts' => $inspectedAt,
-            ];
+                $attachments[] = [
+                    'reference_no' => $reference,
+                    'slug' => $card->slug,
+                    'count' => 1,
+                    'ts' => $inspectedAt,
+                ];
+            }
         }
 
         return [$rows, $attachments];
@@ -657,8 +712,17 @@ class KpiInspectionSeeder extends Seeder
         int $globalIndex,
         int $tehsilTotal,
         int $completedDayRecordCount,
-        bool $priorityTehsil
+        bool $priorityTehsil,
+        int $tehsilId = 0,
     ): Carbon {
+        if ($tehsilId === 24) {
+            if ($index < 2) {
+                return $this->activeWeekDateForIndex($index + $globalIndex);
+            }
+
+            return $this->latestCompletedDayDateForIndex($index - 2);
+        }
+
         if ($completedDayRecordCount > 0 && $index < $completedDayRecordCount) {
             return $this->latestCompletedDayDateForIndex($index);
         }
@@ -701,7 +765,7 @@ class KpiInspectionSeeder extends Seeder
     private function demoTehsilStatusPlan(int $tehsilId): ?array
     {
         return match ($tehsilId) {
-            24 => ['approved', 'pending_review', 'approved', 'rejected', 'approved', 'pending_review', 'approved', 'pending_review'],
+            24 => ['approved', 'pending_review'],
             25 => ['approved', 'rejected', 'approved', 'pending_review', 'approved', 'approved', 'rejected'],
             81 => ['approved', 'pending_review', 'approved', 'rejected', 'approved', 'pending_review', 'approved', 'pending_review'],
             default => null,

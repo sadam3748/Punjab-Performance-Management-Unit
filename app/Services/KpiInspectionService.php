@@ -783,6 +783,31 @@ class KpiInspectionService
         ];
     }
 
+    public function countHealthDeficiencies(KpiInspection $inspection): int
+    {
+        $detail = is_array($inspection->detail_data)
+            ? $inspection->detail_data
+            : (json_decode($inspection->detail_data ?? '[]', true) ?: []);
+
+        $count = 0;
+
+        foreach (HealthObservationLabels::chartCategories() as $field) {
+            $rawValue = $detail[$field] ?? $this->legacyHealthObservationDetailValue($detail, $field);
+
+            if ($rawValue === null || $rawValue === '') {
+                continue;
+            }
+
+            $displayValue = HealthObservationLabels::displayValue($field, $rawValue);
+
+            if (HealthObservationLabels::isNegativeDisplayValue($field, $displayValue)) {
+                $count++;
+            }
+        }
+
+        return $count;
+    }
+
     /** @param  array<string, mixed>  $detail */
     private function legacyHealthObservationDetailValue(array $detail, string $field): mixed
     {

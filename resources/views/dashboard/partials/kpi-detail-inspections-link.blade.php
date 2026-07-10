@@ -9,6 +9,7 @@
         'geo_division' => $geo['geo_division'] ?? null,
         'geo_district' => $geo['geo_district'] ?? null,
         'geo_tehsil' => $geo['geo_tehsil'] ?? null,
+        'insp_per_page' => 20,
     ], fn ($v) => $v !== null && $v !== '');
     $total = $inspectionRecords->total();
 @endphp

@@ -463,6 +463,10 @@
             updateWeekOptions(data.period_filters);
             document.getElementById('kpiDetailMetrics').innerHTML = data.metrics_html;
 
+            if (cfg.isHealthDashboard && data.health_map) {
+                updateHealthMapSection(data.health_map);
+            }
+
             const inspEl = document.getElementById('kpiDetailInspections');
             if (inspEl && data.inspections_html) {
                 inspEl.innerHTML = data.inspections_html;
@@ -489,6 +493,173 @@
         } finally {
             setLoading(false);
         }
+    }
+
+    let healthMapInstance = null;
+
+    function buildHealthMapPin(color, label, statusLabel) {
+        const safeLabel = escapeHtml(label || '');
+        const safeStatus = escapeHtml(statusLabel || '');
+        return L.divIcon({
+            className: 'ppmu-health-map-pin-wrap',
+            html: `
+                <div class="ppmu-health-map-pin ppmu-health-map-pin-${color}" title="${safeStatus} — ${safeLabel}">
+                    <span class="ppmu-health-map-pin-ring"></span>
+                    <span class="ppmu-health-map-pin-core"><i class="bi bi-geo-alt-fill"></i></span>
+                </div>`,
+            iconSize: [38, 46],
+            iconAnchor: [19, 46],
+            popupAnchor: [0, -42],
+        });
+    }
+
+    function spreadMapPins(pins) {
+        const groups = new Map();
+
+        pins.forEach((pin, index) => {
+            const key = `${Number(pin.lat).toFixed(5)}:${Number(pin.lng).toFixed(5)}`;
+            if (!groups.has(key)) {
+                groups.set(key, []);
+            }
+            groups.get(key).push({ ...pin, _index: index });
+        });
+
+        const spread = [];
+        groups.forEach((items) => {
+            if (items.length === 1) {
+                spread.push(items[0]);
+                return;
+            }
+
+            const radius = 0.0018;
+            items.forEach((pin, offset) => {
+                const angle = (Math.PI * 2 * offset) / items.length;
+                spread.push({
+                    ...pin,
+                    lat: Number(pin.lat) + Math.cos(angle) * radius,
+                    lng: Number(pin.lng) + Math.sin(angle) * radius,
+                });
+            });
+        });
+
+        return spread.sort((a, b) => (a._index ?? 0) - (b._index ?? 0));
+    }
+
+    function escapeHtml(value) {
+        return String(value ?? '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;');
+    }
+
+    function healthMapPopupHtml(pin) {
+        return `
+            <div class="ppmu-health-map-popup">
+                <h4>Inspection Information</h4>
+                <dl>
+                    <div><dt>Inspection ID</dt><dd>${escapeHtml(pin.inspection_id)}</dd></div>
+                    <div><dt>Type</dt><dd>${escapeHtml(pin.inspection_type)}</dd></div>
+                    <div><dt>Facility</dt><dd>${escapeHtml(pin.facility_name)}</dd></div>
+                    <div><dt>Date &amp; Time</dt><dd>${escapeHtml(pin.inspection_date)}</dd></div>
+                    <div><dt>Tehsil</dt><dd>${escapeHtml(pin.tehsil)}</dd></div>
+                    <div><dt>Address</dt><dd>${escapeHtml(pin.address)}</dd></div>
+                    <div><dt>Status</dt><dd><span class="ppmu-health-map-status ppmu-health-map-status-${escapeHtml(pin.color)}">${escapeHtml(pin.review_status)}</span></dd></div>
+                    <div><dt>Observation Issues</dt><dd>${escapeHtml(pin.observation_issues)}</dd></div>
+                </dl>
+                <a href="${escapeHtml(pin.detail_url)}" class="ppmu-health-map-popup-btn" target="_blank" rel="noopener noreferrer">View Detail</a>
+            </div>`;
+    }
+
+    function initHealthMap(mapData) {
+        const el = document.getElementById('ppmuHealthDashboardMap');
+        if (!el || !window.L) return;
+
+        if (healthMapInstance) {
+            healthMapInstance.remove();
+            healthMapInstance = null;
+        }
+
+        const pins = spreadMapPins(Array.isArray(mapData?.pins) ? mapData.pins : []);
+        const center = mapData?.center || { lat: 31.1704, lng: 72.7097, zoom: 7 };
+        const frameWrap = document.getElementById('ppmuHealthMapFrameWrap');
+        const emptyEl = document.getElementById('ppmuHealthMapEmpty');
+
+        healthMapInstance = L.map(el, {
+            scrollWheelZoom: true,
+            zoomControl: false,
+            attributionControl: false,
+        });
+
+        L.control.zoom({ position: 'topright' }).addTo(healthMapInstance);
+        L.control.attribution({ prefix: false, position: 'bottomright' }).addTo(healthMapInstance);
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap',
+            maxZoom: 19,
+        }).addTo(healthMapInstance);
+
+        if (!pins.length) {
+            healthMapInstance.setView([center.lat, center.lng], center.zoom);
+            frameWrap?.classList.add('is-empty');
+            if (emptyEl) emptyEl.hidden = false;
+            setTimeout(() => healthMapInstance.invalidateSize(), 200);
+            return;
+        }
+
+        frameWrap?.classList.remove('is-empty');
+        if (emptyEl) emptyEl.hidden = true;
+
+        const bounds = [];
+        pins.forEach(pin => {
+            const marker = L.marker([pin.lat, pin.lng], {
+                icon: buildHealthMapPin(pin.color, pin.facility_name, pin.review_status),
+                riseOnHover: true,
+            })
+                .bindPopup(healthMapPopupHtml(pin), { maxWidth: 300, className: 'ppmu-health-map-leaflet-popup' })
+                .bindTooltip(`${escapeHtml(pin.review_status)} — ${escapeHtml(pin.facility_name)}`, {
+                    direction: 'top',
+                    offset: [0, -40],
+                    opacity: 0.98,
+                    className: `ppmu-health-map-marker-tooltip ppmu-health-map-marker-tooltip-${pin.color}`,
+                })
+                .addTo(healthMapInstance);
+            bounds.push([pin.lat, pin.lng]);
+        });
+
+        if (bounds.length === 1) {
+            healthMapInstance.setView(bounds[0], 15);
+        } else {
+            healthMapInstance.fitBounds(bounds, { padding: [56, 56], maxZoom: 14 });
+        }
+
+        setTimeout(() => healthMapInstance.invalidateSize(), 200);
+    }
+
+    function updateHealthMapSection(mapData) {
+        if (!cfg.isHealthDashboard) return;
+
+        const frameWrap = document.getElementById('ppmuHealthMapFrameWrap');
+        const emptyEl = document.getElementById('ppmuHealthMapEmpty');
+        const pinCount = Number(mapData?.pin_count ?? (mapData?.pins || []).length);
+        const scopeLabel = document.querySelector('#ppmuHealthMapScope .ppmu-health-map-scope-label');
+        const pinCountEl = document.getElementById('ppmuHealthMapPinCount');
+
+        if (scopeLabel && mapData?.scope_label) {
+            scopeLabel.textContent = mapData.scope_label;
+        }
+        if (pinCountEl) {
+            pinCountEl.textContent = `${pinCount} ${pinCount === 1 ? 'inspection mapped' : 'inspections mapped'}`;
+        }
+
+        if (frameWrap) {
+            frameWrap.classList.toggle('is-empty', pinCount === 0);
+        }
+        if (emptyEl) {
+            emptyEl.hidden = pinCount > 0;
+        }
+
+        initHealthMap(mapData || {});
     }
 
     function togglePeriodControls(type) {
@@ -567,4 +738,7 @@
     bindInspectionFilters();
     bindGeoFilters();
     initFilters();
+    if (cfg.isHealthDashboard) {
+        updateHealthMapSection(cfg.healthMap || {});
+    }
 })();

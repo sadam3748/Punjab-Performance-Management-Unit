@@ -152,6 +152,21 @@ class KpiInspectionTest extends TestCase
                 "{$username} should have multiple Health inspections for the last completed day."
             );
         }
+
+        $layyahRequest = \Illuminate\Http\Request::create('/inspections', 'GET', [
+            'kpi_card_id' => $card->id,
+            'insp_status' => KpiInspection::STATUS_PENDING,
+            'insp_per_page' => 50,
+        ]);
+        $layyahPending = $service->getAllInspectionsList(
+            User::where('username', 'ac.layyah')->firstOrFail(),
+            $layyahRequest,
+        );
+
+        $this->assertSame(20, $layyahPending->total());
+        $this->assertTrue(
+            $layyahPending->getCollection()->every(fn (KpiInspection $inspection) => $inspection->status === KpiInspection::STATUS_PENDING),
+        );
     }
 
     public function test_health_inspection_detail_shows_observation_values_and_evidence_actions(): void
