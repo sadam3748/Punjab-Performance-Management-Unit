@@ -17,6 +17,9 @@
     'observationNegativeLabel' => null,
     'attentionText' => null,
     'cardHelper' => null,
+    'attendanceEnrolled' => null,
+    'attendancePresent' => null,
+    'attendancePercent' => null,
 ])
 
 @php
@@ -62,6 +65,12 @@
             @if($cardHelper)
                 <small class="ppmu-pi-card-helper">{{ $cardHelper }}</small>
             @endif
+        @elseif($displayMode === 'student_attendance')
+            <div class="ppmu-observation-chips" aria-label="{{ $label }} attendance summary">
+                <span class="ppmu-obs-chip ppmu-obs-chip-available">Enrolled: {{ (int) $attendanceEnrolled }}</span>
+                <span class="ppmu-obs-chip ppmu-obs-chip-available">Present: {{ (int) $attendancePresent }}</span>
+                <span class="ppmu-obs-chip ppmu-obs-chip-unavailable">Attendance: {{ number_format((float) $attendancePercent, 1) }}%</span>
+            </div>
         @else
             <strong class="ppmu-pi-value">
                 {{ $displayValue }}@if($unit)<em>{{ $unit }}</em>@endif

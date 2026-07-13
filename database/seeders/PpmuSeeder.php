@@ -14,6 +14,7 @@ class PpmuSeeder extends Seeder
         DB::table('kpi_inspection_attachments')->truncate();
         DB::table('kpi_inspections')->truncate();
         DB::table('health_facility_baselines')->truncate();
+        DB::table('education_institution_baselines')->truncate();
         DB::table('kpi_scores')->truncate();
         DB::table('kpi_submission_values')->truncate();
         DB::table('kpi_submissions')->truncate();
@@ -31,6 +32,7 @@ class PpmuSeeder extends Seeder
             KpiAssignmentSeeder::class,
             KpiSubmissionSeeder::class,
             HealthFacilityBaselineSeeder::class,
+            EducationInstitutionBaselineSeeder::class,
             KpiInspectionSeeder::class,
             KpiScoreSeeder::class,
         ]);

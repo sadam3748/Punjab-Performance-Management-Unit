@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Data\EducationObservationLabels;
 use App\Data\HealthObservationLabels;
 use App\Models\KpiCard;
 use App\Models\KpiInspection;
@@ -112,6 +113,49 @@ class KpiInspectionService
         $this->applyListFilters($query, $request, $user);
 
         return (int) $query->count();
+    }
+
+    /** Education KPI inspected count — AC scope counts AC-led inspections only. */
+    public function countEducationInspected(KpiCard $card, User $user, Request $request): int
+    {
+        return $this->countHealthInspected($card, $user, $request);
+    }
+
+    /** @return Collection<int, KpiInspection> */
+    public function educationInspectionsForMetrics(KpiCard $card, User $user, Request $request): Collection
+    {
+        return $this->healthInspectionsForMetrics($card, $user, $request);
+    }
+
+    public function educationReviewTarget(User $user, Collection $inspections, int $institutionsInspected): int
+    {
+        return $this->healthReviewTarget($user, $inspections, $institutionsInspected);
+    }
+
+    /** @return array{approved: int, pending: int, rejected: int} */
+    public function educationReviewStatusCounts(Collection $inspections, int $reviewTarget): array
+    {
+        return $this->healthReviewStatusCounts($inspections, $reviewTarget);
+    }
+
+    public function educationAcVisitsCompleted(Collection $inspections, Collection $tehsilIds): int
+    {
+        return $this->healthAcVisitsCompleted($inspections, $tehsilIds);
+    }
+
+    public function educationDcVisitsCompleted(Collection $inspections, Collection $districtIds): int
+    {
+        return $this->healthDcVisitsCompleted($inspections, $districtIds);
+    }
+
+    public function educationTehsilComparison(User $user, Request $request, Collection $inspections): Collection
+    {
+        return $this->healthTehsilComparison($user, $request, $inspections);
+    }
+
+    public function educationDistrictComparison(User $user, Request $request, Collection $inspections): Collection
+    {
+        return $this->healthDistrictComparison($user, $request, $inspections);
     }
 
     /** Health KPI inspected count — AC scope counts AC-led inspections only. */
@@ -665,7 +709,10 @@ class KpiInspectionService
 
     private function excludeInspectionListOnlyRecords(Builder $query, KpiCard $card): void
     {
-        if ($card->slug !== 'inspection-of-health-facilities') {
+        if (! in_array($card->slug, [
+            'inspection-of-health-facilities',
+            'inspection-of-educational-institutions',
+        ], true)) {
             return;
         }
 
@@ -679,8 +726,15 @@ class KpiInspectionService
     /** @return list<array{label: string, value: string, key: string, observation_key?: string, has_evidence: bool, evidence_url?: string|null, evidence_anchor: string, status_tone: string}> */
     private function observationCards(KpiCard $card, KpiInspection $inspection, ?string $fallbackImage = null): array
     {
-        if ($card->slug !== 'inspection-of-health-facilities') {
-            return collect($this->dashboardConfig->detailFieldsFor($card->slug))
+        if ($card->slug === 'inspection-of-health-facilities') {
+            return $this->healthObservationCards($inspection, $fallbackImage);
+        }
+
+        if ($card->slug === 'inspection-of-educational-institutions') {
+            return $this->educationObservationCards($inspection, $fallbackImage);
+        }
+
+        return collect($this->dashboardConfig->detailFieldsFor($card->slug))
                 ->map(function (array $field) use ($inspection): array {
                     $key = (string) $field['field'];
                     $value = match ($key) {
@@ -698,8 +752,11 @@ class KpiInspectionService
                     ];
                 })
                 ->all();
-        }
+    }
 
+    /** @return list<array{label: string, value: string, key: string, observation_key?: string, has_evidence: bool, evidence_url?: string|null, evidence_anchor: string, status_tone: string}> */
+    private function healthObservationCards(KpiInspection $inspection, ?string $fallbackImage = null): array
+    {
         $fields = collect(HealthObservationLabels::chartCategories())
             ->mapWithKeys(fn (string $detailField, string $title) => [
                 $detailField => [
@@ -781,6 +838,134 @@ class KpiInspectionService
             'url' => null,
             'anchor' => '#evidence-images',
         ];
+    }
+
+    /** @return list<array{label: string, value: string, key: string, observation_key?: string, has_evidence: bool, evidence_url?: string|null, evidence_anchor: string, status_tone: string}> */
+    private function educationObservationCards(KpiInspection $inspection, ?string $fallbackImage = null): array
+    {
+        $detail = is_array($inspection->detail_data)
+            ? $inspection->detail_data
+            : (json_decode($inspection->detail_data ?? '[]', true) ?: []);
+
+        $availabilityFields = [
+            'cleanliness_available' => ['label' => 'Cleanliness and General Outlook', 'observation_key' => 'overall_condition'],
+            'teachers_staff_available' => ['label' => 'Teachers and Staff Attendance', 'observation_key' => 'attendance_register'],
+            'books_learning_material_available' => ['label' => 'Books and Learning Material', 'observation_key' => 'books_learning_material'],
+            'school_facilities_utilities_available' => ['label' => 'School Facilities and Utilities', 'observation_key' => 'non_functional_facility'],
+            'drinking_water_available' => ['label' => 'Drinking Water', 'observation_key' => 'drinking_water_facility'],
+        ];
+
+        $cards = collect($availabilityFields)->map(function (array $meta, string $key) use ($inspection, $detail, $fallbackImage): array {
+            $rawValue = $detail[$key] ?? $this->legacyEducationObservationDetailValue($detail, $key);
+            $displayValue = EducationObservationLabels::displayValue($key, $rawValue);
+            $evidence = $this->observationEvidence($inspection, $meta['observation_key'], $fallbackImage);
+
+            return [
+                'label' => $meta['label'],
+                'value' => $displayValue,
+                'key' => $key,
+                'observation_key' => $meta['observation_key'],
+                'has_evidence' => $evidence['has'],
+                'evidence_url' => $evidence['url'],
+                'evidence_anchor' => $evidence['anchor'],
+                'status_tone' => EducationObservationLabels::isNegativeDisplayValue($key, $displayValue) ? 'warning' : 'success',
+            ];
+        });
+
+        $enrolmentRaw = $detail['student_enrolment_checked'] ?? null;
+        $enrolmentDisplay = EducationObservationLabels::displayValue('student_enrolment_checked', $enrolmentRaw);
+        $enrolmentEvidence = $this->observationEvidence($inspection, 'enrolment_register', $fallbackImage);
+        $cards->push([
+            'label' => 'Student Enrolment Checked',
+            'value' => $enrolmentDisplay,
+            'key' => 'student_enrolment_checked',
+            'observation_key' => 'enrolment_register',
+            'has_evidence' => $enrolmentEvidence['has'],
+            'evidence_url' => $enrolmentEvidence['url'],
+            'evidence_anchor' => $enrolmentEvidence['anchor'],
+            'status_tone' => EducationObservationLabels::isNegativeDisplayValue('student_enrolment_checked', $enrolmentDisplay) ? 'warning' : 'success',
+        ]);
+
+        $enrolled = (int) ($detail['students_enrolled'] ?? 0);
+        $present = (int) ($detail['students_present'] ?? 0);
+        $attendancePct = $enrolled > 0 ? round(($present / $enrolled) * 100, 1) : 0.0;
+        $attendanceIssue = EducationObservationLabels::studentAttendanceIssue($detail);
+        $attendanceEvidence = $this->observationEvidence($inspection, 'attendance_register', $fallbackImage);
+        $cards->push([
+            'label' => 'Student Attendance',
+            'value' => sprintf('%d enrolled / %d present (%s%%)', $enrolled, $present, number_format($attendancePct, 1)),
+            'key' => 'student_attendance',
+            'observation_key' => 'attendance_register',
+            'has_evidence' => $attendanceEvidence['has'],
+            'evidence_url' => $attendanceEvidence['url'],
+            'evidence_anchor' => $attendanceEvidence['anchor'],
+            'status_tone' => $attendanceIssue ? 'warning' : 'success',
+        ]);
+
+        $issueCount = $this->countEducationDeficiencies($inspection);
+        $cards->push([
+            'label' => 'Observation Issues',
+            'value' => (string) $issueCount,
+            'key' => 'observation_attention_required',
+            'has_evidence' => false,
+            'evidence_anchor' => '#evidence-images',
+            'status_tone' => $issueCount > 0 ? 'warning' : 'success',
+        ]);
+
+        return $cards->values()->all();
+    }
+
+    public function countEducationDeficiencies(KpiInspection $inspection): int
+    {
+        $detail = is_array($inspection->detail_data)
+            ? $inspection->detail_data
+            : (json_decode($inspection->detail_data ?? '[]', true) ?: []);
+
+        $count = 0;
+
+        foreach (EducationObservationLabels::chartCategories() as $field) {
+            $rawValue = $detail[$field] ?? $this->legacyEducationObservationDetailValue($detail, $field);
+
+            if ($rawValue === null || $rawValue === '') {
+                continue;
+            }
+
+            $displayValue = EducationObservationLabels::displayValue($field, $rawValue);
+
+            if (EducationObservationLabels::isNegativeDisplayValue($field, $displayValue)) {
+                $count++;
+            }
+        }
+
+        if (EducationObservationLabels::studentAttendanceIssue($detail)) {
+            $count++;
+        }
+
+        return $count;
+    }
+
+    /** @param  array<string, mixed>  $detail */
+    private function legacyEducationObservationDetailValue(array $detail, string $field): mixed
+    {
+        return match ($field) {
+            'cleanliness_available' => (($detail['cleanliness'] ?? '') === 'Poor' || str_contains(strtolower((string) ($detail['cleanliness'] ?? '')), 'unsatisfactory'))
+                ? 'not_available'
+                : 'available',
+            'teachers_staff_available' => in_array($detail['teachers_present'] ?? '', ['No', 'Partial'], true)
+                ? 'not_available'
+                : 'available',
+            'books_learning_material_available' => in_array($detail['tlm_availability'] ?? '', ['Shortage', 'Partial'], true)
+                ? 'not_available'
+                : 'available',
+            'school_facilities_utilities_available' => in_array($detail['facility_deficiency'] ?? '', ['Major', 'Minor'], true)
+                ? 'not_available'
+                : 'available',
+            'drinking_water_available' => ($detail['drinking_water_available'] ?? 'available') === 'not_available'
+                ? 'not_available'
+                : 'available',
+            'student_enrolment_checked' => ($detail['student_enrolment_checked'] ?? 'yes') === 'no' ? 'no' : 'yes',
+            default => null,
+        };
     }
 
     public function countHealthDeficiencies(KpiInspection $inspection): int

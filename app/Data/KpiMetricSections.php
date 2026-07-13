@@ -84,55 +84,57 @@ class KpiMetricSections
     private static function educationSections(?string $role): array
     {
         $coverage = [
-            ['field' => 'total_institutions', 'label' => 'Total Institutions'],
-            ['field' => 'institutions_inspected', 'label' => 'Inspected'],
-            ['field' => 'institutions_not_inspected', 'label' => 'Not Inspected'],
-            ['field' => 'validation_target', 'label' => 'Validation Target'],
-            ['field' => 'validations_completed', 'label' => 'Validated'],
-            ['field' => 'inspections_pending', 'label' => 'Pending'],
+            ['field' => 'total_institutions', 'label' => 'Total Educational Institutions'],
+            ['field' => 'institutions_inspected', 'label' => 'Institutions Inspected'],
+            ['field' => 'review_target', 'label' => 'Review Target'],
+            ['field' => 'inspections_pending', 'label' => 'Pending Review'],
             ['field' => 'inspections_approved', 'label' => 'Approved'],
             ['field' => 'inspections_rejected', 'label' => 'Rejected'],
         ];
 
-        $visits = match ($role) {
-            'ac', 'field_user' => [
-                ['field' => 'ac_visits', 'label' => 'AC Visits'],
-                ['field' => 'ac_visit_target', 'label' => 'Visit Target'],
-                ['field' => 'ac_visit_achievement', 'label' => 'Visit Achievement'],
-            ],
-            'dc' => [
-                ['field' => 'ac_visits', 'label' => 'AC Visits'],
-                ['field' => 'dc_visits', 'label' => 'DC Visits'],
-                ['field' => 'school_council_meeting', 'label' => 'School Council Meeting'],
-            ],
-            'commissioner' => [
-                ['field' => 'district_visits', 'label' => 'District Visits'],
-                ['field' => 'dc_visits', 'label' => 'DC Visits'],
-                ['field' => 'school_council_meeting', 'label' => 'Meetings Held'],
-            ],
-            'chief_secretary', 'super_admin', 'pmru_user', 'viewer' => [
-                ['field' => 'districts_reporting', 'label' => 'Districts Reporting'],
-                ['field' => 'total_visits', 'label' => 'Total Visits'],
-                ['field' => 'school_council_meeting', 'label' => 'Meetings Held'],
-                ['field' => 'achievement_rate', 'label' => 'Achievement %'],
-            ],
-            default => [
-                ['field' => 'ac_visits', 'label' => 'AC Visits'],
-                ['field' => 'dc_visits', 'label' => 'DC Visits'],
-                ['field' => 'school_council_meeting', 'label' => 'School Council Meeting'],
-            ],
-        };
-
-        return [
-            ['title' => 'Institution Coverage', 'metrics' => $coverage],
-            ['title' => 'Visits & Meetings', 'metrics' => $visits],
-            ['title' => 'Issues Found', 'metrics' => [
-                ['field' => 'issues_cleanliness', 'label' => 'Cleanliness'],
-                ['field' => 'issues_teacher_absence', 'label' => 'Teacher Absence'],
-                ['field' => 'issues_tlm_shortage', 'label' => 'TLM Shortage'],
-                ['field' => 'issues_facility_deficiency', 'label' => 'Facility Deficiency'],
-            ]],
+        $sections = [
+            ['title' => 'Inspection Coverage', 'metrics' => $coverage],
         ];
+
+        if (! in_array($role, ['ac', 'field_user'], true)) {
+            $visits = match ($role) {
+                'dc' => [
+                    ['field' => 'ac_visits', 'label' => 'ACs Visits'],
+                    ['field' => 'dc_own_inspections', 'label' => 'DC Visits'],
+                    ['field' => 'school_council_meeting', 'label' => 'Council Meetings'],
+                ],
+                'commissioner' => [
+                    ['field' => 'ac_visits', 'label' => 'ACs Visits'],
+                    ['field' => 'dc_own_inspections', 'label' => 'DC Visits'],
+                    ['field' => 'school_council_meeting', 'label' => 'Council Meetings'],
+                ],
+                'chief_secretary', 'super_admin', 'pmru_user', 'viewer' => [
+                    ['field' => 'ac_visits', 'label' => 'ACs Visits'],
+                    ['field' => 'dc_own_inspections', 'label' => 'DC Visits'],
+                    ['field' => 'school_council_meeting', 'label' => 'Council Meetings'],
+                ],
+                default => [
+                    ['field' => 'ac_visits', 'label' => 'AC Inspections'],
+                    ['field' => 'dc_own_inspections', 'label' => 'DC Inspections'],
+                    ['field' => 'school_council_meeting', 'label' => 'School Council Meeting'],
+                ],
+            };
+
+            $sections[] = ['title' => 'Visits & Meetings', 'metrics' => $visits];
+        }
+
+        $sections[] = ['title' => 'Observations', 'metrics' => [
+            ['field' => 'observation_cleanliness', 'label' => 'Cleanliness and General Outlook'],
+            ['field' => 'observation_teachers_staff', 'label' => 'Teachers and Staff Attendance'],
+            ['field' => 'observation_books_learning_material', 'label' => 'Books and Learning Material'],
+            ['field' => 'observation_school_facilities_utilities', 'label' => 'School Facilities and Utilities'],
+            ['field' => 'observation_drinking_water', 'label' => 'Drinking Water'],
+            ['field' => 'observation_student_enrolment', 'label' => 'Student Enrolment Checked'],
+            ['field' => 'observation_student_attendance', 'label' => 'Student Attendance'],
+            ['field' => 'observation_attention_required', 'label' => 'Observation Issues'],
+        ]];
+
+        return $sections;
     }
 
     /**

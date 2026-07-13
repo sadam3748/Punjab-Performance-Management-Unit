@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Data\EducationObservationLabels;
 use Carbon\Carbon;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
@@ -85,7 +86,7 @@ class KpiInspectionSeeder extends Seeder
             if (in_array($card->slug, self::VISIT_KPI_SLUGS, true)) {
                 [$visitRows, $visitAttachments] = $card->slug === 'inspection-of-health-facilities'
                     ? $this->buildHealthFacilityInspections($card, $users, $refCounter, $now, $batch)
-                    : $this->buildVisitKpiInspections($card, $users, $refCounter, $now, $batch);
+                    : $this->buildEducationInstitutionInspections($card, $users, $refCounter, $now, $batch);
                 $inspectionRows = array_merge($inspectionRows, $visitRows);
                 $attachmentPlan = array_merge($attachmentPlan, $visitAttachments);
 
@@ -202,6 +203,10 @@ class KpiInspectionSeeder extends Seeder
                         $keys = $this->healthObservationAttachmentKeys();
                         $observationKey = $keys[$a % count($keys)] ?? null;
                     }
+                    if ($plan['slug'] === 'inspection-of-educational-institutions') {
+                        $keys = $this->educationObservationAttachmentKeys();
+                        $observationKey = $keys[$a % count($keys)] ?? null;
+                    }
 
                     $attachmentRows[] = [
                         'kpi_inspection_id' => $inspectionId,
@@ -225,6 +230,12 @@ class KpiInspectionSeeder extends Seeder
                 DB::table('kpi_inspection_attachments')->insert($chunk);
             }
         });
+    }
+
+    /** @return list<string> */
+    private function educationObservationAttachmentKeys(): array
+    {
+        return EducationObservationLabels::evidenceKeys();
     }
 
     /** @return list<string> */
@@ -591,6 +602,313 @@ class KpiInspectionSeeder extends Seeder
         }
 
         return [$rows, $attachments];
+    }
+
+    /**
+     * @return array{0: list<array<string, mixed>>, 1: list<array<string, mixed>>}
+     */
+    private function buildEducationInstitutionInspections(object $card, $users, int &$refCounter, Carbon $now, string $batch): array
+    {
+        $statuses = $this->statusSequence();
+        $entities = $this->educationInstitutionEntities();
+        $tehsilPlan = [
+            ['tehsil_id' => 81, 'district_id' => 23, 'division_id' => 6, 'count' => 10, 'tehsil_name' => 'Lahore City', 'district_name' => 'Lahore', 'lat' => 31.5204, 'lng' => 74.3587],
+            ['tehsil_id' => 82, 'district_id' => 23, 'division_id' => 6, 'count' => 8, 'tehsil_name' => 'Lahore Cantonment', 'district_name' => 'Lahore', 'lat' => 31.5320, 'lng' => 74.3420],
+            ['tehsil_id' => 24, 'district_id' => 7, 'division_id' => 2, 'count' => 12, 'tehsil_name' => 'Layyah', 'district_name' => 'Layyah', 'lat' => 30.9617, 'lng' => 70.9397, 'inspector' => 'ac.layyah'],
+            ['tehsil_id' => 25, 'district_id' => 7, 'division_id' => 2, 'count' => 22, 'tehsil_name' => 'Karor Lal Esan', 'district_name' => 'Layyah', 'lat' => 30.9520, 'lng' => 70.9280, 'inspector' => 'ac.karor'],
+            ['tehsil_id' => 26, 'district_id' => 7, 'division_id' => 2, 'count' => 10, 'tehsil_name' => 'Chaubara', 'district_name' => 'Layyah', 'lat' => 30.9005, 'lng' => 71.6512, 'inspector' => 'dc.layyah'],
+        ];
+
+        $rows = [];
+        $attachments = [];
+        $globalIndex = 0;
+
+        foreach ($tehsilPlan as $plan) {
+            $side = [
+                'division_id' => $plan['division_id'],
+                'district_id' => $plan['district_id'],
+                'tehsil_id' => $plan['tehsil_id'],
+                'tehsil_name' => $plan['tehsil_name'],
+                'district_name' => $plan['district_name'],
+                'lat' => $plan['lat'],
+                'lng' => $plan['lng'],
+            ];
+            $inspectorUsername = $plan['inspector'] ?? ($plan['tehsil_id'] === 24 ? 'ac.layyah' : 'ac.lahore');
+            $reviewerUsername = in_array($plan['tehsil_id'], [24, 25, 26], true) ? 'dc.layyah' : 'dc.lahore';
+            $inspector = $users->get($inspectorUsername);
+            $reviewer = $users->get($reviewerUsername);
+
+            for ($i = 0; $i < $plan['count']; $i++) {
+                $demoStatuses = $this->demoEducationTehsilStatusPlan($plan['tehsil_id']);
+                $status = $demoStatuses[$i] ?? $statuses[$globalIndex % count($statuses)];
+                if ((int) $plan['tehsil_id'] === 25 && $i >= 2) {
+                    $status = 'pending_review';
+                }
+                $completedDayRecordCount = $this->educationCompletedDayRecordCount($plan['tehsil_id'], $plan['count']);
+                $isCompletedDayRecord = (int) $plan['tehsil_id'] === 25 && $i >= 2;
+                $inspectedAt = $this->educationInspectionDateForIndex($i, $globalIndex, $plan['count'], $completedDayRecordCount, $demoStatuses !== null, (int) $plan['tehsil_id']);
+                if ((int) $plan['tehsil_id'] === 25 && $i < 2) {
+                    $inspectedAt = $this->todayInspectionDateInActiveWeek($i === 0 ? 11 : 9, $i === 0 ? 30 : 15);
+                }
+                $entity = $entities[$globalIndex % count($entities)];
+                $reference = sprintf('EDU-INSP-%s-%06d', $now->format('Y'), $refCounter++);
+                $detailData = $this->educationObservationTemplate($i, (int) $plan['tehsil_id']);
+                if ($isCompletedDayRecord && (int) $plan['tehsil_id'] !== 25) {
+                    $detailData['inspection_list_only'] = true;
+                }
+                $location = $this->locationFor($side, $globalIndex);
+                $fullAddress = $this->fullAddress($side, $entity, $location);
+                $inspectionName = $entity['name'];
+                $identifier = $entity['id'].'-'.$plan['tehsil_id'];
+
+                $baseline = DB::table('education_institution_baselines')
+                    ->where('tehsil_id', $plan['tehsil_id'])
+                    ->orderBy('institution_code')
+                    ->offset(min((int) $plan['tehsil_id'] === 25 && $i >= 2 ? $i - 2 : $i, 19))
+                    ->limit(1)
+                    ->first();
+
+                if ($baseline) {
+                    $inspectionName = (string) $baseline->name;
+                    $identifier = (string) $baseline->institution_code;
+                    $fullAddress = (string) $baseline->address;
+                    $location = [
+                        'street' => $plan['tehsil_name'],
+                        'lat' => (float) $baseline->latitude,
+                        'lng' => (float) $baseline->longitude,
+                    ];
+
+                    if ($plan['tehsil_id'] === 25 && $i < 2) {
+                        $location['lat'] = round($location['lat'] + ($i * 0.006), 7);
+                        $location['lng'] = round($location['lng'] + ($i * 0.005), 7);
+                    }
+
+                    if ($plan['tehsil_id'] === 25 && $i >= 2) {
+                        $spread = $i - 2;
+                        $location['lat'] = round($location['lat'] + (($spread % 5) * 0.0025), 7);
+                        $location['lng'] = round($location['lng'] + ((int) floor($spread / 5) * 0.0025), 7);
+                    }
+                }
+
+                $rows[] = [
+                    'uuid' => (string) Str::uuid(),
+                    'reference_no' => $reference,
+                    'kpi_card_id' => $card->id,
+                    'kpi_submission_id' => null,
+                    'division_id' => $side['division_id'],
+                    'district_id' => $side['district_id'],
+                    'tehsil_id' => $side['tehsil_id'],
+                    'inspected_by' => $inspector?->id,
+                    'reviewed_by' => $status === 'pending_review' ? null : $reviewer?->id,
+                    'inspection_title' => 'AC School Field Visit',
+                    'entity_name' => $inspectionName,
+                    'entity_type' => 'AC School Field Visit',
+                    'identifier' => $identifier,
+                    'address' => $fullAddress,
+                    'latitude' => $location['lat'],
+                    'longitude' => $location['lng'],
+                    'inspection_datetime' => $inspectedAt,
+                    'status' => $status,
+                    'observations' => json_encode(['Education institution field inspection completed.']),
+                    'actions_required' => json_encode($status === 'rejected'
+                        ? ['Re-inspection required within 7 days.']
+                        : ['Continue routine monitoring during current reporting week.']),
+                    'actions_taken' => json_encode($status !== 'pending_review'
+                        ? ['Evidence uploaded and checklist completed.']
+                        : ['Preliminary school visit completed.']),
+                    'detail_data' => json_encode($detailData),
+                    'review_remarks' => $status === 'approved' ? 'Education inspection evidence verified and accepted.' : null,
+                    'rejection_reason' => $status === 'rejected' ? 'Evidence incomplete or compliance below required threshold.' : null,
+                    'reviewed_at' => $status === 'pending_review' ? null : $inspectedAt->copy()->addHours(6),
+                    'is_demo' => true,
+                    'seed_batch' => $batch,
+                    'created_at' => $inspectedAt,
+                    'updated_at' => $status === 'pending_review' ? $inspectedAt : $inspectedAt->copy()->addHours(6),
+                ];
+
+                $attachments[] = [
+                    'reference_no' => $reference,
+                    'slug' => $card->slug,
+                    'count' => 1 + ($globalIndex % 2),
+                    'ts' => $inspectedAt,
+                ];
+
+                $globalIndex++;
+            }
+        }
+
+        return [$rows, $attachments];
+    }
+
+    /** @return list<array{title:string,name:string,type:string,id:string,address:string}> */
+    private function educationInstitutionEntities(): array
+    {
+        return [
+            ['title' => 'AC School Field Visit', 'name' => 'Govt. Boys High School Karor Lal Esan', 'type' => 'AC School Field Visit', 'id' => 'EDU-KLE-001', 'address' => 'Near Main Bazar, Karor Lal Esan'],
+            ['title' => 'AC School Field Visit', 'name' => 'Govt. Girls High School Karor Lal Esan', 'type' => 'AC School Field Visit', 'id' => 'EDU-KLE-002', 'address' => 'Girls School Road, Karor Lal Esan'],
+            ['title' => 'AC School Field Visit', 'name' => 'Govt. Elementary School Chak No. 97/TDA', 'type' => 'AC School Field Visit', 'id' => 'EDU-LAY-003', 'address' => 'Chak No. 97/TDA, Layyah'],
+            ['title' => 'AC School Field Visit', 'name' => 'Govt. Primary School Basti Gahi', 'type' => 'AC School Field Visit', 'id' => 'EDU-LAY-004', 'address' => 'Basti Gahi, Layyah'],
+            ['title' => 'AC School Field Visit', 'name' => 'Govt. High School Layyah City', 'type' => 'AC School Field Visit', 'id' => 'EDU-LAY-005', 'address' => 'Layyah City'],
+            ['title' => 'AC School Field Visit', 'name' => 'Govt. Girls Elementary School Fatehpur', 'type' => 'AC School Field Visit', 'id' => 'EDU-LAY-006', 'address' => 'Fatehpur, Layyah'],
+            ['title' => 'AC School Field Visit', 'name' => 'Govt. Primary School Chowk Azam', 'type' => 'AC School Field Visit', 'id' => 'EDU-LAY-007', 'address' => 'Chowk Azam Road, Layyah'],
+            ['title' => 'AC School Field Visit', 'name' => 'Govt. High School Chaubara', 'type' => 'AC School Field Visit', 'id' => 'EDU-CHA-008', 'address' => 'Chaubara, Layyah'],
+        ];
+    }
+
+    /** @return list<string>|null */
+    private function demoEducationTehsilStatusPlan(int $tehsilId): ?array
+    {
+        return match ($tehsilId) {
+            25 => ['approved', 'pending_review'],
+            24 => ['approved', 'pending_review', 'approved'],
+            default => null,
+        };
+    }
+
+    private function educationCompletedDayRecordCount(int $tehsilId, int $tehsilTotal): int
+    {
+        if ($tehsilId !== 25) {
+            return 0;
+        }
+
+        return min(20, max(1, $tehsilTotal - 2));
+    }
+
+    private function educationInspectionDateForIndex(
+        int $index,
+        int $globalIndex,
+        int $tehsilTotal,
+        int $completedDayRecordCount,
+        bool $priorityTehsil,
+        int $tehsilId = 0,
+    ): Carbon {
+        if ($tehsilId === 25) {
+            if ($index < 2) {
+                return $this->activeWeekDateForIndex($index + $globalIndex);
+            }
+
+            return $this->latestCompletedDayDateForIndex($index - 2);
+        }
+
+        if ($completedDayRecordCount > 0 && $index < $completedDayRecordCount) {
+            return $this->latestCompletedDayDateForIndex($index);
+        }
+
+        $activeWeekSlots = $priorityTehsil ? 3 : max(2, (int) ceil($tehsilTotal * 0.45));
+        if ($index < $completedDayRecordCount + $activeWeekSlots) {
+            return $this->activeWeekDateForIndex($index + $globalIndex);
+        }
+
+        return $this->currentMonthPreviousWeekDateForIndex($globalIndex);
+    }
+
+    /** @return array<string, mixed> */
+    private function educationObservationTemplate(int $index, int $tehsilId): array
+    {
+        $patterns = $this->educationObservationMixedPatterns();
+        $slot = ($tehsilId * 3 + $index) % count($patterns);
+        $pattern = $patterns[$slot];
+        $enrolled = 140 + (($index * 23 + $tehsilId * 7) % 360);
+        $attendanceRate = 0.72 + (($index + $tehsilId) % 6) * 0.04;
+        $pattern['students_enrolled'] = $enrolled;
+        $pattern['students_present'] = max(1, (int) round($enrolled * $attendanceRate));
+
+        return $pattern;
+    }
+
+    /** @return list<array<string, mixed>> */
+    private function educationObservationMixedPatterns(): array
+    {
+        return [
+            [
+                'cleanliness_available' => 'not_available',
+                'teachers_staff_available' => 'available',
+                'books_learning_material_available' => 'not_available',
+                'school_facilities_utilities_available' => 'available',
+                'drinking_water_available' => 'available',
+                'student_enrolment_checked' => 'yes',
+                'students_enrolled' => 420,
+                'students_present' => 386,
+            ],
+            [
+                'cleanliness_available' => 'available',
+                'teachers_staff_available' => 'available',
+                'books_learning_material_available' => 'available',
+                'school_facilities_utilities_available' => 'available',
+                'drinking_water_available' => 'available',
+                'student_enrolment_checked' => 'yes',
+                'students_enrolled' => 315,
+                'students_present' => 298,
+            ],
+            [
+                'cleanliness_available' => 'available',
+                'teachers_staff_available' => 'not_available',
+                'books_learning_material_available' => 'available',
+                'school_facilities_utilities_available' => 'not_available',
+                'drinking_water_available' => 'not_available',
+                'student_enrolment_checked' => 'yes',
+                'students_enrolled' => 180,
+                'students_present' => 152,
+            ],
+            [
+                'cleanliness_available' => 'not_available',
+                'teachers_staff_available' => 'not_available',
+                'books_learning_material_available' => 'not_available',
+                'school_facilities_utilities_available' => 'not_available',
+                'drinking_water_available' => 'available',
+                'student_enrolment_checked' => 'no',
+                'students_enrolled' => 240,
+                'students_present' => 201,
+            ],
+            [
+                'cleanliness_available' => 'available',
+                'teachers_staff_available' => 'available',
+                'books_learning_material_available' => 'not_available',
+                'school_facilities_utilities_available' => 'available',
+                'drinking_water_available' => 'not_available',
+                'student_enrolment_checked' => 'yes',
+                'students_enrolled' => 275,
+                'students_present' => 241,
+            ],
+            [
+                'cleanliness_available' => 'not_available',
+                'teachers_staff_available' => 'available',
+                'books_learning_material_available' => 'available',
+                'school_facilities_utilities_available' => 'not_available',
+                'drinking_water_available' => 'available',
+                'student_enrolment_checked' => 'yes',
+                'students_enrolled' => 198,
+                'students_present' => 164,
+            ],
+            [
+                'cleanliness_available' => 'available',
+                'teachers_staff_available' => 'not_available',
+                'books_learning_material_available' => 'not_available',
+                'school_facilities_utilities_available' => 'available',
+                'drinking_water_available' => 'available',
+                'student_enrolment_checked' => 'yes',
+                'students_enrolled' => 352,
+                'students_present' => 318,
+            ],
+            [
+                'cleanliness_available' => 'not_available',
+                'teachers_staff_available' => 'not_available',
+                'books_learning_material_available' => 'available',
+                'school_facilities_utilities_available' => 'not_available',
+                'drinking_water_available' => 'not_available',
+                'student_enrolment_checked' => 'no',
+                'students_enrolled' => 165,
+                'students_present' => 128,
+            ],
+        ];
+    }
+
+    private function todayInspectionDateInActiveWeek(int $hour, int $minute = 0): Carbon
+    {
+        return now(config('app.inspection_timezone', 'Asia/Karachi'))
+            ->copy()
+            ->setTime($hour, $minute, 0)
+            ->setTimezone(config('app.timezone', 'UTC'));
     }
 
     /**

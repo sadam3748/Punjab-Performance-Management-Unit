@@ -85,7 +85,8 @@
                     const horizontal = def.type === 'grouped_bar' || def.type === 'stacked_bar' || String(def.key || '').includes('observation');
                     const facilitiesInspected = Number(payload.facilities_inspected ?? 0);
                     const categoryLabelPairs = Array.isArray(payload.category_label_pairs) ? payload.category_label_pairs : [];
-                    const isHealthObservationChart = String(def.key || '') === 'health_observation_availability';
+                    const isObservationAvailabilityChart = ['health_observation_availability', 'education_observation_availability']
+                        .includes(String(def.key || ''));
                     const datasets = payload.datasets.map((series, seriesIndex) => ({
                         label: series.label || ('Series ' + (seriesIndex + 1)),
                         data: series.values || [],
@@ -174,7 +175,7 @@
                                     callbacks: {
                                         label(context) {
                                             const value = context.parsed?.x ?? context.parsed?.y ?? 0;
-                                            if (isHealthObservationChart && categoryLabelPairs.length) {
+                                            if (isObservationAvailabilityChart && categoryLabelPairs.length) {
                                                 const pair = categoryLabelPairs[context.dataIndex] || {};
                                                 const seriesLabel = context.datasetIndex === 0
                                                     ? (pair.positive || 'Positive outcome')
@@ -463,8 +464,8 @@
             updateWeekOptions(data.period_filters);
             document.getElementById('kpiDetailMetrics').innerHTML = data.metrics_html;
 
-            if (cfg.isHealthDashboard && data.health_map) {
-                updateHealthMapSection(data.health_map);
+            if (cfg.isVisitKpiDashboard && (data.visit_map || data.health_map || data.education_map)) {
+                updateHealthMapSection(data.visit_map || data.health_map || data.education_map);
             }
 
             const inspEl = document.getElementById('kpiDetailInspections');
@@ -554,18 +555,26 @@
     }
 
     function healthMapPopupHtml(pin) {
+        const entityLabel = pin.institution_name ? 'Institution' : 'Facility';
+        const entityValue = pin.institution_name || pin.facility_name;
+        const studentRows = pin.students_enrolled !== undefined
+            ? `
+                    <div><dt>Students Enrolled</dt><dd>${escapeHtml(pin.students_enrolled)}</dd></div>
+                    <div><dt>Students Present</dt><dd>${escapeHtml(pin.students_present)}</dd></div>`
+            : '';
+
         return `
             <div class="ppmu-health-map-popup">
                 <h4>Inspection Information</h4>
                 <dl>
                     <div><dt>Inspection ID</dt><dd>${escapeHtml(pin.inspection_id)}</dd></div>
-                    <div><dt>Type</dt><dd>${escapeHtml(pin.inspection_type)}</dd></div>
-                    <div><dt>Facility</dt><dd>${escapeHtml(pin.facility_name)}</dd></div>
+                    <div><dt>Inspection Type</dt><dd>${escapeHtml(pin.inspection_type)}</dd></div>
+                    <div><dt>${entityLabel}</dt><dd>${escapeHtml(entityValue)}</dd></div>
                     <div><dt>Date &amp; Time</dt><dd>${escapeHtml(pin.inspection_date)}</dd></div>
                     <div><dt>Tehsil</dt><dd>${escapeHtml(pin.tehsil)}</dd></div>
                     <div><dt>Address</dt><dd>${escapeHtml(pin.address)}</dd></div>
                     <div><dt>Status</dt><dd><span class="ppmu-health-map-status ppmu-health-map-status-${escapeHtml(pin.color)}">${escapeHtml(pin.review_status)}</span></dd></div>
-                    <div><dt>Observation Issues</dt><dd>${escapeHtml(pin.observation_issues)}</dd></div>
+                    <div><dt>Observation Issues</dt><dd>${escapeHtml(pin.observation_issues)}</dd></div>${studentRows}
                 </dl>
                 <a href="${escapeHtml(pin.detail_url)}" class="ppmu-health-map-popup-btn" target="_blank" rel="noopener noreferrer">View Detail</a>
             </div>`;
@@ -637,7 +646,7 @@
     }
 
     function updateHealthMapSection(mapData) {
-        if (!cfg.isHealthDashboard) return;
+        if (!cfg.isVisitKpiDashboard) return;
 
         const frameWrap = document.getElementById('ppmuHealthMapFrameWrap');
         const emptyEl = document.getElementById('ppmuHealthMapEmpty');
@@ -738,7 +747,7 @@
     bindInspectionFilters();
     bindGeoFilters();
     initFilters();
-    if (cfg.isHealthDashboard) {
-        updateHealthMapSection(cfg.healthMap || {});
+    if (cfg.isVisitKpiDashboard) {
+        updateHealthMapSection(cfg.visitMap || cfg.healthMap || cfg.educationMap || {});
     }
 })();

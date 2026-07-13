@@ -4213,6 +4213,14 @@ body:has(.ppmu-main-dashboard) {
     grid-template-columns: minmax(0, 1fr);
 }
 
+.ppmu-detail-page .ppmu-chart-grid-count-2 .ppmu-chart-card .card-ppmf-body {
+    min-height: 280px;
+}
+
+.ppmu-detail-page .ppmu-chart-grid-count-2 .ppmu-chart-card canvas {
+    height: 260px !important;
+}
+
 .ppmu-detail-page .ppmu-chart-grid-count-3 {
     grid-template-columns: repeat(3, minmax(0, 1fr));
 }

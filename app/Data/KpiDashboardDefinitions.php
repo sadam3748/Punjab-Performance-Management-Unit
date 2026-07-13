@@ -348,6 +348,16 @@ class KpiDashboardDefinitions
                 ['label' => 'Clean / Unclean', 'field' => 'cleanliness_status'],
                 ['label' => 'Filter Change Status', 'field' => 'filter_change_status'],
             ]),
+            'inspection-of-educational-institutions' => array_merge($detailFields, [
+                ['label' => 'Cleanliness and General Outlook', 'field' => 'cleanliness_available'],
+                ['label' => 'Teachers and Staff Attendance', 'field' => 'teachers_staff_available'],
+                ['label' => 'Books and Learning Material', 'field' => 'books_learning_material_available'],
+                ['label' => 'School Facilities and Utilities', 'field' => 'school_facilities_utilities_available'],
+                ['label' => 'Drinking Water', 'field' => 'drinking_water_available'],
+                ['label' => 'Student Enrolment Checked', 'field' => 'student_enrolment_checked'],
+                ['label' => 'Students Enrolled', 'field' => 'students_enrolled'],
+                ['label' => 'Students Present', 'field' => 'students_present'],
+            ]),
             'inspection-of-health-facilities' => array_merge($detailFields, [
                 ['label' => 'Deep Cleaning', 'field' => 'deep_cleaning_available'],
                 ['label' => 'Staff Availability', 'field' => 'staff_available'],

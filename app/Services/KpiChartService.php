@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Data\EducationObservationLabels;
 use App\Data\HealthObservationLabels;
 use App\Models\KpiInspection;
 use App\Models\User;
@@ -138,6 +139,11 @@ class KpiChartService
         $healthTehsilProgress = ['labels' => [], 'values' => []];
         $healthDistrictProgress = ['labels' => [], 'values' => []];
         $healthInspectionTargetAchievement = ['labels' => [], 'values' => []];
+        $educationReviewTargetStatus = ['labels' => [], 'values' => []];
+        $educationTehsilProgress = ['labels' => [], 'values' => []];
+        $educationDistrictProgress = ['labels' => [], 'values' => []];
+        $educationInspectionTargetAchievement = ['labels' => [], 'values' => []];
+        $educationStudentAttendanceSummary = ['labels' => [], 'values' => []];
 
         $violationBreakdown = $this->detailFieldBreakdown($inspections, ['violation', 'violation_type', 'complaint_status', 'cleanliness_status', 'functional_status']);
         $typeBreakdown = $this->detailFieldBreakdown($inspections, ['plant_type', 'facility_type', 'service_type', 'type', 'commodity', 'action_type']);
@@ -208,6 +214,10 @@ class KpiChartService
             $inspections,
             $slug === 'inspection-of-health-facilities' ? (int) max(0, round($achieved)) : $inspections->count(),
         );
+        $educationObservations = $this->educationObservationAvailabilityFromInspections(
+            $inspections,
+            $slug === 'inspection-of-educational-institutions' ? (int) max(0, round($achieved)) : $inspections->count(),
+        );
         $healthIssues = $this->healthIssueBreakdownFromInspections($inspections);
 
         $dcAcVisitCompletion = collect([
@@ -239,6 +249,41 @@ class KpiChartService
                 (int) ($healthContext['approved'] ?? 0),
                 (int) ($healthContext['pending'] ?? 0),
                 (int) ($healthContext['rejected'] ?? 0),
+            );
+
+            $tehsilComparison = $tehsilProgress;
+            $districtComparison = $districtProgress;
+        }
+
+        if ($slug === 'inspection-of-educational-institutions') {
+            $inspectionService = app(KpiInspectionService::class);
+            $request = request();
+
+            $tehsilProgress = $inspectionService->educationTehsilComparison($user, $request, $inspections);
+            $districtProgress = $inspectionService->educationDistrictComparison($user, $request, $inspections);
+            $educationTehsilProgress = $toChart($tehsilProgress);
+            $educationDistrictProgress = $toChart($districtProgress);
+
+            $achievementTarget = (int) ($healthContext['inspection_achievement_target'] ?? 0);
+            $achievementCompleted = (int) ($healthContext['inspection_achievement_completed'] ?? 0);
+            $achievementRemaining = (int) ($healthContext['inspection_achievement_remaining'] ?? max(0, $achievementTarget - $achievementCompleted));
+            $educationInspectionTargetAchievement = $toChart(collect([
+                'Target' => $achievementTarget,
+                'Inspected' => $achievementCompleted,
+                'Remaining' => $achievementRemaining,
+            ]));
+
+            $reviewTarget = (int) ($healthContext['review_target'] ?? 0);
+            $educationReviewTargetStatus = $inspectionService->healthReviewTargetStatusChart(
+                $reviewTarget,
+                (int) ($healthContext['approved'] ?? 0),
+                (int) ($healthContext['pending'] ?? 0),
+                (int) ($healthContext['rejected'] ?? 0),
+            );
+
+            $educationStudentAttendanceSummary = $this->educationStudentAttendanceSummaryFromInspections(
+                $inspections,
+                (int) max(0, round($achieved)),
             );
 
             $tehsilComparison = $tehsilProgress;
@@ -309,6 +354,12 @@ class KpiChartService
             'health_tehsil_inspection_progress' => $healthTehsilProgress,
             'health_district_inspection_progress' => $healthDistrictProgress,
             'health_inspection_target_achievement' => $healthInspectionTargetAchievement,
+            'education_observation_availability' => $educationObservations,
+            'education_review_target_status' => $educationReviewTargetStatus,
+            'education_tehsil_inspection_progress' => $educationTehsilProgress,
+            'education_district_inspection_progress' => $educationDistrictProgress,
+            'education_inspection_target_achievement' => $educationInspectionTargetAchievement,
+            'education_student_attendance_summary' => $educationStudentAttendanceSummary,
             'health_issue_breakdown' => $toChart($healthIssues->isNotEmpty() ? $healthIssues : collect([
                 'Deep Cleaning' => $submissions->sum(fn ($i) => (float) data_get($i->metric_snapshot, 'observation_deep_cleaning_not', 0)),
                 'Staff Availability' => $submissions->sum(fn ($i) => (float) data_get($i->metric_snapshot, 'observation_staff_not', 0)),
@@ -509,5 +560,121 @@ class KpiChartService
         $text = strtolower((string) $value);
 
         return str_contains($text, 'poor') || str_contains($text, 'needs') || in_array($text, ['average', 'no'], true);
+    }
+
+    /** @return array{labels: list<string>, datasets: list<array{label: string, values: list<int>, color: string}>, facilities_inspected: int} */
+    private function educationObservationAvailabilityFromInspections(Collection $inspections, int $institutionsInspected): array
+    {
+        $categories = EducationObservationLabels::chartCategories();
+
+        $limit = max(0, $institutionsInspected);
+        $scoped = $limit > 0 && $inspections->count() > $limit
+            ? $inspections
+                ->sortByDesc(fn ($inspection) => $inspection->inspection_datetime)
+                ->take($limit)
+                ->values()
+            : $inspections->values();
+
+        $inspectedTotal = $limit > 0 ? $limit : $scoped->count();
+
+        $available = [];
+        $notAvailable = [];
+        $labelPairs = [];
+
+        foreach ($categories as $label => $field) {
+            $meta = EducationObservationLabels::meta($field);
+            $available[$label] = 0;
+            $notAvailable[$label] = 0;
+            $labelPairs[] = [
+                'positive' => $meta['positive'],
+                'negative' => $meta['negative'],
+            ];
+
+            foreach ($scoped as $inspection) {
+                $detail = is_array($inspection->detail_data)
+                    ? $inspection->detail_data
+                    : (json_decode($inspection->detail_data ?? '[]', true) ?: []);
+
+                $value = strtolower((string) ($detail[$field] ?? $this->legacyEducationObservationChartValue($detail, $field)));
+
+                if ($field === 'student_enrolment_checked') {
+                    if ($value === 'yes' || $value === 'verified') {
+                        $available[$label]++;
+                    } else {
+                        $notAvailable[$label]++;
+                    }
+
+                    continue;
+                }
+
+                if ($value === 'available' || $value === 'yes') {
+                    $available[$label]++;
+                } else {
+                    $notAvailable[$label]++;
+                }
+            }
+        }
+
+        $labels = array_keys($categories);
+
+        return [
+            'labels' => $labels,
+            'datasets' => [
+                [
+                    'label' => 'Positive outcome',
+                    'values' => array_map(fn (string $label) => $available[$label], $labels),
+                    'color' => '#087443',
+                ],
+                [
+                    'label' => 'Negative outcome',
+                    'values' => array_map(fn (string $label) => $notAvailable[$label], $labels),
+                    'color' => '#dc2626',
+                ],
+            ],
+            'category_label_pairs' => $labelPairs,
+            'facilities_inspected' => $inspectedTotal,
+        ];
+    }
+
+    /** @return array{labels: list<string>, values: list<int>} */
+    private function educationStudentAttendanceSummaryFromInspections(Collection $inspections, int $institutionsInspected): array
+    {
+        $limit = max(0, $institutionsInspected);
+        $scoped = $limit > 0 && $inspections->count() > $limit
+            ? $inspections
+                ->sortByDesc(fn ($inspection) => $inspection->inspection_datetime)
+                ->take($limit)
+                ->values()
+            : $inspections->values();
+
+        $enrolled = 0;
+        $present = 0;
+
+        foreach ($scoped as $inspection) {
+            $detail = is_array($inspection->detail_data)
+                ? $inspection->detail_data
+                : (json_decode($inspection->detail_data ?? '[]', true) ?: []);
+            $enrolled += (int) ($detail['students_enrolled'] ?? 0);
+            $present += (int) ($detail['students_present'] ?? 0);
+        }
+
+        return [
+            'labels' => ['Students Enrolled', 'Students Present'],
+            'values' => [$enrolled, $present],
+        ];
+    }
+
+    /** @param  array<string, mixed>  $detail */
+    private function legacyEducationObservationChartValue(array $detail, string $field): string
+    {
+        return match ($field) {
+            'cleanliness_available' => $this->isNegativeSignal($detail['cleanliness'] ?? null) ? 'not_available' : 'available',
+            'teachers_staff_available' => in_array($detail['teachers_present'] ?? 'Yes', ['No', 'Partial'], true) ? 'not_available' : 'available',
+            'books_learning_material_available' => in_array($detail['tlm_availability'] ?? '', ['Shortage', 'Partial'], true) ? 'not_available' : 'available',
+            'school_facilities_utilities_available' => in_array($detail['facility_deficiency'] ?? '', ['Major', 'Minor'], true) ? 'not_available' : 'available',
+            'drinking_water_available' => ($detail['drinking_water_available'] ?? 'available') === 'not_available' ? 'not_available' : 'available',
+            'student_enrolment_checked' => ($detail['student_enrolment_checked'] ?? 'yes') === 'no' ? 'no' : 'yes',
+            default => 'available',
+        };
     }
 }

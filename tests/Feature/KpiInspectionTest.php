@@ -169,6 +169,31 @@ class KpiInspectionTest extends TestCase
         );
     }
 
+    public function test_education_seeder_provides_completed_day_pending_inspections_for_ac_karor(): void
+    {
+        $this->seed(PpmuSeeder::class);
+        $card = KpiCard::where('slug', 'inspection-of-educational-institutions')->firstOrFail();
+        $service = app(\App\Services\KpiInspectionService::class);
+        $request = \Illuminate\Http\Request::create('/inspections', 'GET', [
+            'kpi_card_id' => $card->id,
+            'insp_status' => KpiInspection::STATUS_PENDING,
+            'insp_per_page' => 50,
+        ]);
+
+        $karorPending = $service->getAllInspectionsList(
+            User::where('username', 'ac.karor')->firstOrFail(),
+            $request,
+        );
+
+        $this->assertSame(20, $karorPending->total());
+        $this->assertTrue(
+            $karorPending->getCollection()->every(fn (KpiInspection $inspection) => $inspection->status === KpiInspection::STATUS_PENDING),
+        );
+        $this->assertTrue(
+            $karorPending->getCollection()->every(fn (KpiInspection $inspection) => filled(data_get($inspection->detail_data, 'students_enrolled'))),
+        );
+    }
+
     public function test_health_inspection_detail_shows_observation_values_and_evidence_actions(): void
     {
         $this->seed(PpmuSeeder::class);
@@ -369,8 +394,8 @@ class KpiInspectionTest extends TestCase
 
         KpiCard::where('is_active', true)->each(function (KpiCard $card) {
             $expected = match ($card->slug) {
-                'inspection-of-health-facilities' => 60,
-                'inspection-of-educational-institutions' => 58,
+                'inspection-of-health-facilities' => 75,
+                'inspection-of-educational-institutions' => 62,
                 'price-of-roti' => 36,
                 'functional-and-clean-water-filtration-plants',
                 'chief-ministers-complaint-cell',
@@ -385,11 +410,11 @@ class KpiInspectionTest extends TestCase
             );
         });
 
-        $this->assertSame(505, KpiInspection::count());
+        $this->assertSame(524, KpiInspection::count());
 
         $total = KpiInspection::count();
-        $this->assertEqualsWithDelta(.60, KpiInspection::where('status', 'approved')->count() / $total, .03);
-        $this->assertEqualsWithDelta(.25, KpiInspection::where('status', 'pending_review')->count() / $total, .03);
-        $this->assertEqualsWithDelta(.15, KpiInspection::where('status', 'rejected')->count() / $total, .03);
+        $this->assertEqualsWithDelta(.56, KpiInspection::where('status', 'approved')->count() / $total, .06);
+        $this->assertEqualsWithDelta(.28, KpiInspection::where('status', 'pending_review')->count() / $total, .06);
+        $this->assertEqualsWithDelta(.15, KpiInspection::where('status', 'rejected')->count() / $total, .06);
     }
 }

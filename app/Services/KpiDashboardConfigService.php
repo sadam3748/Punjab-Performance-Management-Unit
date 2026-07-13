@@ -74,8 +74,9 @@ class KpiDashboardConfigService
                 'review' => 'Review %',
             ],
             'inspection-of-educational-institutions' => [
-                'target' => 'Visit Target',
-                'completed' => 'Visits Completed',
+                'target' => 'Inspection Target',
+                'completed' => 'Inspected',
+                'review' => 'Review %',
             ],
             'repair-of-small-roads-in-both-urban-and-rural-areas' => [
                 'target' => 'Roads Target',

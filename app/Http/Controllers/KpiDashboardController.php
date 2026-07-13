@@ -31,6 +31,10 @@ class KpiDashboardController extends Controller
         );
 
         $isHealth = $kpiCard->slug === 'inspection-of-health-facilities';
+        $isVisitKpi = in_array($kpiCard->slug, [
+            'inspection-of-health-facilities',
+            'inspection-of-educational-institutions',
+        ], true);
 
         return response()->json([
             'header' => $data['header'],
@@ -38,7 +42,7 @@ class KpiDashboardController extends Controller
                 'metrics' => $data['metrics'],
                 'metricSections' => $data['metricSections'],
             ])->render(),
-            'records_html' => $isHealth ? '' : view('dashboard.partials.kpi-detail-records', [
+            'records_html' => $isVisitKpi ? '' : view('dashboard.partials.kpi-detail-records', [
                 'kpiCard' => $kpiCard,
                 'summary' => $data['summary'],
                 'tableSubmissions' => $data['tableSubmissions'],
@@ -65,7 +69,9 @@ class KpiDashboardController extends Controller
             'period_description' => $data['period_description'],
             'period_query' => $service->periodQueryString($request),
             'period_filters' => $service->filterOptionsForView($kpiCard->slug),
-            'health_map' => $data['healthMap'] ?? [],
+            'health_map' => $data['visitMap'] ?? ($data['healthMap'] ?? []),
+            'education_map' => $data['visitMap'] ?? ($data['educationMap'] ?? []),
+            'visit_map' => $data['visitMap'] ?? [],
         ]);
     }
 }

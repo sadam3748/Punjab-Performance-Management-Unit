@@ -3,7 +3,7 @@
 @section('content_class', 'ppmu-dashboard-content ppmu-detail-page')
 @push('styles')
 <link rel="stylesheet" href="{{ asset('css/ppmu-kpi.css') }}?v={{ filemtime(public_path('css/ppmu-kpi.css')) }}">
-@if($kpiCard->slug === 'inspection-of-health-facilities')
+@if(in_array($kpiCard->slug, ['inspection-of-health-facilities', 'inspection-of-educational-institutions'], true))
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
 @endif
 @endpush
@@ -24,6 +24,9 @@
     );
     $periodTypesForJs = $filters['period_types'] ?? ['daily', 'weekly', 'monthly', 'yearly'];
     $isHealthDashboard = $kpiCard->slug === 'inspection-of-health-facilities';
+    $isEducationDashboard = $kpiCard->slug === 'inspection-of-educational-institutions';
+    $isVisitKpiDashboard = $isHealthDashboard || $isEducationDashboard;
+    $visitMap = $visitMap ?? ($educationMap ?? ($healthMap ?? []));
 @endphp
 
 <div class="ppmu-detail-hero card-ppmf" id="kpiDetailHero">
@@ -51,7 +54,7 @@
         <div class="ppmu-detail-stats" id="kpiDetailHeaderStats"
              data-label-target="{{ $labels['target'] }}"
              data-label-completed="{{ $labels['completed'] }}"
-             data-show-review="{{ $kpiCard->slug === 'inspection-of-health-facilities' ? '1' : '0' }}">
+             data-show-review="{{ $isVisitKpiDashboard ? '1' : '0' }}">
             <div class="ppmu-ds-item" data-stat="target" title="Required inspections for selected period">
                 <span data-label="target">{{ $labels['target'] }}</span>
                 <strong>{{ number_format($header['operational_target'] ?? $header['target'], 1) }}</strong>
@@ -64,7 +67,7 @@
                 <span>Progress</span>
                 <strong>{{ $pct }}%</strong>
             </div>
-            @if($kpiCard->slug === 'inspection-of-health-facilities')
+            @if($isVisitKpiDashboard)
             <div class="ppmu-ds-item ppmu-ds-pct" data-stat="review_pct" title="Reviewed ÷ Review Target × 100">
                 <span>Review %</span>
                 <strong>{{ min(100, round((float) ($header['review_percentage'] ?? 0), 1)) }}%</strong>
@@ -106,8 +109,8 @@
         @include('dashboard.partials.kpi-detail-metrics', ['metrics' => $metrics, 'metricSections' => $metricSections ?? []])
     </div>
 
-    @if($isHealthDashboard)
-        @include('dashboard.partials.kpi-detail-health-map', ['healthMap' => $healthMap ?? []])
+    @if($isVisitKpiDashboard)
+        @include('dashboard.partials.kpi-detail-health-map', ['healthMap' => $visitMap])
     @endif
 
     <div class="ppmu-section-head mt-4">
@@ -120,7 +123,7 @@
         @foreach($visibleCharts as $index => $chart)
             @php
                 $chartSubtitle = $chart['subtitle']
-                    ?? ($kpiCard->slug !== 'inspection-of-health-facilities' ? ucfirst($chart['type']).' chart' : null);
+                    ?? ($kpiCard->slug !== 'inspection-of-health-facilities' && $kpiCard->slug !== 'inspection-of-educational-institutions' ? ucfirst($chart['type']).' chart' : null);
             @endphp
             <x-chart-card
                 :title="$chart['title']"
@@ -129,7 +132,7 @@
         @endforeach
     </div>
 
-    @if(!$isHealthDashboard)
+    @if(!$isVisitKpiDashboard)
     <div id="kpiDetailRecords">
         @include('dashboard.partials.kpi-detail-records', [
             'kpiCard' => $kpiCard,
@@ -168,10 +171,14 @@ window.PPMU_KPI_DETAIL = {
         critical: 'Critical',
     },
     isHealthDashboard: @json($isHealthDashboard),
+    isEducationDashboard: @json($isEducationDashboard),
+    isVisitKpiDashboard: @json($isVisitKpiDashboard),
     healthMap: @json($healthMap ?? []),
+    educationMap: @json($educationMap ?? []),
+    visitMap: @json($visitMap),
 };
 </script>
-@if($isHealthDashboard)
+@if($isVisitKpiDashboard)
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 @endif
 <script src="{{ asset('js/ppmu-kpi-detail.js') }}?v={{ filemtime(public_path('js/ppmu-kpi-detail.js')) }}"></script>

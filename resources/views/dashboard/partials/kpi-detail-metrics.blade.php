@@ -28,7 +28,10 @@
                         :observation-positive-label="$metric['observation_positive_label'] ?? null"
                         :observation-negative-label="$metric['observation_negative_label'] ?? null"
                         :attention-text="$metric['attention_text'] ?? null"
-                        :card-helper="$metric['card_helper'] ?? null"/>
+                        :card-helper="$metric['card_helper'] ?? null"
+                        :attendance-enrolled="$metric['attendance_enrolled'] ?? null"
+                        :attendance-present="$metric['attendance_present'] ?? null"
+                        :attendance-percent="$metric['attendance_percent'] ?? null"/>
                 @endforeach
             </div>
         </div>
@@ -54,7 +57,10 @@
                 :observation-positive-label="$metric['observation_positive_label'] ?? null"
                 :observation-negative-label="$metric['observation_negative_label'] ?? null"
                 :attention-text="$metric['attention_text'] ?? null"
-                :card-helper="$metric['card_helper'] ?? null"/>
+                :card-helper="$metric['card_helper'] ?? null"
+                :attendance-enrolled="$metric['attendance_enrolled'] ?? null"
+                :attendance-present="$metric['attendance_present'] ?? null"
+                :attendance-percent="$metric['attendance_percent'] ?? null"/>
         @endforeach
     </div>
 @endif

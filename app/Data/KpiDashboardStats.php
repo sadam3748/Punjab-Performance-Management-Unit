@@ -1320,99 +1320,171 @@ class KpiDashboardStats
                 'total_institutions',
                 'bi-mortarboard',
                 'blue',
-                'Schools and colleges in the district baseline for institutional inspection.',
+                'Total educational institutions in this area',
                 '',
                 'yearly'
             ),
             self::card(
-                'DC Visits Completed',
-                'dc_visits',
-                'bi-person-badge',
+                'Institutions Inspected',
+                'institutions_inspected',
+                'bi-clipboard2-check',
                 'blue',
-                'Deputy Commissioner visits to educational institutions in the period.',
+                'Educational institutions inspected during the reporting period.',
                 '',
-                'monthly'
+                'weekly'
             ),
             self::card(
-                'AC Visits Completed',
-                'ac_visits',
-                'bi-person-check',
-                'blue',
-                'Assistant Commissioner visits to educational institutions in the period.',
-                '',
-                'monthly'
-            ),
-            self::card(
-                'Total Required Visits',
-                'required_visits',
+                'Review Target',
+                'review_target',
                 'bi-bullseye',
                 'purple',
-                'Monthly target for institutional inspections across the district.',
-                '',
-                'monthly'
+                'Target number of inspected institutions to be reviewed by supervisory officers.',
+                'ceil(Institutions Inspected × review rate), minimum 1 when inspected > 0',
+                'weekly'
             ),
             self::card(
-                'Inspection Reports Submitted',
-                'institution_visits',
-                'bi-file-earmark-text',
-                'green',
-                'Completed institutional inspection reports submitted on the portal.',
+                'Pending Review',
+                'inspections_pending',
+                'bi-hourglass-split',
+                'yellow',
+                'Inspected institutions awaiting supervisory review.',
                 '',
-                'monthly'
+                'weekly'
             ),
             self::card(
-                'Visit Target Achievement Rate',
-                'achievement_rate',
-                'bi-percent',
+                'Approved',
+                'inspections_approved',
+                'bi-check-circle',
                 'green',
-                'Share of required institutional visits completed.',
-                'Reports submitted ÷ required visits × 100',
-                'monthly'
+                'Inspected institutions approved after review.',
+                '',
+                'weekly'
+            ),
+            self::card(
+                'Rejected',
+                'inspections_rejected',
+                'bi-x-circle',
+                'red',
+                'Inspected institutions rejected after review.',
+                '',
+                'weekly'
+            ),
+            self::card(
+                'Required Inspections',
+                'required_inspections',
+                'bi-bullseye',
+                'purple',
+                'Weekly inspection target for the reporting scope.',
+                '',
+                'weekly'
+            ),
+            self::card(
+                'AC Inspection Target',
+                'district_ac_visit_target',
+                'bi-person-check',
+                'blue',
+                'Combined AC inspection target across active tehsils.',
+                'Active tehsils × 2',
+                'weekly'
+            ),
+            self::card(
+                'DC Own Inspections',
+                'dc_own_inspections',
+                'bi-person-badge',
+                'blue',
+                'DC-led educational institution inspections in the reporting period.',
+                '',
+                'weekly'
+            ),
+            self::card(
+                'District Inspections',
+                'district_inspections',
+                'bi-geo-alt',
+                'blue',
+                'Total district-level education inspections in the reporting period.',
+                '',
+                'weekly'
             ),
             self::card(
                 'School Council Meetings Held',
                 'school_council_meeting',
                 'bi-people',
                 'blue',
-                'School council meetings convened as per inspection findings.',
+                'School council review meetings chaired or attended by the DC.',
                 '',
                 'monthly'
             ),
             self::card(
-                'Facility Deficiencies Found',
-                'facilities_issues',
-                'bi-exclamation-triangle',
+                'Cleanliness and General Outlook',
+                'observation_cleanliness',
+                'bi-stars',
                 'yellow',
-                'Cleanliness, staffing or facility gaps identified during visits.',
+                'Cleanliness and general outlook observed during inspections.',
                 '',
-                'monthly'
+                'weekly'
             ),
             self::card(
-                'Inspections Validation Target',
-                'validation_target',
-                'bi-bullseye',
-                'purple',
-                'Target number of school inspection reports to validate.',
-                '',
-                'monthly'
-            ),
-            self::card(
-                'Inspections Validated',
-                'validations_completed',
-                'bi-clipboard2-check',
+                'Teachers and Staff Attendance',
+                'observation_teachers_staff',
+                'bi-person-check',
                 'blue',
-                'Educational institution inspection reports validated by supervisory officers.',
+                'Teachers and staff attendance observed during inspections.',
                 '',
-                'monthly'
+                'weekly'
             ),
             self::card(
-                'Approved / Rejected Validations',
-                'approved_rejected_validations',
-                'bi-patch-check',
+                'Books and Learning Material',
+                'observation_books_learning_material',
+                'bi-book',
+                'blue',
+                'Books and learning material availability observed during inspections.',
+                '',
+                'weekly'
+            ),
+            self::card(
+                'School Facilities and Utilities',
+                'observation_school_facilities_utilities',
+                'bi-building',
+                'yellow',
+                'School facilities and utilities observed during inspections.',
+                '',
+                'weekly'
+            ),
+            self::card(
+                'Drinking Water',
+                'observation_drinking_water',
+                'bi-droplet',
+                'blue',
+                'Drinking water availability observed during inspections.',
+                '',
+                'weekly'
+            ),
+            self::card(
+                'Student Enrolment Checked',
+                'observation_student_enrolment',
+                'bi-journal-check',
+                'blue',
+                'Student enrolment verification observed during inspections.',
+                '',
+                'weekly'
+            ),
+            self::card(
+                'Student Attendance',
+                'observation_student_attendance',
+                'bi-people',
                 'green',
-                'School inspection validations approved or rejected.',
-                'Approved validations + rejected validations',
-                'monthly'
+                'Student enrolment and attendance observed during inspections.',
+                '',
+                'weekly'
+            ),
+            self::card(
+                'Observation Issues',
+                'observation_attention_required',
+                'bi-exclamation-triangle',
+                'red',
+                'Deficiencies found across education inspection observations.',
+                '',
+                'weekly'
             ),
         ];
     }

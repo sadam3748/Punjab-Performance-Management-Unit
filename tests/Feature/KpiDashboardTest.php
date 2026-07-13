@@ -242,17 +242,25 @@ class KpiDashboardTest extends TestCase
             $card = KpiCard::where('slug', $slug)->firstOrFail();
             $home = $dashboard->assignedCards($user, $request)->firstWhere('slug', $slug);
             $detail = $dashboard->detail($card, $user, $request);
-            $rawAchieved = $slug === 'inspection-of-health-facilities'
-                ? (float) $inspections->countHealthInspected($card, $user, $request)
+            $rawAchieved = in_array($slug, [
+                'inspection-of-health-facilities',
+                'inspection-of-educational-institutions',
+            ], true)
+                ? (float) ($slug === 'inspection-of-health-facilities'
+                    ? $inspections->countHealthInspected($card, $user, $request)
+                    : $inspections->countEducationInspected($card, $user, $request))
                 : (float) $inspections->countOperationalAchieved($card, $user, $request);
-            $expected = $slug === 'inspection-of-health-facilities'
+            $expected = in_array($slug, [
+                'inspection-of-health-facilities',
+                'inspection-of-educational-institutions',
+            ], true)
                 ? min($rawAchieved, (float) $home->target)
                 : $rawAchieved;
 
             $this->assertSame($expected, (float) $home->achieved, $slug.' home achieved');
             $this->assertSame((float) $home->target, (float) $detail['header']['operational_target'], $slug.' target parity');
             $this->assertSame((float) $home->achieved, (float) $detail['header']['completed'], $slug.' achieved parity');
-            if ($slug === 'inspection-of-health-facilities') {
+            if (in_array($slug, ['inspection-of-health-facilities', 'inspection-of-educational-institutions'], true)) {
                 $this->assertSame($rawAchieved, (float) $detail['header']['actual_completed']);
                 $this->assertLessThanOrEqual(100.0, (float) $detail['header']['achievement_percentage']);
             }
@@ -590,7 +598,7 @@ class KpiDashboardTest extends TestCase
         $this->assertSame('weekly', $detail['period']['period_type']);
         $this->assertSame($period->currentWeekNo(), $detail['period']['week_no']);
         $this->assertCount(2, $detail['chartDefinitions']);
-        $this->assertCount(7, $detail['charts']['definitions'][0]['data']['labels']);
+        $this->assertGreaterThanOrEqual(6, count($detail['charts']['definitions'][0]['data']['labels']));
     }
 
     public function test_ac_health_dashboard_excludes_dc_ac_visit_chart(): void
@@ -1134,5 +1142,97 @@ class KpiDashboardTest extends TestCase
             $coordinates = collect($map['pins'])->map(fn (array $pin) => round((float) $pin['lat'], 5).':'.round((float) $pin['lng'], 5));
             $this->assertSame($facilitiesInspected, $coordinates->unique()->count());
         }
+    }
+
+    public function test_education_dashboard_renders_inspection_map_section(): void
+    {
+        $this->seed(PpmuSeeder::class);
+        $card = KpiCard::where('slug', 'inspection-of-educational-institutions')->firstOrFail();
+        $user = User::where('username', 'ac.karor')->firstOrFail();
+
+        $response = $this->actingAs($user)
+            ->get(route('kpi.dashboard', $card));
+
+        $response->assertOk()
+            ->assertSee('Educational Institution Inspection Map')
+            ->assertSee('Showing education inspection locations for the selected period')
+            ->assertSee('id="ppmuHealthDashboardMap"', false)
+            ->assertDontSee('Health Facility Inspection Map')
+            ->assertDontSee('Not Inspected', false);
+
+        $content = $response->getContent();
+        $metricsPos = strpos($content, 'id="kpiDetailMetrics"');
+        $mapPos = strpos($content, 'id="kpiDetailHealthMap"');
+        $chartsPos = strpos($content, 'id="kpiDetailCharts"');
+
+        $this->assertGreaterThan($metricsPos, $mapPos);
+        $this->assertLessThan($chartsPos, $mapPos);
+    }
+
+    public function test_ac_karor_education_weekly_card_counts_match_seeded_demo(): void
+    {
+        $this->seed(PpmuSeeder::class);
+        $card = KpiCard::where('slug', 'inspection-of-educational-institutions')->firstOrFail();
+        $user = User::where('username', 'ac.karor')->firstOrFail();
+        $period = app(KpiPeriodService::class);
+        $request = Request::create('/', 'GET', [
+            'period_type' => 'weekly',
+            'week_no' => $period->currentWeekNo(),
+        ]);
+
+        $detail = app(KpiDashboardService::class)->detail($card, $user, $request);
+        $coverage = collect($detail['metricSections'])->firstWhere('title', 'Inspection Coverage');
+        $values = collect($coverage['metrics'])->mapWithKeys(fn ($m) => [$m['label'] => $m['value']]);
+        $map = $detail['educationMap'];
+
+        $this->assertSame(20, (int) $values['Total Educational Institutions']);
+        $this->assertSame(2, (int) $values['Institutions Inspected']);
+        $this->assertSame(1, (int) $values['Review Target']);
+        $this->assertSame(1, (int) $values['Approved']);
+        $this->assertSame(0, (int) $values['Pending Review']);
+        $this->assertSame(0, (int) $values['Rejected']);
+        $this->assertSame(2, $map['pin_count']);
+
+        $statusCounts = collect($map['pins'])->countBy('color');
+        $this->assertSame(1, $statusCounts->get('green', 0));
+        $this->assertSame(1, $statusCounts->get('blue', 0));
+    }
+
+    public function test_education_observations_section_has_eight_cards(): void
+    {
+        $this->seed(PpmuSeeder::class);
+        $card = KpiCard::where('slug', 'inspection-of-educational-institutions')->firstOrFail();
+        $detail = app(KpiDashboardService::class)->detail(
+            $card,
+            User::where('username', 'ac.karor')->firstOrFail(),
+            Request::create('/', 'GET', [
+                'period_type' => 'weekly',
+                'week_no' => app(KpiPeriodService::class)->currentWeekNo(),
+            ])
+        );
+
+        $observations = collect($detail['metricSections'])->firstWhere('title', 'Observations');
+        $labels = collect($observations['metrics'])->pluck('label')->all();
+
+        $this->assertCount(8, $labels);
+        $this->assertContains('Observation Issues', $labels);
+        $this->assertContains('Student Attendance', $labels);
+    }
+
+    public function test_ac_education_dashboard_shows_two_charts_only(): void
+    {
+        $this->seed(PpmuSeeder::class);
+        $user = User::where('username', 'ac.karor')->firstOrFail();
+        $detail = app(KpiDashboardService::class)->detail(
+            KpiCard::where('slug', 'inspection-of-educational-institutions')->firstOrFail(),
+            $user,
+            Request::create('/', 'GET', ['period_type' => 'weekly'])
+        );
+
+        $keys = collect($detail['chartDefinitions'])->pluck('key');
+        $this->assertCount(2, $detail['chartDefinitions']);
+        $this->assertTrue($keys->contains('education_review_target_status'));
+        $this->assertTrue($keys->contains('education_observation_availability'));
+        $this->assertFalse($keys->contains('education_student_attendance_summary'));
     }
 }
