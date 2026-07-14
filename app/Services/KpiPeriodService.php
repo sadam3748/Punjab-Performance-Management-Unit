@@ -66,14 +66,32 @@ class KpiPeriodService
         return $this->weekRangeForDate(now())['week_no'];
     }
 
+    /** Most recent fully ended Thursday–Wednesday week (not the in-progress week). */
+    public function latestCompletedWeekNo(): string
+    {
+        $now = now();
+        $currentStart = $this->thursdayWeekStart($now);
+        $currentEnd = $currentStart->copy()->addDays(6)->endOfDay();
+
+        if ($now->greaterThan($currentEnd)) {
+            return $this->weekRangeForDate($now)['week_no'];
+        }
+
+        return $this->weekRangeForDate($currentStart->copy()->subDay())['week_no'];
+    }
+
     public function defaultParams(): array
     {
+        $completedWeek = $this->latestCompletedWeekNo();
+        $completedRange = $this->getWeekDateRange($completedWeek);
+        $anchor = $completedRange['end'] ?? now();
+
         return [
             'period_type' => 'weekly',
-            'week_no' => $this->currentWeekNo(),
-            'month' => (string) now()->month,
-            'year' => (string) now()->year,
-            'date' => now()->toDateString(),
+            'week_no' => $completedWeek,
+            'month' => (string) $anchor->month,
+            'year' => (string) $anchor->year,
+            'date' => $anchor->toDateString(),
         ];
     }
 
@@ -93,7 +111,9 @@ class KpiPeriodService
             'month' => $request->get('month', ''),
             'year' => (string) ($request->get('year') ?: now()->year),
             'week_no' => $request->get('week_no', ''),
-            'date' => $request->get('date', ''),
+            'date' => $request->get('date', '') ?: (
+                $request->get('period_type') === 'daily' ? now()->toDateString() : ''
+            ),
         ];
     }
 
@@ -107,7 +127,7 @@ class KpiPeriodService
         }
 
         if ($periodType === 'weekly') {
-            $weekNo = $params['week_no'] ?: $this->currentWeekNo();
+            $weekNo = $params['week_no'] ?: $this->latestCompletedWeekNo();
             $range = $this->getWeekDateRange((string) $weekNo);
             if ($range['start'] && $range['end']) {
                 return $query->whereBetween($dateColumn, [
@@ -153,7 +173,7 @@ class KpiPeriodService
             'years' => collect(range(now()->year - 2, now()->year))->reverse()->values(),
             'period_types' => ['daily', 'weekly', 'monthly', 'yearly'],
             'weeks' => $weeks,
-            'default_week_no' => $this->currentWeekNo(),
+            'default_week_no' => $this->latestCompletedWeekNo(),
             'defaults' => $this->defaultParams(),
         ];
     }
@@ -240,7 +260,7 @@ class KpiPeriodService
         if ($type === 'weekly') {
             $year = (int) ($params['year'] ?: now()->year);
             $month = ! empty($params['month']) ? (int) $params['month'] : now()->month;
-            $weekNo = (string) ($params['week_no'] ?: $this->currentWeekNo());
+            $weekNo = (string) ($params['week_no'] ?: $this->latestCompletedWeekNo());
 
             return $this->weekDisplayLabel($weekNo, $year, $month);
         }

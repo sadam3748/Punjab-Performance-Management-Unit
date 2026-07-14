@@ -34,7 +34,7 @@ class KpiDashboardTest extends TestCase
             ->assertDontSee('header-search', false)
             ->assertDontSee('ppmu-dashboard-summary', false)
             ->assertSee('ppmu-header-kpi-count', false)
-            ->assertSee('23 KPIs');
+            ->assertSee('24 KPIs');
         $this->actingAs($admin)->get('/dashboard')->assertDontSee('ppmu-kpi-tile-stats', false);
         $this->actingAs($admin)->get('/dashboard')->assertDontSee('ppmu-kpi-percent-badge', false);
         $this->actingAs($admin)->get('/dashboard')->assertDontSee('ppmu-kpi-tile-status', false);
@@ -57,7 +57,7 @@ class KpiDashboardTest extends TestCase
     {
         $this->seed(PpmuSeeder::class);
 
-        $this->assertSame(23, KpiCard::where('is_active', true)->count());
+        $this->assertSame(24, KpiCard::where('is_active', true)->count());
 
         KpiCard::where('is_active', true)->each(function (KpiCard $card) {
             $this->assertStringStartsWith('images/kpi-images/', $card->image_path);
@@ -72,12 +72,12 @@ class KpiDashboardTest extends TestCase
             $response = $this->get('/dashboard');
             $response->assertOk()->assertSee('Water Filtration')->assertSee('Price of Roti')->assertSee('images/kpi-images/', false);
             $response
-                ->assertSee('23 KPIs')
+                ->assertSee('24 KPIs')
                 ->assertSee('ppmu-header-kpi-count', false)
                 ->assertDontSee('ppmu-dashboard-summary', false);
 
             $cardCount = substr_count($response->getContent(), 'data-kpi-card');
-            $this->assertSame(23, $cardCount, "User {$login} should see 23 KPI cards");
+            $this->assertSame(24, $cardCount, "User {$login} should see 24 KPI cards");
             $response->assertSee('View Dashboard')->assertDontSee('ppmu-kpi-tile-stats', false)->assertDontSee('ppmu-kpi-percent-badge', false)->assertDontSee('Reported')->assertDontSee('ppmu-kpi-tile-status', false)->assertDontSee('Performance</span>', false);
 
             $this->get('/kpi/functional-and-clean-water-filtration-plants/dashboard')
@@ -85,7 +85,7 @@ class KpiDashboardTest extends TestCase
                 ->assertSee('KPI Performance Cards')
                 ->assertSee('KPI Detail Dashboard')
                 ->assertSee('kpiChart_0', false)
-                ->assertSee('RO Filter Change Compliance');
+                ->assertSee('RO Filter Compliance');
         }
     }
 
@@ -597,7 +597,7 @@ class KpiDashboardTest extends TestCase
 
         $this->assertSame('weekly', $detail['period']['period_type']);
         $this->assertSame($period->currentWeekNo(), $detail['period']['week_no']);
-        $this->assertCount(2, $detail['chartDefinitions']);
+        $this->assertCount(3, $detail['chartDefinitions']);
         $this->assertGreaterThanOrEqual(6, count($detail['charts']['definitions'][0]['data']['labels']));
     }
 
@@ -1234,5 +1234,74 @@ class KpiDashboardTest extends TestCase
         $this->assertTrue($keys->contains('education_review_target_status'));
         $this->assertTrue($keys->contains('education_observation_availability'));
         $this->assertFalse($keys->contains('education_student_attendance_summary'));
+    }
+
+    public function test_operational_kpi_map_shows_pins_for_default_period(): void
+    {
+        $this->seed(PpmuSeeder::class);
+        $card = KpiCard::where('slug', 'zebra-crossings')->firstOrFail();
+        $user = User::where('username', 'ac.layyah')->firstOrFail();
+
+        $detail = app(KpiDashboardService::class)->detail(
+            $card,
+            $user,
+            Request::create('/kpi/zebra-crossings/dashboard', 'GET'),
+        );
+
+        $map = $detail['locationMap'];
+        $inspected = (int) collect($detail['metricSections'])
+            ->flatMap(fn (array $section) => $section['metrics'])
+            ->firstWhere('label', 'Schools Inspected')['value'] ?? 0;
+
+        $this->assertGreaterThan(0, $inspected, 'Expected seeded zebra inspections for AC Layyah.');
+        $this->assertSame($inspected, $map['pin_count']);
+        $this->assertCount($inspected, $map['pins']);
+
+        foreach ($map['pins'] as $pin) {
+            $this->assertNotEmpty($pin['lat']);
+            $this->assertNotEmpty($pin['lng']);
+            $this->assertContains($pin['color'], ['green', 'orange', 'blue', 'red']);
+            $this->assertArrayHasKey('detail_url', $pin);
+            $this->assertStringContainsString('/inspections/', $pin['detail_url']);
+            $this->assertNotSame('—', $pin['address']);
+        }
+
+        $this->actingAs($user)
+            ->get(route('kpi.dashboard', $card))
+            ->assertOk()
+            ->assertSee('School Zebra Crossing Map')
+            ->assertSee('5 inspections mapped')
+            ->assertSee('locationMap:', false)
+            ->assertSee('"pin_count":5', false)
+            ->assertDontSee('Complaint Location Map');
+
+        $ajax = $this->actingAs($user)
+            ->getJson(route('kpi.dashboard.data', $card).'?'.http_build_query($detail['period']))
+            ->assertOk()
+            ->json();
+
+        $this->assertSame(5, (int) ($ajax['location_map']['pin_count'] ?? 0));
+        $this->assertCount(5, $ajax['location_map']['pins'] ?? []);
+        $this->assertNull($ajax['visit_map']);
+        $this->assertNull($ajax['health_map']);
+    }
+
+    public function test_daily_kpi_map_shows_pins_for_today(): void
+    {
+        $this->seed(PpmuSeeder::class);
+        $card = KpiCard::where('slug', 'price-of-roti')->firstOrFail();
+        $user = User::where('username', 'ac.layyah')->firstOrFail();
+
+        $detail = app(KpiDashboardService::class)->detail(
+            $card,
+            $user,
+            Request::create('/kpi/price-of-roti/dashboard', 'GET'),
+        );
+
+        $map = $detail['locationMap'];
+
+        $this->assertSame(6, $map['pin_count']);
+        $this->assertCount(6, $map['pins']);
+        $this->assertSame('daily', $detail['period']['period_type']);
     }
 }

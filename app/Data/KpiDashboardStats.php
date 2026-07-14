@@ -43,8 +43,25 @@ class KpiDashboardStats
             'chief-ministers-complaint-cell' => self::chiefMinistersComplaintCellCards(),
             'regulation-of-shops-and-handcarts' => self::shopsAndHandcartsCards(),
             'e-biz' => self::eBizCards(),
+            'land-management-services' => self::landManagementPlaceholderCards(),
             default => [],
         };
+    }
+
+    /** @return list<array<string, string>> */
+    private static function landManagementPlaceholderCards(): array
+    {
+        return [
+            self::card(
+                'Specification Status',
+                'specification_status',
+                'bi-cone-striped',
+                'yellow',
+                'Land Management Services dashboard specification is pending.',
+                '',
+                'mixed'
+            ),
+        ];
     }
 
     /** @return list<array<string, string>> */

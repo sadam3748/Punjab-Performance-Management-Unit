@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Data\KpiFrequencyConfig;
 use App\Models\KpiCard;
 use App\Models\User;
 use Carbon\Carbon;
@@ -14,16 +15,6 @@ class KpiOperationalService
     private const WEEKLY_VISIT_KPIS = [
         'inspection-of-health-facilities',
         'inspection-of-educational-institutions',
-    ];
-
-    /** @var list<string> */
-    private const DAILY_ACTIVITY_KPIS = [
-        'price-of-roti',
-        'price-of-plain-bakery-bread',
-        'price-control-of-essential-commodities',
-        'anti-encroachment-campaign',
-        'stray-dogs',
-        'regulation-of-shops-and-handcarts',
     ];
 
     public function __construct(private readonly KpiPeriodService $periodService) {}
@@ -48,21 +39,36 @@ class KpiOperationalService
             return ['target' => $target, 'completed' => $completed];
         }
 
-        if (in_array($card->slug, self::DAILY_ACTIVITY_KPIS, true)) {
-            return $this->dailyActivityTotals($operationalSubmissions, $request, $fields);
+        if (KpiFrequencyConfig::isDaily($card->slug)) {
+            return $this->dailyActivityTotals($card, $user, $operationalSubmissions, $request, $fields, $inspectionAchieved);
+        }
+
+        if (KpiFrequencyConfig::isWeekly($card->slug) && KpiFrequencyConfig::isOperationalInspectionKpi($card->slug)) {
+            return $this->weeklyInspectionTotals($card, $user, $request, $inspectionAchieved);
+        }
+
+        $target = $this->snapshotSum($operationalSubmissions, $fields['target']);
+        $completed = $inspectionAchieved !== null
+            ? (float) max(0, $inspectionAchieved)
+            : $this->snapshotSum($operationalSubmissions, $fields['completed']);
+
+        if ($inspectionAchieved !== null && $target <= 0) {
+            $target = $completed;
         }
 
         return [
-            'target' => $this->snapshotSum($operationalSubmissions, $fields['target']),
-            'completed' => $this->snapshotSum($operationalSubmissions, $fields['completed']),
+            'target' => $target,
+            'completed' => $completed,
         ];
     }
 
     /** @return array{target: float, completed: float} */
-    private function dailyActivityTotals(Collection $submissions, Request $request, array $fields): array
+    private function dailyActivityTotals(KpiCard $card, User $user, Collection $submissions, Request $request, array $fields, ?int $inspectionAchieved = null): array
     {
         $params = $this->periodService->resolvedParams($request);
-        $completed = $this->snapshotSum($submissions, $fields['completed']);
+        $completed = $inspectionAchieved !== null
+            ? (float) max(0, $inspectionAchieved)
+            : $this->snapshotSum($submissions, $fields['completed']);
         $dailyTarget = (float) $submissions->max(
             fn ($submission) => (float) data_get($submission->metric_snapshot, $fields['target'], 0)
         );
@@ -71,6 +77,14 @@ class KpiOperationalService
             $dailyTarget = (float) $submissions->avg(
                 fn ($submission) => (float) data_get($submission->metric_snapshot, $fields['target'], 0)
             );
+        }
+
+        if ($dailyTarget <= 0 && $inspectionAchieved !== null) {
+            $dailyTarget = (float) max(1, $inspectionAchieved);
+        }
+
+        if ($inspectionAchieved !== null && $params['period_type'] === 'daily') {
+            $dailyTarget = (float) $this->dailyInspectionTargetForScope($card->slug, $user, $request, $dailyTarget);
         }
 
         $days = match ($params['period_type']) {
@@ -85,10 +99,119 @@ class KpiOperationalService
             default => max(1, $submissions->count()),
         };
 
+        $target = round($dailyTarget * $days, 1);
+
         return [
-            'target' => round($dailyTarget * $days, 1),
-            'completed' => round($completed, 1),
+            'target' => $target,
+            'completed' => round(min($completed, $target > 0 ? $target : $completed), 1),
         ];
+    }
+
+    /** @return array{target: float, completed: float} */
+    private function weeklyInspectionTotals(KpiCard $card, User $user, Request $request, ?int $inspectionAchieved = null): array
+    {
+        $params = $this->periodService->resolvedParams($request);
+        $weeklyTarget = (float) $this->weeklyInspectionTargetForSlug($card->slug, $user, $request);
+        $target = match ($params['period_type']) {
+            'weekly' => $weeklyTarget,
+            'monthly' => $weeklyTarget * $this->weeksInMonth($params),
+            'yearly' => $weeklyTarget * 52,
+            default => $weeklyTarget,
+        };
+        $completed = (float) max(0, $inspectionAchieved ?? 0);
+
+        return [
+            'target' => round($target, 1),
+            'completed' => round(min($completed, $target > 0 ? $target : $completed), 1),
+        ];
+    }
+
+    private function weeklyInspectionTargetForSlug(string $slug, User $user, Request $request): int
+    {
+        $slug = KpiFrequencyConfig::normalize($slug);
+        $tehsils = max(1, $this->dailyTargetTehsilMultiplier($user, $request));
+
+        $perTehsil = match ($slug) {
+            'repair-of-small-roads-in-both-urban-and-rural-areas' => 1,
+            'dysfunctional-streetlights' => 2,
+            'covering-of-manholes' => 3,
+            'functional-and-clean-water-filtration-plants' => 2,
+            'violation-of-marriage-functions-act' => 3,
+            'zebra-crossings' => 5,
+            'illegal-decanting' => 15,
+            'suthra-punjab-campaign' => in_array($user->role?->slug, ['dc'], true) ? 2 : 4,
+            'maintenance-of-greenbelts' => 3,
+            'maintenance-of-drains-and-sewerage-lines' => 4,
+            'graveyards' => 2,
+            'bus-terminals' => 2,
+            'e-biz' => 6,
+            default => 1,
+        };
+
+        if (in_array($user->role?->slug, ['ac', 'field_user'], true) || $request->filled('geo_tehsil')) {
+            return $perTehsil;
+        }
+
+        return $perTehsil * $tehsils;
+    }
+
+    private function dailyInspectionTargetForScope(string $slug, User $user, Request $request, float $fallback): int
+    {
+        $base = match ($slug) {
+            'price-of-roti' => 6,
+            'price-of-plain-bakery-bread' => 3,
+            'price-control-of-essential-commodities' => 21,
+            'anti-encroachment-campaign' => 1,
+            'regulation-of-shops-and-handcarts' => 1,
+            'stray-dogs' => 1,
+            'removal-of-wall-chalking' => 1,
+            'chief-ministers-complaint-cell' => 12,
+            default => max(1, (int) round($fallback)),
+        };
+
+        return $base * max(1, $this->dailyTargetTehsilMultiplier($user, $request));
+    }
+
+    private function dailyTargetTehsilMultiplier(User $user, Request $request): int
+    {
+        if ($request->filled('geo_tehsil') || in_array($user->role?->slug, ['ac', 'field_user'], true)) {
+            return 1;
+        }
+
+        if ($request->filled('geo_district')) {
+            return $this->activeTehsilCountForDistrict((int) $request->input('geo_district'));
+        }
+
+        if ($request->filled('geo_division')) {
+            return $this->activeTehsilCountForDivision((int) $request->input('geo_division'));
+        }
+
+        return match ($user->role?->slug) {
+            'dc' => $this->activeTehsilCountForDistrict((int) $user->district_id),
+            'commissioner' => $this->activeTehsilCountForDivision((int) $user->division_id),
+            default => max(1, DB::table('tehsils')->where('is_active', true)->count()),
+        };
+    }
+
+    private function activeTehsilCountForDistrict(int $districtId): int
+    {
+        return max(1, DB::table('tehsils')
+            ->where('district_id', $districtId)
+            ->where('is_active', true)
+            ->count());
+    }
+
+    private function activeTehsilCountForDivision(int $divisionId): int
+    {
+        $districtIds = DB::table('districts')
+            ->where('division_id', $divisionId)
+            ->where('is_active', true)
+            ->pluck('id');
+
+        return max(1, DB::table('tehsils')
+            ->whereIn('district_id', $districtIds)
+            ->where('is_active', true)
+            ->count());
     }
 
     private function operationalSubmissions(Collection $submissions, User $user, Request $request): Collection

@@ -93,17 +93,22 @@ class KpiInspectionSeeder extends Seeder
                 continue;
             }
 
-            if ($card->slug === 'price-of-roti') {
-                [$rotiRows, $rotiAttachments] = $this->buildRotiTehsilInspections(
+            if (\Database\Seeders\Support\KpiLayyahDemoBuilders::supports($card->slug)) {
+                [$demoRows, $demoAttachments] = \Database\Seeders\Support\KpiLayyahDemoBuilders::build(
+                    $card->slug,
                     $card,
                     $users,
                     $refCounter,
                     $now,
-                    $batch
+                    $batch,
                 );
-                $inspectionRows = array_merge($inspectionRows, $rotiRows);
-                $attachmentPlan = array_merge($attachmentPlan, $rotiAttachments);
+                $inspectionRows = array_merge($inspectionRows, $demoRows);
+                $attachmentPlan = array_merge($attachmentPlan, $demoAttachments);
 
+                continue;
+            }
+
+            if ($card->slug === 'land-management-services') {
                 continue;
             }
 
@@ -1034,8 +1039,12 @@ class KpiInspectionSeeder extends Seeder
         int $tehsilId = 0,
     ): Carbon {
         if ($tehsilId === 24) {
-            if ($index < 2) {
-                return $this->activeWeekDateForIndex($index + $globalIndex);
+            if ($index === 0) {
+                return $this->todayInspectionDateInActiveWeek(15, 30);
+            }
+
+            if ($index === 1) {
+                return $this->todayInspectionDateInActiveWeek(12, 15);
             }
 
             return $this->latestCompletedDayDateForIndex($index - 2);

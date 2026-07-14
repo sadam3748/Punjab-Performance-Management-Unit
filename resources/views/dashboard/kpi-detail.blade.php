@@ -3,7 +3,7 @@
 @section('content_class', 'ppmu-dashboard-content ppmu-detail-page')
 @push('styles')
 <link rel="stylesheet" href="{{ asset('css/ppmu-kpi.css') }}?v={{ filemtime(public_path('css/ppmu-kpi.css')) }}">
-@if(in_array($kpiCard->slug, ['inspection-of-health-facilities', 'inspection-of-educational-institutions'], true))
+@if(in_array($kpiCard->slug, ['inspection-of-health-facilities', 'inspection-of-educational-institutions'], true) || ($hasLocationMapDashboard ?? false))
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
 @endif
 @endpush
@@ -27,6 +27,10 @@
     $isEducationDashboard = $kpiCard->slug === 'inspection-of-educational-institutions';
     $isVisitKpiDashboard = $isHealthDashboard || $isEducationDashboard;
     $visitMap = $visitMap ?? ($educationMap ?? ($healthMap ?? []));
+    $locationMap = $locationMap ?? [];
+    $hasLocationMapDashboard = $hasLocationMapDashboard ?? false;
+    $hasInspectionDashboard = $hasInspectionDashboard ?? false;
+    $isPlaceholderDashboard = $isPlaceholderDashboard ?? false;
 @endphp
 
 <div class="ppmu-detail-hero card-ppmf" id="kpiDetailHero">
@@ -99,6 +103,14 @@
 @endif
 
 <div id="kpiDetailRefreshable" class="ppmu-detail-refreshable">
+    @if($isPlaceholderDashboard)
+        <div class="alert alert-warning border mb-4" role="status">
+            <i class="bi bi-cone-striped me-1"></i>
+            {{ $placeholderMessage ?? 'Dashboard specification pending.' }}
+        </div>
+    @endif
+
+    @unless($isPlaceholderDashboard)
     <div class="ppmu-section-head">
         <div>
             <h2><i class="bi bi-speedometer2"></i> KPI Performance Cards</h2>
@@ -111,6 +123,8 @@
 
     @if($isVisitKpiDashboard)
         @include('dashboard.partials.kpi-detail-health-map', ['healthMap' => $visitMap])
+    @elseif($hasLocationMapDashboard)
+        @include('dashboard.partials.kpi-detail-health-map', ['healthMap' => $locationMap])
     @endif
 
     <div class="ppmu-section-head mt-4">
@@ -122,8 +136,7 @@
     <div class="ppmu-chart-grid ppmu-chart-grid-count-{{ $chartCount }}" id="kpiDetailCharts">
         @foreach($visibleCharts as $index => $chart)
             @php
-                $chartSubtitle = $chart['subtitle']
-                    ?? ($kpiCard->slug !== 'inspection-of-health-facilities' && $kpiCard->slug !== 'inspection-of-educational-institutions' ? ucfirst($chart['type']).' chart' : null);
+                $chartSubtitle = $chart['subtitle'] ?? null;
             @endphp
             <x-chart-card
                 :title="$chart['title']"
@@ -142,7 +155,18 @@
             'periodDescription' => $period_description ?? '',
         ])
     </div>
+    @if($hasInspectionDashboard)
+    <div id="kpiDetailInspections">
+        @include('dashboard.partials.kpi-detail-inspections-link', [
+            'kpiCard' => $kpiCard,
+            'inspectionRecords' => $inspectionRecords,
+            'period' => $period,
+            'geo' => $geo ?? [],
+        ])
+    </div>
     @endif
+    @endif
+    @endunless
 </div>
 
 @endsection
@@ -173,12 +197,14 @@ window.PPMU_KPI_DETAIL = {
     isHealthDashboard: @json($isHealthDashboard),
     isEducationDashboard: @json($isEducationDashboard),
     isVisitKpiDashboard: @json($isVisitKpiDashboard),
-    healthMap: @json($healthMap ?? []),
-    educationMap: @json($educationMap ?? []),
-    visitMap: @json($visitMap),
+    hasLocationMapDashboard: @json($hasLocationMapDashboard),
+    healthMap: @json($isHealthDashboard ? ($healthMap ?? null) : null),
+    educationMap: @json($isEducationDashboard ? ($educationMap ?? null) : null),
+    visitMap: @json($isVisitKpiDashboard ? ($visitMap ?: null) : null),
+    locationMap: @json($hasLocationMapDashboard ? ($locationMap ?: null) : null),
 };
 </script>
-@if($isVisitKpiDashboard)
+@if($isVisitKpiDashboard || $hasLocationMapDashboard)
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 @endif
 <script src="{{ asset('js/ppmu-kpi-detail.js') }}?v={{ filemtime(public_path('js/ppmu-kpi-detail.js')) }}"></script>

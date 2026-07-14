@@ -36,6 +36,7 @@ class KpiCardSeeder extends Seeder
             ["Chief Minister's Complaint Cell", 'chief-ministers-complaint-cell', 'Citizen Services', 3, 'monthly'],
             ['Management of Rehri Bazar and Cart Bazar', 'regulation-of-shops-and-handcarts', 'Governance', 3, 'monthly'],
             ['E-Biz', 'e-biz', 'Citizen Services', 3, 'monthly'],
+            ['Land Management Services', 'land-management-services', 'Citizen Services', 3, 'monthly'],
         ];
 
         $activeSlugs = [];

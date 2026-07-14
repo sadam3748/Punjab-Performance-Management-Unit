@@ -164,6 +164,7 @@ class KpiMetricConfigService
                 $m('DC Meeting Held', 'dc_meeting_held', 'bi-people', 'blue'),
                 $m('Disposal %', 'disposal_rate', 'bi-percent', 'green'),
             ],
+            'land-management-services' => [],
             'zebra-crossings' => [
                 $m('Schools to Inspect', 'schools_to_inspect', 'bi-mortarboard', 'blue'),
                 $m('Schools Inspected', 'schools_inspected', 'bi-clipboard2-check', 'blue'),

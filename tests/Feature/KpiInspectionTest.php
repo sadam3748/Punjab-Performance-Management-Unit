@@ -295,7 +295,7 @@ class KpiInspectionTest extends TestCase
     {
         $this->seed(PpmuSeeder::class);
         $card = KpiCard::where('slug', 'price-of-roti')->firstOrFail();
-        $ac = User::where('username', 'ac.lahore')->firstOrFail();
+        $ac = User::where('username', 'ac.layyah')->firstOrFail();
         $inspection = KpiInspection::where('kpi_card_id', $card->id)
             ->where('tehsil_id', $ac->tehsil_id)
             ->where('status', KpiInspection::STATUS_PENDING)
@@ -396,10 +396,28 @@ class KpiInspectionTest extends TestCase
             $expected = match ($card->slug) {
                 'inspection-of-health-facilities' => 75,
                 'inspection-of-educational-institutions' => 62,
-                'price-of-roti' => 36,
-                'functional-and-clean-water-filtration-plants',
-                'chief-ministers-complaint-cell',
-                'e-biz' => 32,
+                'price-of-roti' => 15,
+                'price-of-plain-bakery-bread' => 9,
+                'price-control-of-essential-commodities' => 47,
+                'repair-of-small-roads-in-both-urban-and-rural-areas' => 4,
+                'zebra-crossings' => 14,
+                'dysfunctional-streetlights' => 7,
+                'covering-of-manholes' => 9,
+                'functional-and-clean-water-filtration-plants' => 7,
+                'violation-of-marriage-functions-act' => 9,
+                'anti-encroachment-campaign' => 5,
+                'regulation-of-shops-and-handcarts' => 4,
+                'stray-dogs' => 5,
+                'removal-of-wall-chalking' => 4,
+                'graveyards' => 7,
+                'illegal-decanting' => 35,
+                'suthra-punjab-campaign' => 11,
+                'maintenance-of-greenbelts' => 9,
+                'maintenance-of-drains-and-sewerage-lines' => 11,
+                'bus-terminals' => 7,
+                'chief-ministers-complaint-cell' => 29,
+                'e-biz' => 15,
+                'land-management-services' => 0,
                 default => 15,
             };
 
@@ -410,11 +428,11 @@ class KpiInspectionTest extends TestCase
             );
         });
 
-        $this->assertSame(524, KpiInspection::count());
+        $this->assertSame(400, KpiInspection::count());
 
         $total = KpiInspection::count();
-        $this->assertEqualsWithDelta(.56, KpiInspection::where('status', 'approved')->count() / $total, .06);
-        $this->assertEqualsWithDelta(.28, KpiInspection::where('status', 'pending_review')->count() / $total, .06);
-        $this->assertEqualsWithDelta(.15, KpiInspection::where('status', 'rejected')->count() / $total, .06);
+        $this->assertEqualsWithDelta(.62, KpiInspection::where('status', 'approved')->count() / $total, .08);
+        $this->assertEqualsWithDelta(.24, KpiInspection::where('status', 'pending_review')->count() / $total, .08);
+        $this->assertEqualsWithDelta(.14, KpiInspection::where('status', 'rejected')->count() / $total, .08);
     }
 }

@@ -40,6 +40,7 @@ class KpiDashboardDefinitions
             'chief-ministers-complaint-cell',
             'regulation-of-shops-and-handcarts',
             'e-biz',
+            'land-management-services',
         ];
     }
 
@@ -188,13 +189,18 @@ class KpiDashboardDefinitions
                 self::column('Pending Cases', 'pending_cases'),
                 self::column('Timeline Compliance', 'timeline_compliance'),
             ],
+            'land-management-services' => [
+                self::column('Record', 'entity_name', 'entity'),
+                self::column('Status', 'status_note'),
+            ],
             default => [],
         };
 
         $charts = match ($slug) {
             'price-of-roti' => [
-                self::chart('line', 'Daily Inspections Trend', 'daily_inspections_trend'),
-                self::chart('donut', 'Violation Type Breakdown', 'violation_type_breakdown'),
+                self::chart('line', 'Daily Tandoor Inspection Trend', 'daily_inspections_trend', 'Tandoor inspections conducted during the selected day.'),
+                self::chart('donut', 'Violation Breakdown', 'violation_type_breakdown', 'Over Price, Under Weight and Non-Availability cases.'),
+                self::chart('donut', 'Fine Recovery / Complaint Resolution', 'fine_recovery_complaint_resolution', 'Fine payment status and complaint resolution outcomes.'),
             ],
             'price-of-plain-bakery-bread' => [
                 self::chart('line', 'Daily Inspections Trend', 'daily_inspections_trend'),
@@ -211,17 +217,14 @@ class KpiDashboardDefinitions
                 self::chart('bar', 'District Comparison', 'district_comparison'),
             ],
             'repair-of-small-roads-in-both-urban-and-rural-areas' => [
-                self::chart('line', 'Road Repairs Trend', 'road_repairs_trend'),
-                self::chart('donut', 'Repair Type Breakdown', 'repair_type_breakdown'),
-                self::chart('gauge', 'Completion Rate', 'completion_rate'),
-                self::chart('bar', 'Tehsil Comparison', 'tehsil_comparison'),
-                self::chart('bar', 'District Comparison', 'district_comparison'),
+                self::chart('line', 'Road Repairs Trend', 'road_repairs_trend', 'Road maintenance activity across the selected week.'),
+                self::chart('donut', 'Repair Type Breakdown', 'repair_type_breakdown', 'Patching, resurfacing and shoulder repair mix.'),
+                self::chart('gauge', 'Completion Rate', 'completion_rate', 'Share of road works marked completed.'),
             ],
             'zebra-crossings' => [
-                self::chart('line', 'School Inspections Trend', 'school_inspections_trend'),
-                self::chart('donut', 'Crossing Status Breakdown', 'crossing_status_breakdown'),
-                self::chart('gauge', 'Marking Compliance', 'marking_compliance'),
-                self::chart('bar', 'Tehsil Comparison', 'tehsil_comparison'),
+                self::chart('line', 'School Inspections Trend', 'school_inspections_trend', 'Zebra crossing inspections completed in the selected week.'),
+                self::chart('donut', 'Crossing Status Breakdown', 'crossing_status_breakdown', 'Visible, faded and missing crossing markings.'),
+                self::chart('gauge', 'Marking Compliance', 'marking_compliance', 'Share of inspected schools with compliant markings.'),
             ],
             'dysfunctional-streetlights' => [
                 self::chart('line', 'Repairs Trend', 'repairs_trend'),
@@ -231,15 +234,14 @@ class KpiDashboardDefinitions
                 self::chart('bar', 'District Comparison', 'district_comparison'),
             ],
             'covering-of-manholes' => [
-                self::chart('line', 'Manhole Coverage Trend', 'manhole_coverage_trend'),
-                self::chart('donut', 'Open vs Covered Manholes', 'manhole_status_breakdown'),
-                self::chart('gauge', 'Safety Compliance', 'safety_compliance'),
-                self::chart('bar', 'Tehsil Comparison', 'tehsil_comparison'),
+                self::chart('line', 'Manhole Coverage Trend', 'manhole_coverage_trend', 'UC manhole inspections across the selected week.'),
+                self::chart('donut', 'Open vs Covered Manholes', 'manhole_status_breakdown', 'Open manholes found versus those covered.'),
+                self::chart('gauge', 'Safety Compliance', 'safety_compliance', 'Coverage and netting safety compliance.'),
             ],
             'functional-and-clean-water-filtration-plants' => [
-                self::chart('donut', 'Plant Status — Functional / Non-Functional / Blocked', 'plant_status_breakdown'),
-                self::chart('gauge', 'RO Filter Change Compliance', 'filter_change_compliance'),
-                self::chart('bar', 'Clean vs. Unclean', 'clean_vs_unclean'),
+                self::chart('donut', 'Plant Status — Functional vs Non-Functional', 'plant_status_breakdown', 'Operational status of inspected filtration plants.'),
+                self::chart('gauge', 'RO Filter Compliance', 'filter_change_compliance', 'RO filter date affixed / change compliance.'),
+                self::chart('donut', 'Clean vs Unclean Plants', 'clean_vs_unclean', 'Cleanliness outcome for inspected plants.'),
             ],
             'inspection-of-educational-institutions' => [
                 self::chart('line', 'Institution Visits Trend', 'institution_visits_trend'),
@@ -337,6 +339,7 @@ class KpiDashboardDefinitions
                 self::chart('bar', 'Pending vs Reviewed', 'pending_reviewed_comparison'),
                 self::chart('bar', 'District Comparison', 'district_comparison'),
             ],
+            'land-management-services' => [],
             default => [],
         };
 
@@ -399,15 +402,21 @@ class KpiDashboardDefinitions
     }
 
     /**
-     * @return array{type: 'line'|'bar'|'donut'|'pie'|'gauge', title: string, key: string}
+     * @return array{type: 'line'|'bar'|'donut'|'pie'|'gauge', title: string, key: string, subtitle?: string}
      */
-    private static function chart(string $type, string $title, string $key): array
+    private static function chart(string $type, string $title, string $key, ?string $subtitle = null): array
     {
-        return [
+        $chart = [
             'type' => $type,
             'title' => $title,
             'key' => $key,
         ];
+
+        if ($subtitle !== null && $subtitle !== '') {
+            $chart['subtitle'] = $subtitle;
+        }
+
+        return $chart;
     }
 
     /**

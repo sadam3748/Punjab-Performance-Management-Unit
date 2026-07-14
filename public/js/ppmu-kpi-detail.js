@@ -337,16 +337,57 @@
 
     function applyDefaultsToForm() {
         const filter = document.getElementById('kpiPeriodFilter');
-        if (!filter || !cfg.defaults) return;
-        const d = cfg.defaults;
+        if (!filter) return;
+        const d = cfg.defaults || {};
+        const p = cfg.period || {};
         const set = (name, val) => {
             const el = filter.querySelector(`[data-filter="${name}"]`);
             if (el && val) el.value = val;
         };
-        set('week_no', d.week_no);
-        set('month', d.month);
-        set('year', d.year);
-        set('date', d.date);
+        set('week_no', p.week_no || d.week_no);
+        set('month', p.month || d.month);
+        set('year', p.year || d.year);
+        set('date', p.date || d.date);
+    }
+
+    function syncPeriodFromUrlOrDefaults() {
+        const filter = document.getElementById('kpiPeriodFilter');
+        if (!filter) return;
+
+        const params = new URLSearchParams(window.location.search);
+        const type = params.get('period_type') || cfg.period?.period_type || cfg.defaults?.period_type || 'weekly';
+        activatePeriodPill(type);
+
+        const set = (name) => {
+            const el = filter.querySelector(`[data-filter="${name}"]`);
+            if (!el) return;
+            const fromUrl = params.get(name);
+            const fromCfg = cfg.period?.[name] || cfg.defaults?.[name];
+            if (fromUrl) {
+                el.value = fromUrl;
+            } else if (fromCfg) {
+                el.value = fromCfg;
+            }
+        };
+
+        set('week_no');
+        set('month');
+        set('year');
+        set('date');
+
+        if (cfg.defaults?.week_no && currentPeriodType === 'weekly') {
+            const weekEl = filter.querySelector('[data-filter="week_no"]');
+            const requestedWeek = params.get('week_no');
+            if (weekEl && !requestedWeek) {
+                weekEl.value = cfg.defaults.week_no;
+            }
+        }
+
+        if (!window.location.search && cfg.defaults) {
+            applyDefaultsToForm();
+            const query = collectFilterParams();
+            history.replaceState(null, '', window.location.pathname + (query.toString() ? '?' + query.toString() : ''));
+        }
     }
 
     function updateHeader(header) {
@@ -464,8 +505,13 @@
             updateWeekOptions(data.period_filters);
             document.getElementById('kpiDetailMetrics').innerHTML = data.metrics_html;
 
-            if (cfg.isVisitKpiDashboard && (data.visit_map || data.health_map || data.education_map)) {
-                updateHealthMapSection(data.visit_map || data.health_map || data.education_map);
+            if (cfg.isVisitKpiDashboard || cfg.hasLocationMapDashboard) {
+                updateHealthMapSection(resolveDashboardMapPayload({
+                    visit_map: data.visit_map,
+                    health_map: data.health_map,
+                    education_map: data.education_map,
+                    location_map: data.location_map,
+                }));
             }
 
             const inspEl = document.getElementById('kpiDetailInspections');
@@ -508,9 +554,9 @@
                     <span class="ppmu-health-map-pin-ring"></span>
                     <span class="ppmu-health-map-pin-core"><i class="bi bi-geo-alt-fill"></i></span>
                 </div>`,
-            iconSize: [38, 46],
-            iconAnchor: [19, 46],
-            popupAnchor: [0, -42],
+            iconSize: [42, 50],
+            iconAnchor: [21, 50],
+            popupAnchor: [0, -46],
         });
     }
 
@@ -532,7 +578,7 @@
                 return;
             }
 
-            const radius = 0.0018;
+            const radius = 0.0042;
             items.forEach((pin, offset) => {
                 const angle = (Math.PI * 2 * offset) / items.length;
                 spread.push({
@@ -555,8 +601,22 @@
     }
 
     function healthMapPopupHtml(pin) {
-        const entityLabel = pin.institution_name ? 'Institution' : 'Facility';
-        const entityValue = pin.institution_name || pin.facility_name;
+        const entityLabel = pin.institution_name
+            ? 'Institution'
+            : (pin.school_name ? 'School' : (pin.location_name ? 'Name / Location' : 'Facility'));
+        const entityValue = pin.institution_name
+            || pin.school_name
+            || pin.location_name
+            || pin.facility_name;
+        const districtRow = pin.district
+            ? `<div><dt>District</dt><dd>${escapeHtml(pin.district)}</dd></div>`
+            : '';
+        const addressRow = pin.address
+            ? `<div><dt>Address</dt><dd>${escapeHtml(pin.address)}</dd></div>`
+            : '';
+        const issueRow = pin.issue_summary || pin.observation_issues || pin.action_summary
+            ? `<div><dt>Main Issue / Action Summary</dt><dd>${escapeHtml(pin.issue_summary || pin.action_summary || pin.observation_issues)}</dd></div>`
+            : '';
         const studentRows = pin.students_enrolled !== undefined
             ? `
                     <div><dt>Students Enrolled</dt><dd>${escapeHtml(pin.students_enrolled)}</dd></div>
@@ -570,11 +630,12 @@
                     <div><dt>Inspection ID</dt><dd>${escapeHtml(pin.inspection_id)}</dd></div>
                     <div><dt>Inspection Type</dt><dd>${escapeHtml(pin.inspection_type)}</dd></div>
                     <div><dt>${entityLabel}</dt><dd>${escapeHtml(entityValue)}</dd></div>
-                    <div><dt>Date &amp; Time</dt><dd>${escapeHtml(pin.inspection_date)}</dd></div>
+                    ${addressRow}
                     <div><dt>Tehsil</dt><dd>${escapeHtml(pin.tehsil)}</dd></div>
-                    <div><dt>Address</dt><dd>${escapeHtml(pin.address)}</dd></div>
+                    ${districtRow}
+                    <div><dt>Date &amp; Time</dt><dd>${escapeHtml(pin.inspection_date)}</dd></div>
                     <div><dt>Status</dt><dd><span class="ppmu-health-map-status ppmu-health-map-status-${escapeHtml(pin.color)}">${escapeHtml(pin.review_status)}</span></dd></div>
-                    <div><dt>Observation Issues</dt><dd>${escapeHtml(pin.observation_issues)}</dd></div>${studentRows}
+                    ${issueRow}${studentRows}
                 </dl>
                 <a href="${escapeHtml(pin.detail_url)}" class="ppmu-health-map-popup-btn" target="_blank" rel="noopener noreferrer">View Detail</a>
             </div>`;
@@ -608,11 +669,17 @@
             maxZoom: 19,
         }).addTo(healthMapInstance);
 
+        const refreshMapLayout = () => {
+            if (!healthMapInstance) return;
+            healthMapInstance.invalidateSize({ animate: false });
+        };
+
         if (!pins.length) {
-            healthMapInstance.setView([center.lat, center.lng], center.zoom);
+            healthMapInstance.setView([center.lat, center.lng], center.zoom || 7);
             frameWrap?.classList.add('is-empty');
             if (emptyEl) emptyEl.hidden = false;
-            setTimeout(() => healthMapInstance.invalidateSize(), 200);
+            window.setTimeout(refreshMapLayout, 120);
+            window.setTimeout(refreshMapLayout, 420);
             return;
         }
 
@@ -622,13 +689,14 @@
         const bounds = [];
         pins.forEach(pin => {
             const marker = L.marker([pin.lat, pin.lng], {
-                icon: buildHealthMapPin(pin.color, pin.facility_name, pin.review_status),
+                icon: buildHealthMapPin(pin.color, pin.facility_name || pin.location_name, pin.review_status),
                 riseOnHover: true,
+                zIndexOffset: pin.color === 'green' ? 40 : (pin.color === 'orange' ? 30 : 20),
             })
-                .bindPopup(healthMapPopupHtml(pin), { maxWidth: 300, className: 'ppmu-health-map-leaflet-popup' })
-                .bindTooltip(`${escapeHtml(pin.review_status)} — ${escapeHtml(pin.facility_name)}`, {
+                .bindPopup(healthMapPopupHtml(pin), { maxWidth: 320, className: 'ppmu-health-map-leaflet-popup' })
+                .bindTooltip(`${escapeHtml(pin.review_status)} — ${escapeHtml(pin.facility_name || pin.location_name)}`, {
                     direction: 'top',
-                    offset: [0, -40],
+                    offset: [0, -44],
                     opacity: 0.98,
                     className: `ppmu-health-map-marker-tooltip ppmu-health-map-marker-tooltip-${pin.color}`,
                 })
@@ -637,16 +705,17 @@
         });
 
         if (bounds.length === 1) {
-            healthMapInstance.setView(bounds[0], 15);
+            healthMapInstance.setView(bounds[0], Math.max(center.zoom || 14, 15));
         } else {
-            healthMapInstance.fitBounds(bounds, { padding: [56, 56], maxZoom: 14 });
+            healthMapInstance.fitBounds(bounds, { padding: [64, 64], maxZoom: 15 });
         }
 
-        setTimeout(() => healthMapInstance.invalidateSize(), 200);
+        window.setTimeout(refreshMapLayout, 120);
+        window.setTimeout(refreshMapLayout, 420);
     }
 
     function updateHealthMapSection(mapData) {
-        if (!cfg.isVisitKpiDashboard) return;
+        if (!cfg.isVisitKpiDashboard && !cfg.hasLocationMapDashboard) return;
 
         const frameWrap = document.getElementById('ppmuHealthMapFrameWrap');
         const emptyEl = document.getElementById('ppmuHealthMapEmpty');
@@ -701,20 +770,11 @@
         loadDashboard({ page: '1' });
     }
 
-    function syncUrlOnLoad() {
-        if (!window.location.search && cfg.defaults) {
-            activatePeriodPill(cfg.defaults.period_type || 'weekly');
-            applyDefaultsToForm();
-            const params = collectFilterParams();
-            history.replaceState(null, '', window.location.pathname + '?' + params.toString());
-        }
-    }
-
     function initFilters() {
         const filter = document.getElementById('kpiPeriodFilter');
         if (!filter) return;
 
-        syncUrlOnLoad();
+        syncPeriodFromUrlOrDefaults();
 
         filter.querySelectorAll('.ppmu-period-pills button').forEach(btn => {
             btn.addEventListener('click', () => {
@@ -743,11 +803,64 @@
         });
     }
 
+    /**
+     * Empty arrays are truthy in JS — never use `visitMap || locationMap`.
+     * Prefer the map payload that belongs to the current KPI type.
+     */
+    function isMapPayload(value) {
+        return !!value
+            && typeof value === 'object'
+            && !Array.isArray(value)
+            && ('pins' in value || 'pin_count' in value || 'title' in value || 'center' in value);
+    }
+
+    function resolveDashboardMapPayload(sources = {}) {
+        if (cfg.hasLocationMapDashboard) {
+            if (isMapPayload(sources.location_map)) return sources.location_map;
+            if (isMapPayload(sources.locationMap)) return sources.locationMap;
+        }
+
+        if (cfg.isVisitKpiDashboard) {
+            const visitCandidates = [
+                sources.visit_map, sources.visitMap,
+                sources.health_map, sources.healthMap,
+                sources.education_map, sources.educationMap,
+            ];
+            for (const candidate of visitCandidates) {
+                if (isMapPayload(candidate)) return candidate;
+            }
+        }
+
+        const fallback = [
+            sources.location_map, sources.locationMap,
+            sources.visit_map, sources.visitMap,
+            sources.health_map, sources.healthMap,
+            sources.education_map, sources.educationMap,
+        ];
+        for (const candidate of fallback) {
+            if (isMapPayload(candidate)) return candidate;
+        }
+
+        return {};
+    }
+
+    function scheduleMapRefresh(mapData) {
+        if (!cfg.isVisitKpiDashboard && !cfg.hasLocationMapDashboard) return;
+        const payload = isMapPayload(mapData) ? mapData : {};
+        const render = () => updateHealthMapSection(payload);
+        render();
+        window.setTimeout(render, 180);
+        window.setTimeout(render, 520);
+    }
+
     buildCharts({ definitions: cfg.chartDefinitions || cfg.charts?.definitions || [], ...cfg.charts });
     bindInspectionFilters();
     bindGeoFilters();
     initFilters();
-    if (cfg.isVisitKpiDashboard) {
-        updateHealthMapSection(cfg.visitMap || cfg.healthMap || cfg.educationMap || {});
-    }
+    scheduleMapRefresh(resolveDashboardMapPayload({
+        visitMap: cfg.visitMap,
+        healthMap: cfg.healthMap,
+        educationMap: cfg.educationMap,
+        locationMap: cfg.locationMap,
+    }));
 })();

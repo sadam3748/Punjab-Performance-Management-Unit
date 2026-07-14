@@ -68,10 +68,11 @@ class KpiDashboardController extends Controller
             'inspections_total' => $data['inspectionRecords']->total(),
             'period_description' => $data['period_description'],
             'period_query' => $service->periodQueryString($request),
-            'period_filters' => $service->filterOptionsForView($kpiCard->slug),
-            'health_map' => $data['visitMap'] ?? ($data['healthMap'] ?? []),
-            'education_map' => $data['visitMap'] ?? ($data['educationMap'] ?? []),
-            'visit_map' => $data['visitMap'] ?? [],
+            'period_filters' => $service->filterOptionsForView($kpiCard->slug, $request),
+            'health_map' => $data['healthMap'] ?? null,
+            'education_map' => $data['educationMap'] ?? null,
+            'visit_map' => $data['visitMap'] ?? null,
+            'location_map' => $data['locationMap'] ?? null,
         ]);
     }
 }

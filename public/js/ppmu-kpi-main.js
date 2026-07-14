@@ -18,7 +18,8 @@
     function updateCardLinks(periodQuery) {
         document.querySelectorAll('[data-kpi-detail-link]').forEach(link => {
             const base = link.href.split('?')[0];
-            link.href = periodQuery ? `${base}?${periodQuery}` : base;
+            const kpiDefaultQuery = link.dataset.kpiDefaultQuery || periodQuery || '';
+            link.href = kpiDefaultQuery ? `${base}?${kpiDefaultQuery}` : base;
         });
     }
 

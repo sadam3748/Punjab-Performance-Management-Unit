@@ -5,6 +5,8 @@ namespace App\Services;
 use App\Data\EducationObservationLabels;
 use App\Data\HealthObservationLabels;
 use App\Data\KpiDashboardDefinitions;
+use App\Data\KpiFrequencyConfig;
+use App\Data\KpiLocationSlugs;
 use App\Data\KpiMetricSections;
 use App\Models\KpiCard;
 use App\Models\KpiInspection;
@@ -29,6 +31,8 @@ class KpiDashboardService
         private readonly KpiFrequencyService $frequencyService,
         private readonly HealthInspectionMapService $healthMapService,
         private readonly EducationInspectionMapService $educationMapService,
+        private readonly KpiInspectionMapService $inspectionMapService,
+        private readonly KpiInspectionDashboardContext $inspectionDashboardContext,
     ) {}
 
     public function assignedCards(User $user, ?Request $request = null): Collection
@@ -58,23 +62,22 @@ class KpiDashboardService
                     return $cards;
                 }
 
-                $submissionsByCard = $this->filteredSubmissions(
-                    KpiSubmission::query()->whereIn('kpi_card_id', $cards->pluck('id')),
-                    $user,
-                    $request
-                )
-                    ->get([
+                return $cards->map(function (KpiCard $card) use ($user, $request) {
+                    $cardRequest = $this->requestWithKpiPeriodDefaults($card, $request);
+                    $submissions = $this->filteredSubmissions(
+                        KpiSubmission::query()->where('kpi_card_id', $card->id),
+                        $user,
+                        $cardRequest
+                    )->get([
                         'kpi_card_id', 'user_id', 'area_level', 'submission_date', 'metric_snapshot',
                         'reported_value', 'achieved_value', 'achievement_percentage', 'target_value',
-                    ])
-                    ->groupBy('kpi_card_id');
+                    ]);
 
-                return $cards->map(function (KpiCard $card) use ($submissionsByCard, $user, $request) {
                     $header = $this->resolveOperationalHeader(
                         $card,
-                        $submissionsByCard->get($card->id, collect()),
+                        $submissions,
                         $user,
-                        $request,
+                        $cardRequest,
                         periodTotals: true,
                     );
 
@@ -135,6 +138,18 @@ class KpiDashboardService
             )
             : [];
 
+        $inspectionContext = $visitContext === [] && ! KpiLocationSlugs::isPlaceholder($card->slug)
+            ? $this->inspectionDashboardContext->forKpi(
+                $card,
+                $user,
+                $request,
+                $inspectionCollection,
+                $inspectionStatusCounts,
+                (float) $headerMetrics['operational_target'],
+                (float) $headerMetrics['completed'],
+            )
+            : [];
+
         return [
             'kpiConfig' => $kpiConfig,
             'chartDefinitions' => $chartDefinitions,
@@ -172,7 +187,8 @@ class KpiDashboardService
                 $headerMetrics['operational_target'],
                 $headerMetrics['completed'],
                 $headerMetrics['achievement_percentage'],
-                $inspectionStatusCounts
+                $inspectionStatusCounts,
+                $inspectionContext,
             ),
             'metricSections' => $this->metricSections(
                 $card,
@@ -183,6 +199,7 @@ class KpiDashboardService
                 $inspectionStatusCounts,
                 (float) $headerMetrics['operational_target'],
                 (float) $headerMetrics['completed'],
+                $inspectionContext,
             ),
             'charts' => $this->chartService->buildForKpi(
                 $card->slug,
@@ -197,7 +214,7 @@ class KpiDashboardService
                     ? $visitContext
                     : [],
             ),
-            'filters' => $this->filterOptionsForView($card->slug),
+            'filters' => $this->filterOptionsForView($card->slug, $request),
             'geo' => $this->geoFilterService->state($request),
             'period' => $this->periodState($request),
             'period_description' => $this->periodService->description($request),
@@ -206,6 +223,14 @@ class KpiDashboardService
             'inspectionFilters' => $this->inspectionService->filterOptions($user),
             'canReviewInspections' => $this->inspectionService->canReviewInspections($user),
             ...$this->visitMapPayload($card, $user, $request, $visitContext),
+            ...$this->locationMapPayload($card, $user, $request, $inspectionContext, $inspectionStatusCounts),
+            'isPlaceholderDashboard' => KpiLocationSlugs::isPlaceholder($card->slug),
+            'placeholderMessage' => KpiLocationSlugs::isPlaceholder($card->slug)
+                ? 'Land Management Services dashboard specification pending.'
+                : null,
+            'hasLocationMapDashboard' => KpiLocationSlugs::hasLocationMap($card->slug),
+            'hasInspectionDashboard' => ! KpiLocationSlugs::isVisitKpi($card->slug)
+                && ! KpiLocationSlugs::isPlaceholder($card->slug),
         ];
     }
 
@@ -232,9 +257,35 @@ class KpiDashboardService
         };
 
         return [
-            'healthMap' => $card->slug === 'inspection-of-health-facilities' ? $visitMap : [],
-            'educationMap' => $card->slug === 'inspection-of-educational-institutions' ? $visitMap : [],
-            'visitMap' => $visitMap,
+            'healthMap' => $card->slug === 'inspection-of-health-facilities' ? $visitMap : null,
+            'educationMap' => $card->slug === 'inspection-of-educational-institutions' ? $visitMap : null,
+            'visitMap' => $visitMap !== [] ? $visitMap : null,
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $inspectionContext
+     * @param  array<string, int>  $statusCounts
+     * @return array{locationMap: array<string, mixed>}
+     */
+    private function locationMapPayload(
+        KpiCard $card,
+        User $user,
+        Request $request,
+        array $inspectionContext,
+        array $statusCounts,
+    ): array {
+        if (! KpiLocationSlugs::hasLocationMap($card->slug)) {
+            return ['locationMap' => null];
+        }
+
+        return [
+            'locationMap' => $this->inspectionMapService->forDashboard($card, $user, $request, [
+                'inspected' => (int) ($inspectionContext['inspected'] ?? 0),
+                'approved' => (int) ($statusCounts['approved'] ?? $inspectionContext['approved'] ?? 0),
+                'pending' => (int) ($statusCounts['pending_review'] ?? $inspectionContext['pending'] ?? 0),
+                'rejected' => (int) ($statusCounts['rejected'] ?? $inspectionContext['rejected'] ?? 0),
+            ]),
         ];
     }
 
@@ -248,15 +299,31 @@ class KpiDashboardService
         return $this->periodService->applyToQuery($query, $request);
     }
 
-    public function filterOptionsForView(?string $kpiSlug = null): array
+    public function filterOptionsForView(?string $kpiSlug = null, ?Request $request = null): array
     {
-        $year = (int) (request('year') ?: now()->year);
-        $month = (int) (request('month') ?: now()->month);
+        $request ??= request();
+        $year = (int) ($request->input('year') ?: now()->year);
+        $month = (int) ($request->input('month') ?: now()->month);
         $options = $this->periodService->filterOptions($year, $month);
 
         if ($kpiSlug) {
             $options['period_types'] = $this->frequencyService->periodTypesFor($kpiSlug);
             $options['defaults'] = $this->frequencyService->defaultParamsFor($kpiSlug);
+            if ($this->frequencyService->isWeekly($kpiSlug) && ! $this->frequencyService->isDaily($kpiSlug)) {
+                $defaultWeek = $this->periodService->latestCompletedWeekNo();
+                $options['default_week_no'] = $defaultWeek;
+                if (! isset($options['weeks'][$defaultWeek])) {
+                    $range = $this->periodService->getWeekDateRange($defaultWeek);
+                    if (($range['start'] ?? null) && ($range['end'] ?? null)) {
+                        $options['weeks'][$defaultWeek] = $this->periodService->formatWeekLabel(
+                            $range['start'],
+                            $range['end'],
+                            null,
+                            true,
+                        );
+                    }
+                }
+            }
         }
 
         return $options;
@@ -431,15 +498,28 @@ class KpiDashboardService
         $hasCalculatedVisitTarget = in_array($card->slug, [
             'inspection-of-health-facilities',
             'inspection-of-educational-institutions',
-        ], true);
+        ], true) || $this->usesInspectionOperationalAchieved($card->slug);
 
-        $inspectionAchieved = $hasCalculatedVisitTarget && $periodTotals
+        $inspectionAchieved = ($hasCalculatedVisitTarget || $this->usesInspectionOperationalAchieved($card->slug)) && $periodTotals
             ? match ($card->slug) {
                 'inspection-of-health-facilities' => $this->inspectionService->countHealthInspected($card, $user, $request),
                 'inspection-of-educational-institutions' => $this->inspectionService->countEducationInspected($card, $user, $request),
-                default => $this->inspectionService->countOperationalAchieved($card, $user, $request),
+                default => $this->inspectionService->countScopedInspections($card, $user, $request),
             }
             : null;
+
+        if ($inspectionAchieved !== null && ! in_array($card->slug, [
+            'inspection-of-health-facilities',
+            'inspection-of-educational-institutions',
+        ], true)) {
+            $periodType = $this->periodService->resolvedParams($request)['period_type'] ?? 'weekly';
+            $periodMatchesFrequency = (KpiFrequencyConfig::isDaily($card->slug) && $periodType === 'daily')
+                || (KpiFrequencyConfig::isWeekly($card->slug) && $periodType === 'weekly');
+
+            if (! $periodMatchesFrequency) {
+                $inspectionAchieved = null;
+            }
+        }
 
         $activeScope = in_array($card->slug, [
             'inspection-of-health-facilities',
@@ -566,7 +646,7 @@ class KpiDashboardService
         ), 1);
     }
 
-    /** @param  array<string, int>  $inspectionStatusCounts */
+    /** @param  array<string, int>  $inspectionStatusCounts @param  array<string, mixed>  $inspectionContext */
     private function metrics(
         KpiCard $card,
         Collection $submissions,
@@ -576,6 +656,7 @@ class KpiDashboardService
         float $achieved,
         float $pct,
         array $inspectionStatusCounts,
+        array $inspectionContext = [],
     ): Collection {
         $configured = collect($this->dashboardConfig->dashboardStatsFor($card->slug));
         $allValues = $submissions->flatMap->values;
@@ -588,8 +669,9 @@ class KpiDashboardService
             $target,
             $achieved,
         );
+        $operational = ['target' => $target, 'completed' => $achieved, 'pct' => $pct];
 
-        return $configured->map(function (array $metric) use ($allValues, $submissions, $inspectionStatusCounts, $pct, $visitContext, $user, $card) {
+        return $configured->map(function (array $metric) use ($allValues, $submissions, $inspectionStatusCounts, $pct, $visitContext, $inspectionContext, $user, $card, $operational) {
             $value = $this->resolveMetricValue(
                 $metric['field'],
                 $submissions,
@@ -599,13 +681,15 @@ class KpiDashboardService
                 $visitContext,
                 $user,
                 $card->slug,
+                $operational,
+                $inspectionContext,
             );
 
             return $this->decorateMetricCard($metric, $value);
         });
     }
 
-    /** @param  array<string, int>  $inspectionStatusCounts */
+    /** @param  array<string, int>  $inspectionStatusCounts @param  array<string, mixed>  $inspectionContext */
     private function metricSections(
         KpiCard $card,
         Collection $submissions,
@@ -615,6 +699,7 @@ class KpiDashboardService
         array $inspectionStatusCounts,
         float $operationalTarget = 0,
         float $operationalCompleted = 0,
+        array $inspectionContext = [],
     ): array {
         $configured = collect($this->dashboardConfig->dashboardStatsFor($card->slug))->keyBy('field');
         $allValues = $submissions->flatMap->values;
@@ -635,18 +720,18 @@ class KpiDashboardService
         ];
 
         if ($sectionDefs === []) {
-            $flat = $configured->values()->map(function (array $metric) use ($allValues, $submissions, $inspectionStatusCounts, $pct, $visitContext, $user, $card, $operational) {
+            $flat = $configured->values()->map(function (array $metric) use ($allValues, $submissions, $inspectionStatusCounts, $pct, $visitContext, $inspectionContext, $user, $card, $operational) {
                 return $this->decorateMetricCard(
                     $metric,
-                    $this->resolveMetricValue($metric['field'], $submissions, $allValues, $inspectionStatusCounts, $pct, $visitContext, $user, $card->slug, $operational),
+                    $this->resolveMetricValue($metric['field'], $submissions, $allValues, $inspectionStatusCounts, $pct, $visitContext, $user, $card->slug, $operational, $inspectionContext),
                 );
             })->all();
 
             return KpiMetricSections::groupGeneric($flat);
         }
 
-        return collect($sectionDefs)->map(function (array $section) use ($configured, $allValues, $submissions, $inspectionStatusCounts, $pct, $visitContext, $user, $card, $operational) {
-            $metrics = collect($section['metrics'])->map(function (array $item) use ($configured, $allValues, $submissions, $inspectionStatusCounts, $pct, $visitContext, $user, $card, $operational) {
+        return collect($sectionDefs)->map(function (array $section) use ($configured, $allValues, $submissions, $inspectionStatusCounts, $pct, $visitContext, $inspectionContext, $user, $card, $operational) {
+            $metrics = collect($section['metrics'])->map(function (array $item) use ($configured, $allValues, $submissions, $inspectionStatusCounts, $pct, $visitContext, $inspectionContext, $user, $card, $operational) {
                 $base = $configured->get($item['field'], [
                     'field' => $item['field'],
                     'icon' => 'bi-bar-chart',
@@ -659,7 +744,7 @@ class KpiDashboardService
                     array_merge($base, ['label' => $item['label']], array_filter([
                         'formula_text' => $item['formula_text'] ?? null,
                     ])),
-                    $this->resolveMetricValue($item['field'], $submissions, $allValues, $inspectionStatusCounts, $pct, $visitContext, $user, $card->slug, $operational),
+                    $this->resolveMetricValue($item['field'], $submissions, $allValues, $inspectionStatusCounts, $pct, $visitContext, $user, $card->slug, $operational, $inspectionContext),
                 );
             })->values()->all();
 
@@ -1414,9 +1499,32 @@ class KpiDashboardService
     private function requestWithKpiPeriodDefaults(KpiCard $card, Request $request): Request
     {
         $defaults = $this->frequencyService->defaultParamsFor($card->slug);
-        $shouldApply = ! $request->has('period_type');
 
-        if (! $shouldApply) {
+        if ($request->has('period_type')) {
+            $query = $request->query();
+
+            if ($this->frequencyService->isDaily($card->slug)
+                && $request->get('period_type') === 'daily'
+                && ! $request->filled('date')) {
+                $query['date'] = now()->toDateString();
+
+                return $request->duplicate($query);
+            }
+
+            if ($this->frequencyService->isWeekly($card->slug)
+                && $request->get('period_type') === 'weekly'
+                && ! $request->filled('week_no')) {
+                $completedWeek = $this->periodService->latestCompletedWeekNo();
+                $completedRange = $this->periodService->getWeekDateRange($completedWeek);
+                $anchor = $completedRange['end'] ?? now();
+                $query['week_no'] = $completedWeek;
+                $query['month'] = (string) $anchor->month;
+                $query['year'] = (string) $anchor->year;
+                $query['date'] = $anchor->toDateString();
+
+                return $request->duplicate($query);
+            }
+
             return $request;
         }
 
@@ -1509,8 +1617,9 @@ class KpiDashboardService
 
         if ($slug === 'price-of-roti') {
             return [
-                ['type' => 'line', 'title' => 'Daily Inspections Trend', 'key' => 'daily_inspections_trend'],
-                ['type' => 'donut', 'title' => 'Violation Type Breakdown', 'key' => 'violation_type_breakdown'],
+                ['type' => 'line', 'title' => 'Daily Inspection Trend', 'subtitle' => 'Tandoor inspections recorded for the selected day.', 'key' => 'daily_inspections_trend'],
+                ['type' => 'donut', 'title' => 'Violation Breakdown', 'subtitle' => 'Violation types observed during inspections.', 'key' => 'violation_type_breakdown'],
+                ['type' => 'bar', 'title' => 'Fine Recovery', 'subtitle' => 'Fines imposed versus fines collected.', 'key' => 'fine_recovery'],
             ];
         }
 
@@ -1542,6 +1651,11 @@ class KpiDashboardService
         return $filtered->all();
     }
 
+    private function usesInspectionOperationalAchieved(string $slug): bool
+    {
+        return KpiFrequencyConfig::isOperationalInspectionKpi($slug);
+    }
+
     private function shortCardHint(array $metric): ?string
     {
         $formula = trim((string) ($metric['formula_text'] ?? ''));
@@ -1563,7 +1677,7 @@ class KpiDashboardService
     }
 
     /** @param  array<string, int>  $inspectionStatusCounts */
-    /** @param  array<string, mixed>  $visitContext */
+    /** @param  array<string, mixed>  $visitContext @param  array<string, mixed>  $inspectionContext */
     private function resolveMetricValue(
         string $field,
         Collection $submissions,
@@ -1574,12 +1688,16 @@ class KpiDashboardService
         ?User $user = null,
         ?string $cardSlug = null,
         array $operational = [],
+        array $inspectionContext = [],
     ): float|string|int|array {
         if ($cardSlug === 'price-of-roti' && $operational !== []) {
             $override = match ($field) {
                 'tandoor_inspections' => $operational['completed'] ?? null,
                 'inspections_total_target' => $operational['target'] ?? null,
                 'achievement_rate' => $operational['pct'] ?? null,
+                'over_price_violations' => $inspectionContext['obs_over_price'] ?? null,
+                'under_weight_violations' => $inspectionContext['obs_under_weight'] ?? null,
+                'violations_found' => $inspectionContext['violations_found'] ?? null,
                 default => null,
             };
             if ($override !== null) {
@@ -1649,6 +1767,20 @@ class KpiDashboardService
                 'issues_facility_deficiency' => (int) ($issues['facility_deficiency'] ?? 0),
                 default => null,
             } ?? $this->resolveMetricValueCore($field, $submissions, $allValues, $inspectionStatusCounts, $pct);
+        }
+
+        if ($inspectionContext !== [] && array_key_exists($field, $inspectionContext)) {
+            $value = $inspectionContext[$field];
+
+            if (is_array($value)) {
+                return $value;
+            }
+
+            if (is_string($value) && ! is_numeric($value)) {
+                return $value;
+            }
+
+            return $this->roundMetricValue((float) $value);
         }
 
         return $this->resolveMetricValueCore($field, $submissions, $allValues, $inspectionStatusCounts, $pct);

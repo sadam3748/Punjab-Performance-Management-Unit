@@ -16,14 +16,10 @@
     <div>
         <h2><i class="bi bi-file-earmark-text-fill"></i> Submission Reports</h2>
         <p id="kpiRecordsCount">
-            <strong>{{ number_format($tableSubmissions->total()) }}</strong> submission report{{ $tableSubmissions->total() === 1 ? '' : 's' }}
+            <strong>{{ number_format($tableSubmissions->total()) }}</strong> KPI summary rows from submissions
             @if(!empty($periodDescription))
                 <span class="ppmu-records-period">· {{ $periodDescription }}</span>
             @endif
-            <span class="ppmu-pi-hint d-block mt-1" title="Submission Reports are KPI summary rows from kpi_submissions. Field inspections are counted separately from kpi_inspections.">
-                <i class="bi bi-info-circle text-muted"></i>
-                KPI summary rows from submissions — field inspections are tracked separately.
-            </span>
         </p>
     </div>
     <div class="ppmu-table-toolbar">

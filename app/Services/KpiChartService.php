@@ -145,7 +145,8 @@ class KpiChartService
         $educationInspectionTargetAchievement = ['labels' => [], 'values' => []];
         $educationStudentAttendanceSummary = ['labels' => [], 'values' => []];
 
-        $violationBreakdown = $this->detailFieldBreakdown($inspections, ['violation', 'violation_type', 'complaint_status', 'cleanliness_status', 'functional_status']);
+        $violationBreakdown = $this->detailFieldBreakdown($inspections, ['violation', 'violation_type', 'complaint_status', 'cleanliness_status', 'functional_status'])
+            ->reject(fn ($count, $label) => strcasecmp((string) $label, 'Compliant') === 0);
         $typeBreakdown = $this->detailFieldBreakdown($inspections, ['plant_type', 'facility_type', 'service_type', 'type', 'commodity', 'action_type']);
 
         $tehsilComparison = $inspections
@@ -168,6 +169,14 @@ class KpiChartService
             );
 
         $fineTotal = $inspections->sum(fn (KpiInspection $item) => (float) data_get($item->detail_data, 'fine', 0));
+        $finesCollected = $inspections->sum(function (KpiInspection $item): float {
+            $detail = is_array($item->detail_data) ? $item->detail_data : [];
+            $status = strtolower((string) ($detail['payment_status'] ?? ''));
+
+            return in_array($status, ['paid', 'deposited'], true)
+                ? (float) ($detail['fine'] ?? $detail['fine_amount'] ?? 0)
+                : 0.0;
+        });
         $fineRatio = $inspections->isEmpty() ? 0 : round(min(100, ($fineTotal / max(1, $inspections->count())) / 100), 1);
 
         $toChart = static fn (Collection $data): array => [
@@ -294,10 +303,10 @@ class KpiChartService
             'plant_inspections_trend' => $toChart($inspectionTrend),
             'inspection_trend' => $toChart($inspectionTrend),
             'functional_status_breakdown' => $toChart($this->detailFieldBreakdown($inspections, ['functional_status'])),
-            'plant_status_breakdown' => $toChart($this->detailFieldBreakdown($inspections, ['functional_status'])),
-            'filter_change_compliance' => ['labels' => ['Compliance'], 'values' => [$gaugeValue]],
-            'clean_unclean_breakdown' => $toChart($this->detailFieldBreakdown($inspections, ['cleanliness_status', 'cleanliness'])),
-            'clean_vs_unclean' => $toChart($this->detailFieldBreakdown($inspections, ['cleanliness_status', 'cleanliness'])),
+            'plant_status_breakdown' => $toChart($this->normalizedPlantStatusBreakdown($inspections)),
+            'filter_change_compliance' => ['labels' => ['Compliance'], 'values' => [$this->roFilterComplianceGauge($inspections, $gaugeValue)]],
+            'clean_unclean_breakdown' => $toChart($this->normalizedCleanlinessBreakdown($inspections)),
+            'clean_vs_unclean' => $toChart($this->normalizedCleanlinessBreakdown($inspections)),
             'daily_inspections_trend' => $toChart($submissionVisitTrend->isNotEmpty() ? $submissionVisitTrend : $inspectionTrend),
             'institution_visits_trend' => $toChart($submissionVisitTrend),
             'inspection_activity_trend' => $toChart($inspectionTrend),
@@ -313,6 +322,7 @@ class KpiChartService
             'application_processing_trend' => $toChart($inspectionTrend),
             'violation_type_breakdown' => $toChart($violationBreakdown),
             'violation_breakdown' => $toChart($violationBreakdown),
+            'fine_recovery_complaint_resolution' => $toChart($this->fineRecoveryComplaintBreakdown($inspections)),
             'cleanliness_status_breakdown' => $toChart($this->detailFieldBreakdown($inspections, ['cleanliness_status', 'cleanliness'])),
             'complaint_status_breakdown' => $toChart($this->detailFieldBreakdown($inspections, ['complaint_status'])),
             'service_type_breakdown' => $toChart($typeBreakdown),
@@ -385,6 +395,98 @@ class KpiChartService
             'overdue_complaints_age' => $toChart($this->detailFieldBreakdown($inspections, ['overdue_status', 'resolution_days'])),
             'district_complaint_load' => $toChart($districtComparison->isNotEmpty() ? $districtComparison : $legacy['areas']),
             'dc_initiative_impact' => $toChart($this->detailFieldBreakdown($inspections, ['dc_initiative'])),
+            'commodity_violation_breakdown' => $toChart($this->detailFieldBreakdown($inspections, ['commodity', 'violation', 'violation_type'])),
+            'fine_recovery' => $toChart(collect(['Fines Imposed' => $fineTotal, 'Fines Collected' => $finesCollected])->filter(fn ($v) => $v > 0)),
+            'road_repairs_trend' => $toChart($inspectionTrend),
+            'repair_type_breakdown' => $toChart($this->detailFieldBreakdown($inspections, ['repair_type', 'work_type'])),
+            'completion_rate' => ['labels' => ['Completion'], 'values' => [$gaugeValue]],
+            'weekly_target_vs_completed' => $toChart(collect(['Target' => round($target, 0), 'Completed' => round($achieved, 0)])),
+            'school_inspections_trend' => $toChart($inspectionTrend),
+            'crossing_status_breakdown' => $toChart($this->normalizedCrossingStatusBreakdown($inspections)),
+            'marking_compliance' => ['labels' => ['Compliance'], 'values' => [$gaugeValue]],
+            'inspection_coverage_vs_target' => $toChart(collect(['Target %' => 25, 'Coverage %' => $gaugeValue])),
+            'repairs_trend' => $toChart($inspectionTrend),
+            'light_status_breakdown' => $toChart(collect([
+                'Faulty' => $inspections->sum(fn ($i) => (int) data_get($i->detail_data, 'dysfunctional_lights', 0)),
+                'Repaired' => $inspections->sum(fn ($i) => (int) data_get($i->detail_data, 'repaired_lights', 0)),
+            ])->filter(fn ($v) => $v > 0)),
+            'functional_rate' => ['labels' => ['Functional'], 'values' => [$gaugeValue]],
+            'faulty_vs_repaired_lights' => $toChart(collect([
+                'Faulty' => $inspections->sum(fn ($i) => (int) data_get($i->detail_data, 'dysfunctional_lights', 0)),
+                'Repaired' => $inspections->sum(fn ($i) => (int) data_get($i->detail_data, 'repaired_lights', 0)),
+            ])->filter(fn ($v) => $v > 0)),
+            'manhole_coverage_trend' => $toChart($inspectionTrend),
+            'manhole_status_breakdown' => $toChart(collect([
+                'Open' => $inspections->sum(fn ($i) => (int) data_get($i->detail_data, 'open_manholes', 0)),
+                'Covered' => $inspections->sum(fn ($i) => (int) data_get($i->detail_data, 'covered_manholes', 0)),
+            ])->filter(fn ($v) => $v > 0)),
+            'open_vs_covered_manholes' => $toChart(collect([
+                'Open' => $inspections->sum(fn ($i) => (int) data_get($i->detail_data, 'open_manholes', 0)),
+                'Covered' => $inspections->sum(fn ($i) => (int) data_get($i->detail_data, 'covered_manholes', 0)),
+            ])->filter(fn ($v) => $v > 0)),
+            'safety_compliance' => ['labels' => ['Compliance'], 'values' => [$gaugeValue]],
+            'clean_vs_poor' => $toChart($this->detailFieldBreakdown($inspections, ['cleanliness_status', 'cleanliness'])),
+            'ro_filter_compliance' => ['labels' => ['RO Filter'], 'values' => [$gaugeValue]],
+            'hall_inspections_trend' => $toChart($inspectionTrend),
+            'violation_trend' => $toChart($inspectionTrend),
+            'enforcement_actions' => $toChart($this->detailFieldBreakdown($inspections, ['action_type', 'enforcement_action'])),
+            'encroachment_clearance_trend' => $toChart($inspectionTrend),
+            'encroachment_status_breakdown' => $toChart(collect([
+                'Cleared' => $inspections->sum(fn ($i) => (int) data_get($i->detail_data, 'cleared_points', 0)),
+                'Pending' => max(0, $inspections->sum(fn ($i) => (int) data_get($i->detail_data, 'encroachment_points', 0)) - $inspections->sum(fn ($i) => (int) data_get($i->detail_data, 'cleared_points', 0))),
+            ])->filter(fn ($v) => $v > 0)),
+            'encroachment_type_breakdown' => $toChart($this->detailFieldBreakdown($inspections, ['encroachment_type'])),
+            'clearance_rate' => ['labels' => ['Clearance'], 'values' => [$gaugeValue]],
+            'market_comparison' => $toChart($inspections->groupBy(fn ($i) => $i->entity_name ?: 'Market')->map->count()->sortDesc()->take(8)),
+            'uc_activity_trend' => $toChart($inspectionTrend),
+            'daily_uc_activity' => $toChart($inspectionTrend),
+            'activity_type_breakdown' => $toChart($this->detailFieldBreakdown($inspections, ['activity_conducted', 'activity_type'])),
+            'team_performance' => $toChart($this->detailFieldBreakdown($inspections, ['team_name'])),
+            'dogs_observed_vs_culled' => $toChart(collect([
+                'Observed' => $inspections->sum(fn ($i) => (int) data_get($i->detail_data, 'dogs_observed', 0)),
+                'Culled' => $inspections->sum(fn ($i) => (int) data_get($i->detail_data, 'dogs_culled', 0)),
+            ])->filter(fn ($v) => $v > 0)),
+            'removal_activity_trend' => $toChart($inspectionTrend),
+            'spot_status_breakdown' => $toChart(collect([
+                'Identified' => $inspections->sum(fn ($i) => (int) data_get($i->detail_data, 'spots_identified', 0)),
+                'Removed' => $inspections->sum(fn ($i) => (int) data_get($i->detail_data, 'spots_cleared', 0)),
+            ])->filter(fn ($v) => $v > 0)),
+            'spots_identified_vs_removed' => $toChart(collect([
+                'Identified' => $inspections->sum(fn ($i) => (int) data_get($i->detail_data, 'spots_identified', 0)),
+                'Removed' => $inspections->sum(fn ($i) => (int) data_get($i->detail_data, 'spots_cleared', 0)),
+            ])->filter(fn ($v) => $v > 0)),
+            'graveyard_maintenance_trend' => $toChart($inspectionTrend),
+            'issue_type_breakdown' => $toChart($this->detailFieldBreakdown($inspections, ['violation', 'issue_type', 'maintenance_status'])),
+            'weekly_target_vs_cleared' => $toChart(collect(['Target' => round($target, 0), 'Cleared' => round($achieved, 0)])),
+            'pending_vs_processed_applications' => $toChart(collect([
+                'Pending' => $inspections->sum(fn ($i) => (int) data_get($i->detail_data, 'pending_cases', 0)),
+                'Processed' => $inspections->sum(fn ($i) => (int) data_get($i->detail_data, 'applications_reviewed', 0)),
+            ])->filter(fn ($v) => $v > 0)),
+            'help_desk_inspection_rate' => ['labels' => ['Rate'], 'values' => [$gaugeValue]],
+            'weekly_target_vs_inspections' => $toChart(collect(['Target' => round($target, 0), 'Inspected' => round($achieved, 0)])),
+            'weekly_target_vs_uc_inspections' => $toChart(collect(['Target' => round($target, 0), 'UCs Inspected' => round($achieved, 0)])),
+            'compliance_criteria_breakdown' => $toChart($this->detailFieldBreakdown($inspections, ['cleanliness_status', 'hr_attendance_ok', 'machinery_in_field'])),
+            'park_status' => $toChart($this->detailFieldBreakdown($inspections, ['maintenance_status', 'type'])),
+            'greenbelt_maintenance' => $toChart($this->detailFieldBreakdown($inspections, ['type', 'maintenance_status'])),
+            'kerb_painting_progress' => $toChart($this->detailFieldBreakdown($inspections, ['kerb_stone_paint', 'completion_status'])),
+            'uc_inspection_coverage' => ['labels' => ['Coverage'], 'values' => [$gaugeValue]],
+            'issue_breakdown' => $toChart($this->detailFieldBreakdown($inspections, ['issue_type', 'blockage_identified', 'cleaned_status'])),
+            'resolved_vs_pending' => $toChart(collect([
+                'Resolved' => $inspections->filter(fn ($i) => in_array(data_get($i->detail_data, 'cleaned_status'), ['Cleaned', 'Resolved'], true))->count(),
+                'Pending' => $inspections->reject(fn ($i) => in_array(data_get($i->detail_data, 'cleaned_status'), ['Cleaned', 'Resolved'], true))->count(),
+            ])->filter(fn ($v) => $v > 0)),
+            'terminal_inspection_coverage' => ['labels' => ['Coverage'], 'values' => [$gaugeValue]],
+            'daily_market_clearance' => $toChart($inspectionTrend),
+            'daily_market_inspection' => $toChart($inspectionTrend),
+            'shop_vs_handcart_violations' => $toChart(collect([
+                'Shop Violations' => $inspections->sum(fn ($i) => (int) data_get($i->detail_data, 'shops_checked', 0)),
+                'Handcart Violations' => $inspections->sum(fn ($i) => (int) data_get($i->detail_data, 'handcarts_checked', 0)),
+            ])->filter(fn ($v) => $v > 0)),
+            'action_breakdown' => $toChart($this->detailFieldBreakdown($inspections, ['action_type', 'action_taken'])),
+            'daily_sale_point_inspections' => $toChart($inspectionTrend),
+            'daily_bakery_inspection_trend' => $toChart($inspectionTrend),
+            'cumulative_roads_maintained' => $toChart($inspectionTrend->isNotEmpty() ? $inspectionTrend : collect(['Maintained' => max(1, $inspections->count())])),
+            'weekly_roads_inspected_vs_target' => $toChart(collect(['Target' => round($target, 0), 'Inspected' => round($achieved, 0)])),
         ];
     }
 
@@ -634,6 +736,125 @@ class KpiChartService
             'category_label_pairs' => $labelPairs,
             'facilities_inspected' => $inspectedTotal,
         ];
+    }
+
+    /** @return \Illuminate\Support\Collection<string, int> */
+    private function fineRecoveryComplaintBreakdown(Collection $inspections): Collection
+    {
+        $finePaid = 0;
+        $finePending = 0;
+        $complaintResolved = 0;
+        $complaintPending = 0;
+
+        foreach ($inspections as $inspection) {
+            $detail = is_array($inspection->detail_data)
+                ? $inspection->detail_data
+                : (json_decode($inspection->detail_data ?? '[]', true) ?: []);
+
+            $payment = strtolower((string) ($detail['payment_status'] ?? ''));
+            if ($payment === 'paid') {
+                $finePaid++;
+            } elseif ($payment !== '') {
+                $finePending++;
+            }
+
+            $complaint = strtolower((string) ($detail['complaint_action'] ?? ''));
+            if ($complaint === 'resolved') {
+                $complaintResolved++;
+            } elseif ($complaint !== '') {
+                $complaintPending++;
+            }
+        }
+
+        return collect([
+            'Fine Paid' => $finePaid,
+            'Fine Pending' => $finePending,
+            'Complaints Resolved' => $complaintResolved,
+            'Complaints Pending' => $complaintPending,
+        ])->filter(fn ($value) => $value > 0);
+    }
+
+    /** @return \Illuminate\Support\Collection<string, int> */
+    private function normalizedPlantStatusBreakdown(Collection $inspections): Collection
+    {
+        $counts = ['Functional' => 0, 'Non-Functional' => 0];
+
+        foreach ($inspections as $inspection) {
+            $detail = is_array($inspection->detail_data)
+                ? $inspection->detail_data
+                : (json_decode($inspection->detail_data ?? '[]', true) ?: []);
+            $status = strtolower((string) ($detail['functional_status'] ?? ''));
+
+            if (in_array($status, ['functional', 'partially functional'], true)) {
+                $counts['Functional']++;
+            } else {
+                $counts['Non-Functional']++;
+            }
+        }
+
+        return collect($counts)->filter(fn ($value) => $value > 0);
+    }
+
+    /** @return \Illuminate\Support\Collection<string, int> */
+    private function normalizedCleanlinessBreakdown(Collection $inspections): Collection
+    {
+        $counts = ['Clean' => 0, 'Unclean' => 0];
+
+        foreach ($inspections as $inspection) {
+            $detail = is_array($inspection->detail_data)
+                ? $inspection->detail_data
+                : (json_decode($inspection->detail_data ?? '[]', true) ?: []);
+            $status = strtolower((string) ($detail['cleanliness_status'] ?? $detail['cleanliness'] ?? ''));
+
+            if (in_array($status, ['clean', 'good'], true)) {
+                $counts['Clean']++;
+            } else {
+                $counts['Unclean']++;
+            }
+        }
+
+        return collect($counts)->filter(fn ($value) => $value > 0);
+    }
+
+    /** @return \Illuminate\Support\Collection<string, int> */
+    private function normalizedCrossingStatusBreakdown(Collection $inspections): Collection
+    {
+        $counts = ['Visible' => 0, 'Faded' => 0, 'Missing' => 0];
+
+        foreach ($inspections as $inspection) {
+            $detail = is_array($inspection->detail_data)
+                ? $inspection->detail_data
+                : (json_decode($inspection->detail_data ?? '[]', true) ?: []);
+            $status = strtolower((string) ($detail['crossing_status'] ?? $detail['zebra_crossing_status'] ?? ''));
+
+            if (in_array($status, ['marked', 'visible', 'repainted', 'restored'], true)) {
+                $counts['Visible']++;
+            } elseif (in_array($status, ['faded'], true)) {
+                $counts['Faded']++;
+            } else {
+                $counts['Missing']++;
+            }
+        }
+
+        return collect($counts)->filter(fn ($value) => $value > 0);
+    }
+
+    private function roFilterComplianceGauge(Collection $inspections, float $fallback): float
+    {
+        if ($inspections->isEmpty()) {
+            return $fallback;
+        }
+
+        $compliant = $inspections->filter(function ($inspection): bool {
+            $detail = is_array($inspection->detail_data)
+                ? $inspection->detail_data
+                : (json_decode($inspection->detail_data ?? '[]', true) ?: []);
+
+            return in_array(strtolower((string) ($detail['ro_filter_date_affixed'] ?? '')), ['yes', '1', 'true'], true)
+                || ($detail['filter_change_status'] ?? '') === 'Up to Date';
+        })->count();
+
+        return round(min(100, ($compliant / max(1, $inspections->count())) * 100), 1);
     }
 
     /** @return array{labels: list<string>, values: list<int>} */

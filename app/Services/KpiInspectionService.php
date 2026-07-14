@@ -132,6 +132,22 @@ class KpiInspectionService
         return $this->healthReviewTarget($user, $inspections, $institutionsInspected);
     }
 
+    public function reviewTargetFor(KpiCard $card, User $user, Request $request, int $inspectedCount): int
+    {
+        if (in_array($card->slug, [
+            'inspection-of-health-facilities',
+            'inspection-of-educational-institutions',
+        ], true)) {
+            return 0;
+        }
+
+        return $this->healthReviewTarget(
+            $user,
+            $this->getInspectionsCollection($card, $user, $request),
+            max(0, $inspectedCount),
+        );
+    }
+
     /** @return array{approved: int, pending: int, rejected: int} */
     public function educationReviewStatusCounts(Collection $inspections, int $reviewTarget): array
     {

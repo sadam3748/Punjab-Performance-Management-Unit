@@ -15,7 +15,7 @@ class KpiMetricSections
             'inspection-of-health-facilities' => self::healthSections($role),
             'inspection-of-educational-institutions' => self::educationSections($role),
             'price-of-roti' => self::rotiSections($role),
-            default => [],
+            default => KpiMetricSectionDefinitions::for($slug, $role),
         };
     }
 
@@ -169,7 +169,7 @@ class KpiMetricSections
         ];
 
         $sections = [
-            ['title' => 'Inspection Target', 'metrics' => $target],
+            ['title' => 'Target / Inspection', 'metrics' => $target],
             ['title' => 'Compliance / Enforcement', 'metrics' => $compliance],
             ['title' => 'Complaints', 'metrics' => $complaints],
             ['title' => 'Validation', 'metrics' => $validation],

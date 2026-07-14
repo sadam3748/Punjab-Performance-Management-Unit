@@ -4509,18 +4509,35 @@ body:has(.ppmu-main-dashboard) {
 .ppmu-detail-page #kpiDetailMetrics .ppmu-pi-grid-section {
     grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 14px;
+    align-items: stretch;
 }
 
 .ppmu-detail-page #kpiDetailMetrics .ppmu-metric-section {
-    margin-bottom: 1.25rem;
+    margin-bottom: 1.35rem;
+}
+
+.ppmu-detail-page #kpiDetailMetrics .ppmu-metric-section-title {
+    margin-bottom: 0.75rem;
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #0f2a1f;
+}
+
+.ppmu-detail-page #kpiDetailMetrics .ppmu-pi-grid-section.ppmu-pi-grid-count-2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    max-width: 720px;
 }
 
 .ppmu-detail-page #kpiDetailMetrics .ppmu-pi-grid-section.ppmu-pi-grid-count-3 {
     grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+.ppmu-detail-page #kpiDetailMetrics .ppmu-pi-grid-section.ppmu-pi-grid-count-4 {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
 .ppmu-detail-page #kpiDetailMetrics .ppmu-pi-grid-section.ppmu-pi-grid-count-5 {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
 .ppmu-detail-page #kpiDetailMetrics .ppmu-pi-grid-section.ppmu-pi-grid-count-6 {
@@ -7289,8 +7306,8 @@ body:has(.ppmu-main-dashboard),
 
 .ppmu-health-map-pin {
     position: relative;
-    width: 38px;
-    height: 46px;
+    width: 42px;
+    height: 50px;
     display: grid;
     place-items: center;
 }
@@ -7307,8 +7324,8 @@ body:has(.ppmu-main-dashboard),
 .ppmu-health-map-pin-core {
     position: relative;
     z-index: 1;
-    width: 30px;
-    height: 30px;
+    width: 34px;
+    height: 34px;
     display: grid;
     place-items: center;
     color: #fff;
@@ -7320,7 +7337,7 @@ body:has(.ppmu-main-dashboard),
 
 .ppmu-health-map-pin-core i {
     transform: rotate(45deg);
-    font-size: 15px;
+    font-size: 17px;
 }
 
 .ppmu-health-map-pin-green .ppmu-health-map-pin-core { background: linear-gradient(180deg, #22c55e 0%, #15803d 100%); box-shadow: 0 4px 12px rgba(21, 128, 61, .45); }
