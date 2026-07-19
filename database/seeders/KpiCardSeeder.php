@@ -13,10 +13,10 @@ class KpiCardSeeder extends Seeder
         $metricConfig = app(KpiMetricConfigService::class);
 
         $cards = [
-            ['Price of Roti', 'price-of-roti', 'Price Control', 10, 'monthly'],
-            ['Price of Bakery Bread', 'price-of-plain-bakery-bread', 'Price Control', 5, 'monthly'],
+            ['Price of Roti', 'price-of-roti', 'Price Control', 10, 'monthly', 'Price of Roti.png'],
+            ['Price of Bakery Bread', 'price-of-plain-bakery-bread', 'Price Control', 5, 'monthly', 'Price of Bakery Bread.png'],
             ['Price Control of Essential Commodities', 'price-control-of-essential-commodities', 'Price Control', 10, 'monthly'],
-            ['Repair/Patchwork of Small Roads/Lane Marking', 'repair-of-small-roads-in-both-urban-and-rural-areas', 'Infrastructure', 3, 'monthly'],
+            ['Repair/Patchwork of Small Roads/Lane Marking', 'repair-of-small-roads-in-both-urban-and-rural-areas', 'Infrastructure', 3, 'monthly', 'Patchwork of Small Roads.png'],
             ['Zebra Crossing in Front of Schools', 'zebra-crossings', 'Infrastructure', 2, 'monthly'],
             ['Dysfunctional Streetlights', 'dysfunctional-streetlights', 'Infrastructure', 5, 'monthly'],
             ['Covering of Manholes', 'covering-of-manholes', 'Infrastructure', 5, 'monthly'],
@@ -41,7 +41,9 @@ class KpiCardSeeder extends Seeder
 
         $activeSlugs = [];
 
-        foreach ($cards as $index => [$title, $slug, $category, $marks, $frequency]) {
+        foreach ($cards as $index => $card) {
+            [$title, $slug, $category, $marks, $frequency] = $card;
+            $imageFile = $card[5] ?? $title.'.png';
             $activeSlugs[] = $slug;
             $metrics = $metricConfig->cardsFor($slug);
 
@@ -53,7 +55,7 @@ class KpiCardSeeder extends Seeder
                     'category' => $category,
                     'description' => $title.' — performance, reporting and compliance monitoring across Punjab.',
                     'icon' => $slug.'.svg',
-                    'image_path' => 'images/kpi-images/'.$slug.'.png',
+                    'image_path' => 'images/kpi-images/'.$imageFile,
                     'frequency' => $frequency,
                     'total_marks' => $marks,
                     'is_active' => true,

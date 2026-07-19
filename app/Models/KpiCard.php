@@ -26,8 +26,25 @@ class KpiCard extends Model
     {
         $path = ltrim((string) $this->image_path, '/');
 
-        return $path !== '' && is_file(public_path($path))
-            ? $path
+        if ($path !== '' && is_file(public_path($path))) {
+            return $path;
+        }
+
+        $fileNamesBySlug = [
+            'repair-of-small-roads-in-both-urban-and-rural-areas' => 'Patchwork of Small Roads.png',
+            'violation-of-marriage-functions-act' => 'Marriage Functions Act Compliance.png',
+            'graveyards' => 'Graveyards Standards.png',
+            'maintenance-of-greenbelts' => 'Maintenance of Greenbelts and Family Parks.png',
+            'regulation-of-shops-and-handcarts' => 'Management of Rehri Bazar and Cart Bazar.png',
+            'price-of-plain-bakery-bread' => 'Price of Bakery Bread.png',
+            'zebra-crossings' => 'Zebra Crossing in Front of Schools.png',
+        ];
+
+        $fileName = $fileNamesBySlug[$this->slug] ?? $this->title.'.png';
+        $namedPath = 'images/kpi-images/'.$fileName;
+
+        return is_file(public_path($namedPath))
+            ? $namedPath
             : 'images/kpi-images/default-kpi.png';
     }
     public function formFields() { return $this->hasMany(KpiFormField::class)->orderBy('sort_order'); }

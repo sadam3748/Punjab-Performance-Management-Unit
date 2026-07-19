@@ -7035,6 +7035,75 @@ body:has(.ppmu-main-dashboard),
     }
 }
 
+/* Homepage KPI artwork cards: the supplied artwork already contains its title. */
+.ppmu-main-dashboard .ppmu-kpi-grid {
+    grid-auto-rows: minmax(180px, auto);
+}
+
+.ppmu-main-dashboard .ppmu-kpi-tile {
+    min-height: 180px;
+    max-height: none;
+    padding: 4px;
+    gap: 4px;
+    border: 2px solid #5ca47b;
+    border-radius: 10px;
+    background: #fff;
+    box-shadow: 0 5px 14px rgba(8, 116, 67, .08);
+}
+
+.ppmu-main-dashboard .ppmu-kpi-tile:hover {
+    border-color: #087443;
+    box-shadow: 0 9px 20px rgba(8, 116, 67, .15);
+}
+
+.ppmu-main-dashboard .ppmu-kpi-tile-hero {
+    flex: 1 1 auto;
+    width: 100%;
+    min-height: 0;
+    height: auto;
+    padding: 0;
+    overflow: hidden;
+    border: 0;
+    border-radius: 6px;
+    background: #fff;
+}
+
+.ppmu-main-dashboard .ppmu-kpi-tile-png,
+.ppmu-main-dashboard .ppmu-kpi-tile .ppmu-kpi-tile-png,
+.ppmu-main-dashboard .ppmu-kpi-tile:hover .ppmu-kpi-tile-png {
+    width: 100%;
+    height: 100%;
+    max-width: none;
+    max-height: none;
+    object-fit: cover;
+    object-position: center;
+    transform: none;
+    filter: none;
+}
+
+.ppmu-main-dashboard .ppmu-kpi-tile-foot {
+    flex: 0 0 auto;
+    gap: 0;
+    padding: 0;
+}
+
+.ppmu-main-dashboard .ppmu-kpi-tile-btn {
+    width: 68%;
+    max-width: 130px;
+    height: 22px;
+    min-height: 22px;
+    margin: 0;
+    align-self: center;
+    padding: 0 6px;
+    border-radius: 5px;
+    font-size: 9px;
+    box-shadow: 0 3px 8px rgba(4, 120, 87, .16);
+}
+
+.ppmu-main-dashboard .ppmu-kpi-tile-btn .bi {
+    font-size: 9px;
+}
+
 @media (min-width: 992px) {
     .ppmu-detail-page .ppmu-kpi-specific-grid {
         gap: 7px;
