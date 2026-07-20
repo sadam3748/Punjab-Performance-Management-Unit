@@ -13,6 +13,7 @@ use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class KpiInspectionService
 {
@@ -29,6 +30,7 @@ class KpiInspectionService
         private readonly KpiGeoFilterService $geoFilterService,
         private readonly KpiDashboardConfigService $dashboardConfig,
         private readonly KpiPeriodService $periodService,
+        private readonly KpiObservationService $observationService,
     ) {}
 
     public function applyInspectionScope(Builder $query, User $user): Builder
@@ -46,7 +48,7 @@ class KpiInspectionService
     public function getInspectionListForKpi(KpiCard $card, User $user, Request $request): LengthAwarePaginator
     {
         $query = $this->baseQuery($card, $user)
-            ->with(['district:id,name', 'tehsil:id,name', 'inspectedBy:id,name', 'attachments'])
+            ->with(['kpiCard', 'district:id,name', 'tehsil:id,name', 'inspectedBy:id,name', 'reviewedBy:id,name', 'attachments'])
             ->withCount('attachments');
 
         $this->excludeInspectionListOnlyRecords($query, $card);
@@ -68,6 +70,7 @@ class KpiInspectionService
         $this->applyListFilters($query, $request, $user);
 
         return $query->with([
+            'kpiCard:id,slug',
             'district:id,name',
             'tehsil:id,name',
             'inspectedBy:id,name,role_id',
@@ -535,6 +538,7 @@ class KpiInspectionService
     {
         return [
             'statuses' => [
+                KpiInspection::STATUS_INSPECTED => 'Inspected Only',
                 KpiInspection::STATUS_PENDING => 'Pending Review',
                 KpiInspection::STATUS_APPROVED => 'Approved',
                 KpiInspection::STATUS_REJECTED => 'Rejected',
@@ -554,7 +558,7 @@ class KpiInspectionService
     public function getAllInspectionsList(User $user, Request $request): LengthAwarePaginator
     {
         $query = KpiInspection::query()
-            ->with(['kpiCard:id,title,slug,image_path', 'district:id,name', 'tehsil:id,name', 'inspectedBy:id,name'])
+            ->with(['kpiCard:id,title,slug,image_path', 'district:id,name', 'tehsil:id,name', 'inspectedBy:id,name', 'reviewedBy:id,name'])
             ->withCount('attachments')
             ->tap(fn (Builder $q) => $this->applyInspectionScope($q, $user));
 
@@ -591,6 +595,9 @@ class KpiInspectionService
             'attachments',
         ]);
 
+        $isReferenceKpi = in_array($card->slug, ['inspection-of-health-facilities', 'inspection-of-educational-institutions'], true);
+        $observationGroups = $isReferenceKpi ? [] : $this->observationService->groupsForInspection($inspection);
+
         return [
             'inspection' => $inspection,
             'canReview' => $this->canReviewInspection($inspection, $user),
@@ -598,6 +605,11 @@ class KpiInspectionService
             'googleMapsKey' => config('services.google_maps.key'),
             'detailFields' => $this->dashboardConfig->detailFieldsFor($card->slug),
             'observationCards' => $this->observationCards($card, $inspection, $card->resolvedImagePath()),
+            'structuredObservations' => collect($observationGroups)->flatMap(fn (array $group): array => $group['observations'])->values()->all(),
+            'observationGroups' => $observationGroups,
+            'observationSummary' => $this->observationService->summaryForInspection($inspection),
+            'observationSummaryItems' => $isReferenceKpi ? [] : $this->observationService->summaryItemsForInspection($inspection),
+            'repeatedObservationGroups' => $this->observationService->repeatedGroups($inspection),
         ];
     }
 
@@ -610,6 +622,10 @@ class KpiInspectionService
 
     public function canReviewInspection(KpiInspection $inspection, User $user): bool
     {
+        if (! $inspection->isSelectedFor($user)) {
+            return false;
+        }
+
         if (! $inspection->isPending()) {
             return false;
         }
@@ -629,6 +645,11 @@ class KpiInspectionService
 
     public function approveInspection(KpiInspection $inspection, User $user, ?string $remarks = null): KpiInspection
     {
+        if (! $inspection->isSelectedFor($user)) {
+            throw ValidationException::withMessages([
+                'review' => 'Review sample target for the selected period has already been reached.',
+            ]);
+        }
         abort_unless($this->canReviewInspection($inspection, $user), 403);
 
         $inspection->update([
@@ -644,6 +665,11 @@ class KpiInspectionService
 
     public function rejectInspection(KpiInspection $inspection, User $user, ?string $reason = null): KpiInspection
     {
+        if (! $inspection->isSelectedFor($user)) {
+            throw ValidationException::withMessages([
+                'review' => 'Review sample target for the selected period has already been reached.',
+            ]);
+        }
         abort_unless($this->canReviewInspection($inspection, $user), 403);
 
         $remarks = trim((string) ($reason ?? ''));
@@ -665,6 +691,37 @@ class KpiInspectionService
             'super_admin', 'chief_secretary', 'pmru_user',
             'commissioner', 'dc', 'ac', 'field_user',
         ], true);
+    }
+
+    public function synchronizeReviewSample(KpiCard $card, User $user, Request $request, Collection $inspections): Collection
+    {
+        if (in_array($card->slug, ['inspection-of-health-facilities', 'inspection-of-educational-institutions'], true)) {
+            return $inspections;
+        }
+
+        $target = $this->reviewTargetFor($card, $user, $request, $inspections->count());
+        $level = (string) ($user->role?->slug ?? '');
+        if ($target <= 0 || $level === '' || $inspections->isEmpty()) {
+            return $inspections;
+        }
+
+        DB::transaction(function () use ($inspections, $target, $level, $user): void {
+            $rows = KpiInspection::query()->whereKey($inspections->pluck('id'))->lockForUpdate()->orderBy('inspection_datetime')->get();
+            $selected = $rows->filter(fn (KpiInspection $row) => $row->selected_for_review && $row->review_level === $level);
+            $needed = max(0, $target - $selected->count());
+
+            $rows->filter(fn (KpiInspection $row) => ! $row->selected_for_review)
+                ->take($needed)
+                ->each(fn (KpiInspection $row) => $row->update([
+                    'selected_for_review' => true,
+                    'selected_by' => $user->id,
+                    'selected_at' => now(),
+                    'review_level' => $level,
+                    'status' => KpiInspection::STATUS_PENDING,
+                ]));
+        });
+
+        return $this->getInspectionsCollection($card, $user, $request);
     }
 
     private function applyListFilters(Builder $query, Request $request, User $user, bool $skipStatus = false): void

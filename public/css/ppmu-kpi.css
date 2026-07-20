@@ -3275,6 +3275,12 @@ body:has(.ppmu-main-dashboard) {
     border-color: #cbe9d6;
 }
 
+.ppmu-inspection-status-inspected_only {
+    color: #1d4ed8;
+    background: #dbeafe;
+    border-color: #93c5fd;
+}
+
 .ppmu-inspection-status-pending_review {
     color: #92400e;
     background: #fff7ed;
@@ -7424,6 +7430,38 @@ body:has(.ppmu-main-dashboard),
     box-shadow: 0 10px 24px rgba(15, 42, 31, .14);
 }
 
+.ppmu-compact-map-leaflet-popup .leaflet-popup-content-wrapper {
+    width: 360px;
+    max-width: min(90vw, 380px);
+    overflow: hidden;
+    border: 1px solid rgba(8, 116, 67, .22);
+    border-radius: 12px;
+    box-shadow: 0 10px 24px rgba(15, 42, 31, .14);
+}
+
+.ppmu-compact-map-leaflet-popup .leaflet-popup-content {
+    width: auto !important;
+    margin: 0;
+}
+
+.ppmu-compact-map-leaflet-popup .leaflet-popup-close-button {
+    top: 10px !important;
+    right: 10px !important;
+    width: 28px !important;
+    height: 28px !important;
+    padding: 0 !important;
+    display: grid !important;
+    place-items: center;
+    border: 1px solid rgba(255, 255, 255, .42) !important;
+    border-radius: 7px;
+    background: rgba(255, 255, 255, .13) !important;
+    color: #fff !important;
+    font-size: 20px !important;
+    font-weight: 800;
+    line-height: 1 !important;
+    box-shadow: none;
+}
+
 .ppmu-health-map-popup h4 {
     margin: 0 0 8px;
     font-size: 13px;
@@ -7433,6 +7471,101 @@ body:has(.ppmu-main-dashboard),
 
 .ppmu-health-map-popup dl {
     margin: 0;
+}
+
+.ppmu-compact-map-leaflet-popup .ppmu-health-map-popup h4 {
+    margin: 2px 38px 0 0;
+    color: #fff;
+    font-size: 16px;
+    line-height: 1.35;
+}
+
+.ppmu-compact-map-leaflet-popup .ppmu-health-map-popup dl {
+    display: block;
+    padding: 4px 15px;
+}
+
+.ppmu-map-popup-card {
+    position: relative;
+    display: flex;
+    width: 100%;
+    height: min(360px, calc(100vh - 180px));
+    min-height: 310px;
+    max-height: 360px;
+    flex-direction: column;
+    overflow: hidden;
+    background: #fff;
+    box-sizing: border-box;
+}
+
+.ppmu-map-popup-heading {
+    min-height: 64px;
+    flex: 0 0 auto;
+    padding: 12px 48px 11px 14px;
+    background: linear-gradient(135deg, #087443 0%, #0b5e3b 100%);
+}
+
+.ppmu-map-popup-eyebrow {
+    display: block;
+    color: rgba(255, 255, 255, .74);
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: .04em;
+}
+
+.ppmu-compact-map-leaflet-popup .ppmu-health-map-popup dl > div {
+    display: block;
+    min-width: 0;
+    padding: 8px 0;
+    border-bottom: 1px solid #edf2ef;
+}
+
+.ppmu-compact-map-leaflet-popup .ppmu-health-map-popup dl > div:last-child {
+    border-bottom: 0;
+}
+
+.ppmu-compact-map-leaflet-popup .ppmu-health-map-popup dt {
+    margin-bottom: 2px;
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: .04em;
+    text-transform: none;
+}
+
+.ppmu-compact-map-leaflet-popup .ppmu-health-map-popup dd {
+    font-size: 13.5px;
+    line-height: 1.4;
+    word-break: normal;
+    overflow-wrap: break-word;
+    white-space: normal;
+}
+
+.ppmu-map-popup-body {
+    min-height: 0;
+    flex: 1 1 auto;
+    margin-bottom: 58px !important;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    scrollbar-color: #94a3b8 transparent;
+}
+
+.ppmu-popup-value {
+    word-break: normal !important;
+    overflow-wrap: break-word !important;
+}
+
+.ppmu-map-popup-footer {
+    position: absolute;
+    z-index: 10;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    height: 58px;
+    padding: 9px 14px 13px;
+    border-top: 1px solid #e5ede8;
+    background: #fff;
+    box-shadow: 0 -5px 14px rgba(15, 42, 31, .06);
 }
 
 .ppmu-health-map-popup dl > div {
@@ -7502,6 +7635,199 @@ body:has(.ppmu-main-dashboard),
     font-size: 12px;
     font-weight: 700;
     text-decoration: none;
+    gap: 6px;
+}
+
+.ppmu-compact-map-leaflet-popup .ppmu-health-map-popup-btn {
+    display: flex;
+    width: 100%;
+    margin: 0;
+    padding: 9px 12px;
+    border-radius: 7px;
+    box-shadow: 0 4px 10px rgba(8, 116, 67, .18);
+}
+
+.ppmu-map-operational-status {
+    display: inline-flex;
+    padding: 3px 8px;
+    border: 1px solid #bbd8c9;
+    border-radius: 6px;
+    background: #edf8f2;
+    color: #075d38;
+    font-size: 11px;
+    font-weight: 800;
+}
+
+.ppmu-compact-map-leaflet-popup .ppmu-health-map-status {
+    gap: 6px;
+    padding: 3px 7px;
+    border-radius: 6px;
+    background: transparent;
+    font-size: 10px;
+}
+
+.ppmu-compact-map-leaflet-popup .ppmu-health-map-status::before {
+    width: 7px;
+    height: 7px;
+    flex: 0 0 7px;
+    border-radius: 2px;
+    background: currentColor;
+    content: '';
+}
+
+/* Shared card-based findings layout for every KPI inspection detail. */
+.ppmu-finding-card-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 9px;
+}
+
+.ppmu-finding-group {
+    margin-top: 9px;
+    padding: 10px;
+    border: 1px solid #dce9e2;
+    border-radius: 10px;
+    background: linear-gradient(180deg, #f8fcfa 0%, #fff 100%);
+}
+
+.ppmu-finding-group:first-of-type {
+    margin-top: 2px;
+}
+
+.ppmu-finding-group-head {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    margin-bottom: 8px;
+}
+
+.ppmu-finding-group-icon {
+    width: 25px;
+    height: 25px;
+    display: grid;
+    flex: 0 0 25px;
+    place-items: center;
+    border-radius: 7px;
+    background: #e1f2e9;
+    color: #087443;
+    font-size: 13px;
+}
+
+.ppmu-finding-group-title {
+    margin: 0;
+    color: #173d2d;
+    font-size: 11.5px;
+    font-weight: 800;
+    letter-spacing: .02em;
+}
+
+.ppmu-finding-card {
+    position: relative;
+    min-width: 0;
+    min-height: 112px;
+    padding: 10px 10px 9px 42px;
+    overflow: hidden;
+    border: 1px solid #dbe7e0;
+    border-top-width: 3px;
+    border-radius: 10px;
+    background: #fff;
+    box-shadow: 0 3px 10px rgba(15, 42, 31, .055);
+}
+
+.ppmu-finding-card-success { border-top-color: #15803d; }
+.ppmu-finding-card-danger { border-top-color: #b91c1c; }
+.ppmu-finding-card-warning { border-top-color: #d97706; }
+.ppmu-finding-card-secondary { border-top-color: #64748b; }
+.ppmu-finding-card-primary { border-top-color: #1d4ed8; }
+
+.ppmu-finding-card-icon {
+    position: absolute;
+    top: 11px;
+    left: 10px;
+    width: 25px;
+    height: 25px;
+    display: grid;
+    place-items: center;
+    border-radius: 7px;
+    background: #f1f5f3;
+    color: #64748b;
+    font-size: 14px;
+}
+
+.ppmu-finding-card-success .ppmu-finding-card-icon { background: #dcfce7; color: #15803d; }
+.ppmu-finding-card-warning .ppmu-finding-card-icon { background: #ffedd5; color: #c2410c; }
+.ppmu-finding-card-danger .ppmu-finding-card-icon { background: #fee2e2; color: #b91c1c; }
+
+.ppmu-finding-card-head {
+    display: block;
+}
+
+.ppmu-finding-card-section {
+    display: block;
+    margin-bottom: 4px;
+    color: #087443;
+    font-size: 8.5px;
+    font-weight: 800;
+    line-height: 1.25;
+}
+
+.ppmu-finding-card-head h4 {
+    margin: 0;
+    color: #102a1f;
+    font-size: 11.5px;
+    font-weight: 800;
+    line-height: 1.35;
+}
+
+.ppmu-finding-card-head .badge {
+    display: inline-flex;
+    margin-top: 5px;
+    padding: 3px 7px;
+    border-radius: 5px;
+    font-size: 8.5px;
+}
+
+.ppmu-finding-value {
+    margin-top: 7px;
+    color: #102a1f;
+    font-size: 14px;
+    font-weight: 800;
+    line-height: 1.3;
+}
+
+.ppmu-finding-card p {
+    margin: 5px 0 0;
+    color: #475569;
+    font-size: 10.5px;
+    line-height: 1.4;
+}
+
+.ppmu-finding-card .ppmu-obs-evidence-link {
+    display: inline-flex;
+    margin-top: 6px;
+    font-size: 10.5px;
+}
+
+@media (max-width: 1199.98px) {
+    .ppmu-finding-card-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 767.98px) {
+    .ppmu-finding-card-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 575.98px) {
+    .ppmu-finding-card-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .ppmu-finding-group {
+        padding: 8px;
+    }
 }
 
 .ppmu-health-map-popup-btn:hover {
@@ -7513,6 +7839,30 @@ body:has(.ppmu-main-dashboard),
     margin: 8px 0 0;
     font-size: 12px;
     color: #64748b;
+    line-height: 1.45;
+}
+
+.ppmu-health-map-unmapped {
+    padding-top: 9px;
+    color: #64748b;
+    font-size: 11.5px;
+    text-align: right;
+}
+
+.ppmu-health-map-unmapped strong {
+    color: #334155;
+}
+
+.ppmu-observation-findings-table th,
+.ppmu-observation-findings-table td,
+.ppmu-observation-subtable th,
+.ppmu-observation-subtable td {
+    padding: 9px 10px;
+    vertical-align: middle;
+    font-size: 12px;
+}
+
+.ppmu-observation-summary-grid dd {
     line-height: 1.45;
 }
 

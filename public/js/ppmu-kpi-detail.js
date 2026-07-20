@@ -600,7 +600,7 @@
             .replace(/"/g, '&quot;');
     }
 
-    function healthMapPopupHtml(pin) {
+    function compactMapPopupHtml(pin) {
         const entityLabel = pin.institution_name
             ? 'Institution'
             : (pin.school_name ? 'School' : (pin.location_name ? 'Name / Location' : 'Facility'));
@@ -608,31 +608,50 @@
             || pin.school_name
             || pin.location_name
             || pin.facility_name;
-        const districtRow = pin.district
-            ? `<div><dt>District</dt><dd>${escapeHtml(pin.district)}</dd></div>`
-            : '';
-        const addressRow = pin.address
-            ? `<div><dt>Address</dt><dd>${escapeHtml(pin.address)}</dd></div>`
-            : '';
+        return `
+            <div class="ppmu-health-map-popup ppmu-map-popup-card">
+                <div class="ppmu-map-popup-heading ppmu-map-popup-header">
+                    <span class="ppmu-map-popup-eyebrow">Field Inspection</span>
+                    <h4>${escapeHtml(pin.kpi_name || pin.inspection_type)}</h4>
+                </div>
+                <dl class="ppmu-map-popup-body">
+                    <div><dt>Inspection ID</dt><dd class="ppmu-popup-value">${escapeHtml(pin.inspection_id)}</dd></div>
+                    <div><dt>Type</dt><dd class="ppmu-popup-value">${escapeHtml(pin.kpi_name || pin.inspection_type)}</dd></div>
+                    <div><dt>${entityLabel}</dt><dd class="ppmu-popup-value">${escapeHtml(entityValue)}</dd></div>
+                    <div><dt>Location</dt><dd class="ppmu-popup-value">${escapeHtml(pin.tehsil)} Tehsil, ${escapeHtml(pin.district)} District</dd></div>
+                    <div><dt>Inspected</dt><dd class="ppmu-popup-value">${escapeHtml(pin.inspection_date)}</dd></div>
+                    <div><dt>Operational Status</dt><dd><span class="ppmu-map-operational-status">${escapeHtml(pin.operational_status)}</span></dd></div>
+                    <div><dt>Review Status</dt><dd><span class="ppmu-health-map-status ppmu-health-map-status-${escapeHtml(pin.color)}">${escapeHtml(pin.review_status)}</span></dd></div>
+                    <div><dt>Key Finding</dt><dd class="ppmu-popup-value">${escapeHtml(pin.important_finding || pin.issue_summary)}</dd></div>
+                </dl>
+                <div class="ppmu-map-popup-footer">
+                    <a href="${escapeHtml(pin.detail_url)}" class="ppmu-health-map-popup-btn" target="_blank" rel="noopener noreferrer"><i class="bi bi-box-arrow-up-right"></i> View Details</a>
+                </div>
+            </div>`;
+    }
+
+    function referenceMapPopupHtml(pin) {
+        const entityLabel = pin.institution_name ? 'Institution' : (pin.school_name ? 'School' : 'Facility');
+        const entityValue = pin.institution_name || pin.school_name || pin.facility_name || pin.location_name;
         const issueRow = pin.issue_summary || pin.observation_issues || pin.action_summary
             ? `<div><dt>Main Issue / Action Summary</dt><dd>${escapeHtml(pin.issue_summary || pin.action_summary || pin.observation_issues)}</dd></div>`
             : '';
         const studentRows = pin.students_enrolled !== undefined
-            ? `
-                    <div><dt>Students Enrolled</dt><dd>${escapeHtml(pin.students_enrolled)}</dd></div>
-                    <div><dt>Students Present</dt><dd>${escapeHtml(pin.students_present)}</dd></div>`
+            ? `<div><dt>Students Enrolled</dt><dd>${escapeHtml(pin.students_enrolled)}</dd></div>
+               <div><dt>Students Present</dt><dd>${escapeHtml(pin.students_present)}</dd></div>`
             : '';
 
         return `
             <div class="ppmu-health-map-popup">
                 <h4>Inspection Information</h4>
                 <dl>
+                    <div><dt>KPI</dt><dd>${escapeHtml(pin.kpi_name || pin.inspection_type)}</dd></div>
                     <div><dt>Inspection ID</dt><dd>${escapeHtml(pin.inspection_id)}</dd></div>
                     <div><dt>Inspection Type</dt><dd>${escapeHtml(pin.inspection_type)}</dd></div>
                     <div><dt>${entityLabel}</dt><dd>${escapeHtml(entityValue)}</dd></div>
-                    ${addressRow}
+                    <div><dt>Address</dt><dd>${escapeHtml(pin.address)}</dd></div>
                     <div><dt>Tehsil</dt><dd>${escapeHtml(pin.tehsil)}</dd></div>
-                    ${districtRow}
+                    <div><dt>District</dt><dd>${escapeHtml(pin.district)}</dd></div>
                     <div><dt>Date &amp; Time</dt><dd>${escapeHtml(pin.inspection_date)}</dd></div>
                     <div><dt>Status</dt><dd><span class="ppmu-health-map-status ppmu-health-map-status-${escapeHtml(pin.color)}">${escapeHtml(pin.review_status)}</span></dd></div>
                     ${issueRow}${studentRows}
@@ -688,19 +707,40 @@
 
         const bounds = [];
         pins.forEach(pin => {
+            const isReferenceKpi = Boolean(pin.is_reference_kpi);
             const marker = L.marker([pin.lat, pin.lng], {
                 icon: buildHealthMapPin(pin.color, pin.facility_name || pin.location_name, pin.review_status),
                 riseOnHover: true,
                 zIndexOffset: pin.color === 'green' ? 40 : (pin.color === 'orange' ? 30 : 20),
-            })
-                .bindPopup(healthMapPopupHtml(pin), { maxWidth: 320, className: 'ppmu-health-map-leaflet-popup' })
-                .bindTooltip(`${escapeHtml(pin.review_status)} — ${escapeHtml(pin.facility_name || pin.location_name)}`, {
-                    direction: 'top',
-                    offset: [0, -44],
-                    opacity: 0.98,
-                    className: `ppmu-health-map-marker-tooltip ppmu-health-map-marker-tooltip-${pin.color}`,
-                })
-                .addTo(healthMapInstance);
+            });
+
+            if (isReferenceKpi) {
+                marker.bindPopup(referenceMapPopupHtml(pin), {
+                    maxWidth: 320,
+                    autoPan: true,
+                    keepInView: true,
+                    autoPanPadding: [28, 28],
+                    className: 'ppmu-health-map-leaflet-popup',
+                });
+            } else {
+                marker.bindPopup(compactMapPopupHtml(pin), {
+                    minWidth: 330,
+                    maxWidth: 380,
+                    autoPan: true,
+                    keepInView: true,
+                    autoPanPadding: [42, 42],
+                    autoPanPaddingTopLeft: [42, 72],
+                    autoPanPaddingBottomRight: [42, 72],
+                    className: 'ppmu-compact-map-leaflet-popup',
+                });
+            }
+
+            marker.bindTooltip(`${escapeHtml(pin.review_status)} — ${escapeHtml(pin.facility_name || pin.location_name)}`, {
+                direction: 'top',
+                offset: [0, -44],
+                opacity: 0.98,
+                className: `ppmu-health-map-marker-tooltip ppmu-health-map-marker-tooltip-${pin.color}`,
+            }).addTo(healthMapInstance);
             bounds.push([pin.lat, pin.lng]);
         });
 
@@ -722,12 +762,27 @@
         const pinCount = Number(mapData?.pin_count ?? (mapData?.pins || []).length);
         const scopeLabel = document.querySelector('#ppmuHealthMapScope .ppmu-health-map-scope-label');
         const pinCountEl = document.getElementById('ppmuHealthMapPinCount');
+        const unmappedEl = document.getElementById('ppmuHealthMapUnmapped');
 
         if (scopeLabel && mapData?.scope_label) {
             scopeLabel.textContent = mapData.scope_label;
         }
         if (pinCountEl) {
             pinCountEl.textContent = `${pinCount} ${pinCount === 1 ? 'inspection mapped' : 'inspections mapped'}`;
+        }
+        if (unmappedEl) {
+            const unmappedCount = Number(mapData?.unmapped_count ?? 0);
+            unmappedEl.innerHTML = `Records without mapped location: <strong>${unmappedCount.toLocaleString()}</strong>`;
+        }
+        if (mapData?.status_counts) {
+            const labels = { inspected: 'Inspected', pending_review: 'Pending Review', approved: 'Approved', rejected: 'Rejected' };
+            Object.entries(labels).forEach(([key, label]) => {
+                const item = document.querySelector(`[data-map-status="${key}"]`);
+                if (item) {
+                    const count = Number(mapData.status_counts[key] ?? 0).toLocaleString();
+                    item.lastChild.textContent = ` ${label} (${count})`;
+                }
+            });
         }
 
         if (frameWrap) {

@@ -118,7 +118,6 @@ class KpiLayyahDemoBuilders
         }
 
         $plan = self::SLUG_PLANS[$slug];
-        $statuses = self::statusSequence();
         $entities = self::entitiesForSlug($slug, (string) $card->title);
         $rows = [];
         $attachments = [];
@@ -130,17 +129,14 @@ class KpiLayyahDemoBuilders
             $isPrimaryLayyah = $side['tehsil_id'] === self::LAYYAH['tehsil_id'];
             $inspector = $users->get($side['inspector']);
             $reviewer = $users->get($side['reviewer']);
+            $reviewTarget = $count > 0 ? max(1, (int) ceil($count * 0.20)) : 0;
+            $reviewLevel = str_starts_with((string) $side['inspector'], 'dc.') ? 'dc' : 'ac';
 
             for ($i = 0; $i < $count; $i++) {
-                $status = $statuses[($globalIndex + $i) % count($statuses)];
-                if ($slug === 'price-of-roti' && $isPrimaryLayyah) {
-                    $status = match ($i) {
-                        0, 1, 2 => 'pending_review',
-                        3 => 'approved',
-                        4 => 'rejected',
-                        default => 'approved',
-                    };
-                }
+                $selectedForReview = $i < $reviewTarget;
+                $status = $selectedForReview
+                    ? self::sampleReviewStatus($slug, $isPrimaryLayyah, $i)
+                    : 'inspected_only';
                 $inspectedAt = self::inspectionDateForRecord(
                     $plan['frequency'],
                     $isPrimaryLayyah,
@@ -162,7 +158,7 @@ class KpiLayyahDemoBuilders
                     'district_id' => $side['district_id'],
                     'tehsil_id' => $side['tehsil_id'],
                     'inspected_by' => $inspector?->id,
-                    'reviewed_by' => $status === 'pending_review' ? null : $reviewer?->id,
+                    'reviewed_by' => in_array($status, ['approved', 'rejected'], true) ? $inspector?->id : null,
                     'inspection_title' => $entity['title'],
                     'entity_name' => $entity['name'],
                     'entity_type' => $entity['type'],
@@ -172,21 +168,25 @@ class KpiLayyahDemoBuilders
                     'longitude' => $location['lng'],
                     'inspection_datetime' => $inspectedAt,
                     'status' => $status,
+                    'selected_for_review' => $selectedForReview,
+                    'selected_by' => $selectedForReview ? $inspector?->id : null,
+                    'selected_at' => $selectedForReview ? $inspectedAt : null,
+                    'review_level' => $selectedForReview ? $reviewLevel : null,
                     'observations' => json_encode(self::observationsFor($slug, $entity, $card->title)),
                     'actions_required' => json_encode($status === 'rejected'
                       ? ['Re-inspection required within 7 days.', 'Submit corrective action report to district office.']
                       : ['Continue routine monitoring during current reporting week.']),
-                    'actions_taken' => json_encode($status !== 'pending_review'
+                    'actions_taken' => json_encode(in_array($status, ['approved', 'rejected'], true)
                       ? ['Evidence uploaded and checklist completed.', 'Location coordinates captured during visit.']
                       : ['Preliminary site visit completed.']),
                     'detail_data' => json_encode($detailData),
                     'review_remarks' => $status === 'approved' ? 'Inspection evidence verified and accepted.' : null,
                     'rejection_reason' => $status === 'rejected' ? 'Evidence incomplete or compliance below required threshold.' : null,
-                    'reviewed_at' => $status === 'pending_review' ? null : $inspectedAt->copy()->addHours(6),
+                    'reviewed_at' => in_array($status, ['approved', 'rejected'], true) ? $inspectedAt : null,
                     'is_demo' => true,
                     'seed_batch' => $batch,
                     'created_at' => $inspectedAt,
-                    'updated_at' => $status === 'pending_review' ? $inspectedAt : $inspectedAt->copy()->addHours(6),
+                    'updated_at' => $inspectedAt,
                 ];
 
                 $attachments[] = [
@@ -194,6 +194,8 @@ class KpiLayyahDemoBuilders
                     'slug' => $slug,
                     'count' => 1 + (($globalIndex + $i) % 3),
                     'ts' => $inspectedAt,
+                    'lat' => $location['lat'],
+                    'lng' => $location['lng'],
                 ];
             }
 
@@ -246,15 +248,32 @@ class KpiLayyahDemoBuilders
         return self::latestCompletedWeekDateForIndex($globalIndex + $localIndex);
     }
 
-    /** @return list<string> */
-    private static function statusSequence(): array
+    private static function sampleReviewStatus(string $slug, bool $isPrimaryLayyah, int $sampleIndex): string
     {
-        return [
-            'approved', 'approved', 'pending_review', 'approved', 'rejected',
-            'approved', 'approved', 'approved', 'approved', 'pending_review',
-            'approved', 'approved', 'pending_review', 'approved', 'approved',
-            'approved', 'approved', 'rejected', 'approved', 'pending_review',
-        ];
+        if ($isPrimaryLayyah) {
+            return match ($slug) {
+                'price-of-roti' => $sampleIndex === 0 ? 'approved' : 'pending_review',
+                'price-of-plain-bakery-bread', 'zebra-crossings' => 'pending_review',
+                'price-control-of-essential-commodities' => match ($sampleIndex) {
+                    0, 1, 2 => 'approved',
+                    3 => 'rejected',
+                    default => 'pending_review',
+                },
+                'dysfunctional-streetlights', 'repair-of-small-roads-in-both-urban-and-rural-areas' => 'approved',
+                default => match ($sampleIndex % 4) {
+                    0 => 'approved',
+                    1 => 'pending_review',
+                    2 => 'rejected',
+                    default => 'approved',
+                },
+            };
+        }
+
+        return match ($sampleIndex % 3) {
+            0 => 'approved',
+            1 => 'pending_review',
+            default => 'rejected',
+        };
     }
 
     /** @return list<string> */
@@ -295,8 +314,43 @@ class KpiLayyahDemoBuilders
         }
 
         $detail['issue_summary'] = self::issueSummaryFor($slug, $detail, $entity);
+        $detail['structured_observations'] = self::structuredObservationsFor($detail);
 
         return $detail;
+    }
+
+    /** @param array<string, mixed> $detail @return list<array<string, mixed>> */
+    private static function structuredObservationsFor(array $detail): array
+    {
+        $excluded = [
+            'issue_summary', 'key_finding', 'overall_finding', 'inspector_remarks', 'corrective_action',
+            'responsible_department', 'expected_resolution_date', 'follow_up_required', 'follow_up_date',
+            'commodities', 'violation_types', 'structured_observations',
+        ];
+
+        return collect($detail)
+            ->filter(fn ($value, $key) => ! in_array($key, $excluded, true) && (is_scalar($value) || is_bool($value)))
+            ->take(10)
+            ->map(function ($value, string $key) use ($detail): array {
+                $normalized = strtolower(trim((string) $value));
+                $negativeKey = str_contains($key, 'fault') || str_contains($key, 'violation') || str_contains($key, 'pending') || str_contains($key, 'damage');
+                $negativeValue = in_array($normalized, ['no', 'missing', 'faded', 'non-functional', 'poor', 'pending', 'over price', 'under weight', 'non-availability'], true);
+                $status = ($negativeKey && (is_numeric($value) ? (float) $value > 0 : filled($value))) || $negativeValue
+                    ? 'Action Required'
+                    : 'Satisfactory';
+
+                return [
+                    'key' => $key,
+                    'label' => Str::headline($key),
+                    'value' => $value,
+                    'status' => $status,
+                    'severity' => $status === 'Action Required' ? 'Medium' : null,
+                    'remarks' => $detail['inspector_remarks'] ?? 'Verified during field inspection.',
+                    'action_required' => $status === 'Action Required' ? ($detail['corrective_action'] ?? 'Corrective action required.') : 'No action required.',
+                    'action_status' => $status === 'Action Required' ? 'Pending Action' : 'Not Applicable',
+                    'evidence_key' => $key,
+                ];
+            })->values()->all();
     }
 
     /**
@@ -391,12 +445,12 @@ class KpiLayyahDemoBuilders
     {
         return match ($slug) {
             'price-of-roti' => [
-                ['title' => 'Tandoor Price Inspection', 'name' => 'Hussaini Tandoor Fatehpur Road', 'type' => 'Tandoor', 'id' => 'TN-LAY-201', 'address' => 'Fatehpur Road, Layyah'],
-                ['title' => 'Roti Price Compliance', 'name' => 'Madina Nan Shop Chowk Azam', 'type' => 'Tandoor', 'id' => 'TN-LAY-202', 'address' => 'Chowk Azam Road, Layyah'],
-                ['title' => 'Community Tandoor Check', 'name' => 'City Tandoor Railway Road', 'type' => 'Tandoor', 'id' => 'TN-LAY-203', 'address' => 'Railway Road, Layyah'],
-                ['title' => 'Hotel Roti Check', 'name' => 'Thal Hotel Kitchen Layyah', 'type' => 'Hotel', 'id' => 'HT-LAY-301', 'address' => 'College Road, Layyah'],
-                ['title' => 'Tandoor Price Inspection', 'name' => 'Al-Madina Tandoor Karor Bazar', 'type' => 'Tandoor', 'id' => 'TN-KLE-101', 'address' => 'Main Bazar, Karor Lal Esan'],
-                ['title' => 'Roti Price Compliance', 'name' => 'Bismillah Nan Shop Kot Addu Road', 'type' => 'Tandoor', 'id' => 'TN-KLE-102', 'address' => 'Kot Addu Road, Karor'],
+                ['title' => 'Tandoor Price Inspection', 'name' => 'Madina Tandoor', 'type' => 'Tandoor', 'id' => 'TN-LAY-201', 'address' => 'Fatehpur Road, Layyah'],
+                ['title' => 'Roti Price Compliance', 'name' => 'Al-Rehman Tandoor', 'type' => 'Tandoor', 'id' => 'TN-LAY-202', 'address' => 'Chowk Azam Road, Layyah'],
+                ['title' => 'Community Tandoor Check', 'name' => 'Punjab Tandoor', 'type' => 'Tandoor', 'id' => 'TN-LAY-203', 'address' => 'Railway Road, Layyah'],
+                ['title' => 'Tandoor Price Inspection', 'name' => 'Kashmir Tandoor', 'type' => 'Tandoor', 'id' => 'TN-LAY-204', 'address' => 'College Road, Layyah'],
+                ['title' => 'Tandoor Price Inspection', 'name' => 'New City Tandoor', 'type' => 'Tandoor', 'id' => 'TN-LAY-205', 'address' => 'Main Bazar, Layyah'],
+                ['title' => 'Roti Price Compliance', 'name' => 'Chowk Azam Tandoor', 'type' => 'Tandoor', 'id' => 'TN-LAY-206', 'address' => 'Chowk Azam Road, Layyah'],
                 ['title' => 'Tandoor Inspection', 'name' => 'Chaubara Community Tandoor', 'type' => 'Tandoor', 'id' => 'TN-CBR-401', 'address' => 'Chaubara Bazar'],
             ],
             'price-of-plain-bakery-bread' => [
@@ -590,10 +644,13 @@ class KpiLayyahDemoBuilders
 
     private static function todayInspectionDateInActiveWeek(int $hour, int $minute = 0): Carbon
     {
-        return now(config('app.inspection_timezone', 'Asia/Karachi'))
-            ->copy()
-            ->setTime($hour, $minute, 0)
-            ->setTimezone(config('app.timezone', 'UTC'));
+        $now = now(config('app.inspection_timezone', 'Asia/Karachi'));
+        $candidate = $now->copy()->setTime($hour, $minute, 0);
+        if ($candidate->isFuture()) {
+            $candidate = $now->copy()->subMinutes(max(1, $minute + 1));
+        }
+
+        return $candidate->setTimezone(config('app.timezone', 'UTC'));
     }
 
     private static function latestCompletedWeekDateForIndex(int $index): Carbon

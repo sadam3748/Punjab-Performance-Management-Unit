@@ -31,11 +31,15 @@
             </div>
         </div>
 
+        @php $mapStatusCounts = $map['status_counts'] ?? null; @endphp
         <div class="ppmu-health-map-legend" aria-label="Map legend">
-            <span class="ppmu-health-map-legend-item is-blue"><i class="ppmu-health-map-legend-dot blue"></i> Inspected</span>
-            <span class="ppmu-health-map-legend-item is-orange"><i class="ppmu-health-map-legend-dot orange"></i> Pending Review</span>
-            <span class="ppmu-health-map-legend-item is-green"><i class="ppmu-health-map-legend-dot green"></i> Approved</span>
-            <span class="ppmu-health-map-legend-item is-red"><i class="ppmu-health-map-legend-dot red"></i> Rejected</span>
+            <span class="ppmu-health-map-legend-item is-blue" data-map-status="inspected"><i class="ppmu-health-map-legend-dot blue"></i> Inspected{{ $mapStatusCounts ? ' ('.number_format($mapStatusCounts['inspected'] ?? 0).')' : '' }}</span>
+            <span class="ppmu-health-map-legend-item is-orange" data-map-status="pending_review"><i class="ppmu-health-map-legend-dot orange"></i> Pending Review{{ $mapStatusCounts ? ' ('.number_format($mapStatusCounts['pending_review'] ?? 0).')' : '' }}</span>
+            <span class="ppmu-health-map-legend-item is-green" data-map-status="approved"><i class="ppmu-health-map-legend-dot green"></i> Approved{{ $mapStatusCounts ? ' ('.number_format($mapStatusCounts['approved'] ?? 0).')' : '' }}</span>
+            <span class="ppmu-health-map-legend-item is-red" data-map-status="rejected"><i class="ppmu-health-map-legend-dot red"></i> Rejected{{ $mapStatusCounts ? ' ('.number_format($mapStatusCounts['rejected'] ?? 0).')' : '' }}</span>
         </div>
+        @if(array_key_exists('unmapped_count', $map))
+            <p class="ppmu-health-map-unmapped mb-0" id="ppmuHealthMapUnmapped">Records without mapped location: <strong>{{ number_format((int) $map['unmapped_count']) }}</strong></p>
+        @endif
     </div>
 </div>

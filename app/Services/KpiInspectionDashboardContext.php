@@ -30,14 +30,17 @@ class KpiInspectionDashboardContext
     ): array {
         $slug = $card->slug;
         $count = $inspections->count();
-        $approved = (int) ($statusCounts['approved'] ?? 0);
-        $pending = (int) ($statusCounts['pending_review'] ?? 0);
-        $rejected = (int) ($statusCounts['rejected'] ?? 0);
+        $selected = $inspections->filter(fn (KpiInspection $inspection): bool => $inspection->isSelectedFor($user));
+        $approved = $selected->where('status', KpiInspection::STATUS_APPROVED)->count();
+        $pending = $selected->where('status', KpiInspection::STATUS_PENDING)->count();
+        $rejected = $selected->where('status', KpiInspection::STATUS_REJECTED)->count();
         $reviewTarget = $this->inspectionService->reviewTargetFor($card, $user, $request, $count);
-        $reviewCounts = $this->inspectionService->healthReviewStatusCounts($inspections, $reviewTarget);
-        $approved = (int) $reviewCounts['approved'];
-        $pending = (int) $reviewCounts['pending'];
-        $rejected = (int) $reviewCounts['rejected'];
+        $reviewed = $approved + $rejected;
+        $inspectedOnly = max(0, $count - $reviewTarget);
+        $reviewTargetBalance = max(0, $reviewTarget - $reviewed);
+        $reviewCompletion = $reviewTarget > 0
+            ? round(min(100, ($reviewed / $reviewTarget) * 100), 1)
+            : 0.0;
 
         $violations = $inspections->filter(function (KpiInspection $inspection): bool {
             $detail = $this->detail($inspection);
@@ -55,6 +58,16 @@ class KpiInspectionDashboardContext
 
             return (int) ($detail['fine'] ?? $detail['fine_amount'] ?? 0);
         });
+        $finesCount = $inspections->filter(fn (KpiInspection $inspection): bool => (int) ($this->detail($inspection)['fine'] ?? $this->detail($inspection)['fine_amount'] ?? 0) > 0)->count();
+        $fineDeposited = (int) $inspections->sum(function (KpiInspection $inspection): int {
+            $detail = $this->detail($inspection);
+
+            return in_array(strtolower((string) ($detail['payment_status'] ?? '')), ['paid', 'deposited'], true)
+                ? (int) ($detail['fine'] ?? $detail['fine_amount'] ?? 0)
+                : 0;
+        });
+        $complaintsReceived = $inspections->filter(fn (KpiInspection $inspection): bool => filled($this->detail($inspection)['complaint_action'] ?? null))->count();
+        $complaintsResolved = $inspections->filter(fn (KpiInspection $inspection): bool => strtolower((string) ($this->detail($inspection)['complaint_action'] ?? '')) === 'resolved')->count();
 
         $achievement = $operationalTarget > 0
             ? round(min(100, ($operationalCompleted / $operationalTarget) * 100), 1)
@@ -65,7 +78,14 @@ class KpiInspectionDashboardContext
             'inspections_conducted' => $count,
             'violations_found' => $violations,
             'fine_imposed' => $finesTotal,
-            'fine_deposited' => $finesTotal,
+            'fines_count' => $finesCount,
+            'fine_deposited' => $fineDeposited,
+            'complaints_received' => $complaintsReceived,
+            'complaints_resolved' => $complaintsResolved,
+            'complaints_actioned' => $complaintsReceived,
+            'complaint_resolution_rate' => $complaintsReceived > 0
+                ? round(($complaintsResolved / $complaintsReceived) * 100, 1)
+                : 0.0,
             'achievement_rate' => $achievement,
             'target_achievement' => $achievement,
             'approved' => $approved,
@@ -76,9 +96,15 @@ class KpiInspectionDashboardContext
             'inspections_rejected' => $rejected,
             'review_target' => $reviewTarget,
             'validation_target' => $reviewTarget,
-            'reviewed' => $approved + $rejected,
+            'inspected_only' => $inspectedOnly,
+            'reviewed' => $reviewed,
+            'review_target_balance' => $reviewTargetBalance,
+            'review_completion_rate' => $reviewCompletion,
+            'review_percentage' => $reviewCompletion,
             'operational_target' => $operationalTarget,
             'operational_completed' => $operationalCompleted,
+            'operational_remaining' => max(0, round($operationalTarget - $operationalCompleted, 1)),
+            'violating_entities' => $violations,
         ];
 
         return array_merge($base, $this->slugSpecific($slug, $inspections, $base));
@@ -91,7 +117,13 @@ class KpiInspectionDashboardContext
         $target = (int) max(1, round((float) ($base['operational_target'] ?? 0)));
         $yes = fn (string $field) => $inspections->filter(fn ($i) => in_array(strtolower((string) ($this->detail($i)[$field] ?? '')), ['yes', '1', 'true', 'available', 'visible', 'clean', 'functional', 'marked', 'repainted', 'completed', 'paid'], true))->count();
         $sum = fn (string $field) => (int) $inspections->sum(fn ($i) => (int) ($this->detail($i)[$field] ?? 0));
-        $violationIs = fn (string $value) => $inspections->filter(fn ($i) => ($this->detail($i)['violation'] ?? $this->detail($i)['commodity_violation'] ?? '') === $value)->count();
+        $violationIs = fn (string $value) => $inspections->filter(function ($i) use ($value): bool {
+            $detail = $this->detail($i);
+            $types = is_array($detail['violation_types'] ?? null) ? $detail['violation_types'] : [];
+
+            return in_array($value, $types, true)
+                || ($detail['violation'] ?? $detail['commodity_violation'] ?? '') === $value;
+        })->count();
         $fined = $inspections->filter(fn ($i) => (int) ($this->detail($i)['fine'] ?? $this->detail($i)['fine_amount'] ?? 0) > 0)->count();
         $priceObs = [
             'obs_over_price' => $violationIs('Over Price'),
@@ -106,13 +138,11 @@ class KpiInspectionDashboardContext
                 'tier_target' => $target > 0 ? $target : 6,
                 'inspections_total_target' => $target > 0 ? $target : 6,
                 'tandoor_inspections' => $count,
-                'complaints_resolved' => max(1, (int) round($count * 0.35)),
             ], $priceObs),
             'price-of-plain-bakery-bread' => array_merge([
                 'tier_target' => $target > 0 ? $target : 3,
                 'inspections_total_target' => $target > 0 ? $target : 3,
                 'bread_inspections' => $count,
-                'citizen_complaint_action' => max(0, (int) round($count * 0.25)),
             ], array_diff_key($priceObs, ['obs_under_weight' => true])),
             'price-control-of-essential-commodities' => array_merge([
                 'tier_target' => $target > 0 ? $target : 21,
@@ -122,15 +152,22 @@ class KpiInspectionDashboardContext
                 'sb_violations' => $base['violations_found'],
                 'citizen_violations' => max(1, (int) round($count * 0.2)),
                 'obs_commodity_types' => $inspections->pluck('detail_data')->map(fn ($d) => is_array($d) ? ($d['commodity'] ?? 'General') : 'General')->unique()->count(),
-                'obs_citizen_report' => max(0, (int) round($count * 0.15)),
-                'obs_sb_report' => max(0, (int) round($count * 0.1)),
+                'citizen_reports_received' => $inspections->filter(fn ($i) => filled($this->detail($i)['citizen_report'] ?? null))->count(),
+                'special_branch_reports' => $inspections->filter(fn ($i) => filled($this->detail($i)['sb_report'] ?? null))->count(),
+                'reports_actioned' => $inspections->filter(fn ($i) => filled($this->detail($i)['report_action'] ?? null))->count(),
             ], array_intersect_key($priceObs, array_flip(['obs_over_price', 'obs_fine_imposed']))),
             'repair-of-small-roads-in-both-urban-and-rural-areas' => [
                 'weekly_road_target' => max(1, $target),
                 'repair_completed' => $count,
+                'roads_selected' => $count,
+                'roads_patched' => $inspections->filter(fn ($i) => in_array($this->detail($i)['repair_type'] ?? '', ['Patching', 'Pothole Repair'], true))->count(),
                 'lane_marking_done' => $yes('lane_marking_done'),
                 'roads_in_progress' => $inspections->filter(fn ($i) => in_array($this->detail($i)['completion_status'] ?? '', ['In Progress', 'Pending'], true))->count(),
                 'roads_work_completed' => $inspections->filter(fn ($i) => ($this->detail($i)['completion_status'] ?? '') === 'Completed')->count(),
+                'completed_pending_review' => $inspections->filter(fn ($i) => ($this->detail($i)['completion_status'] ?? '') === 'Completed' && $i->status === KpiInspection::STATUS_PENDING)->count(),
+                'completion_achievement' => $target > 0
+                    ? round(min(100, ($inspections->filter(fn ($i) => ($this->detail($i)['completion_status'] ?? '') === 'Completed')->count() / $target) * 100), 1)
+                    : 0.0,
                 'complaints_resolved' => $inspections->filter(fn ($i) => ($this->detail($i)['completion_status'] ?? '') === 'In Progress')->count(),
                 'obs_work_type' => $inspections->pluck('detail_data')->map(fn ($d) => is_array($d) ? ($d['repair_type'] ?? $d['work_type'] ?? 'Patching') : 'Patching')->countBy()->keys()->first() ?? 'Patching',
                 'obs_work_status' => $inspections->filter(fn ($i) => ($this->detail($i)['completion_status'] ?? '') === 'Completed')->count(),
@@ -142,8 +179,11 @@ class KpiInspectionDashboardContext
                 'roads_with_streetlights' => max($count, 8),
                 'weekly_visit_target' => max(2, (int) ceil(max($count, 8) * 0.25)),
                 'roads_inspected' => $count,
+                'inspection_coverage' => round(min(100, ($count / max(1, max(2, (int) ceil(max($count, 8) * 0.25)))) * 100), 1),
                 'faulty_lights_found' => $sum('dysfunctional_lights'),
                 'lights_repaired' => $sum('repaired_lights'),
+                'lights_pending_repair' => max(0, $sum('dysfunctional_lights') - $sum('repaired_lights')),
+                'roads_with_faulty_lights' => $inspections->filter(fn ($i) => (int) ($this->detail($i)['dysfunctional_lights'] ?? 0) > 0)->count(),
                 'repair_rate' => $sum('dysfunctional_lights') > 0
                     ? round(min(100, ($sum('repaired_lights') / max(1, $sum('dysfunctional_lights'))) * 100), 1)
                     : 0.0,
@@ -157,6 +197,7 @@ class KpiInspectionDashboardContext
                 'ucs_inspected' => $count,
                 'open_manholes_found' => $sum('open_manholes'),
                 'manholes_covered' => $sum('covered_manholes'),
+                'manholes_pending' => max(0, $sum('open_manholes') - $sum('covered_manholes')),
                 'compliance_rate' => ($sum('open_manholes') + $sum('covered_manholes')) > 0
                     ? round(min(100, ($sum('covered_manholes') / max(1, $sum('open_manholes') + $sum('covered_manholes'))) * 100), 1)
                     : 0.0,
@@ -248,10 +289,18 @@ class KpiInspectionDashboardContext
                 'schools_to_inspect' => max($count, 20),
                 'schools_inspected' => $count,
                 'weekly_inspection_target' => max(5, (int) ceil(max($count, 20) * 0.25)),
+                'inspection_coverage' => round(min(100, ($count / max(1, max(5, (int) ceil(max($count, 20) * 0.25)))) * 100), 1),
                 'markings_done' => $inspections->filter(fn ($i) => in_array($this->detail($i)['crossing_status'] ?? '', ['Marked', 'Repainted', 'Visible', 'Restored'], true))->count(),
                 'resolved_points' => $inspections->filter(fn ($i) => in_array($this->detail($i)['crossing_status'] ?? '', ['Repainted', 'Restored', 'Visible'], true)
                     || in_array(strtolower((string) ($this->detail($i)['action_taken'] ?? '')), ['repainted', 'restored', 'marking restored'], true))->count(),
                 'faded_crossings' => $inspections->filter(fn ($i) => in_array($this->detail($i)['crossing_status'] ?? '', ['Faded', 'Missing', 'Absent'], true))->count(),
+                'faded_only_crossings' => $inspections->filter(fn ($i) => ($this->detail($i)['crossing_status'] ?? '') === 'Faded')->count(),
+                'missing_crossings' => $inspections->filter(fn ($i) => in_array($this->detail($i)['crossing_status'] ?? '', ['Missing', 'Absent'], true))->count(),
+                'actions_completed' => $inspections->filter(fn ($i) => ($this->detail($i)['action_completion_status'] ?? '') === 'Completed')->count(),
+                'actions_pending' => max(0,
+                    $inspections->filter(fn ($i) => in_array($this->detail($i)['crossing_status'] ?? '', ['Faded', 'Missing', 'Absent'], true))->count()
+                    - $inspections->filter(fn ($i) => ($this->detail($i)['action_completion_status'] ?? '') === 'Completed')->count()
+                ),
                 'obs_crossing_status' => $count,
                 'obs_repainted' => $inspections->filter(fn ($i) => in_array($this->detail($i)['crossing_status'] ?? '', ['Repainted', 'Restored'], true))->count(),
                 'obs_action_taken' => $inspections->filter(fn ($i) => filled($this->detail($i)['action_taken'] ?? null))->count(),

@@ -17,9 +17,10 @@ class KpiMetricSectionDefinitions
 
         $sections = match ($slug) {
             'price-of-roti' => [
-                self::section('Daily Inspection', [
-                    ['field' => 'inspections_total_target', 'label' => 'Daily Target'],
+                self::section('Operational Performance', [
+                    ['field' => 'inspections_total_target', 'label' => 'Daily Inspection Target'],
                     ['field' => 'tandoor_inspections', 'label' => 'Tandoors Inspected'],
+                    ['field' => 'operational_remaining', 'label' => 'Inspections Remaining'],
                     ['field' => 'achievement_rate', 'label' => 'Target Achievement %'],
                 ]),
                 self::section('Enforcement', [
@@ -27,85 +28,71 @@ class KpiMetricSectionDefinitions
                     ['field' => 'fine_imposed', 'label' => 'Fine Deposited'],
                     ['field' => 'complaints_resolved', 'label' => 'Complaints Resolved'],
                 ]),
-                self::section('Observation Summary', [
+                self::section('Compliance Findings', [
                     ['field' => 'obs_over_price', 'label' => 'Over Price'],
                     ['field' => 'obs_under_weight', 'label' => 'Under Weight'],
                     ['field' => 'obs_non_availability', 'label' => 'Non-Availability of Roti'],
                     ['field' => 'obs_fine_imposed', 'label' => 'Fine Imposed'],
-                    ['field' => 'obs_complaint_action', 'label' => 'Complaint Action'],
+                    ['field' => 'obs_complaint_action', 'label' => 'Complaints Actioned'],
                 ]),
             ],
             'price-of-plain-bakery-bread' => [
-                self::section('Daily Inspection', [
-                    ['field' => 'tier_target', 'label' => 'Daily Target'],
+                self::section('Operational Performance', [
+                    ['field' => 'inspections_total_target', 'label' => 'Daily Inspection Target'],
                     ['field' => 'bread_inspections', 'label' => 'Bakeries Inspected'],
+                    ['field' => 'operational_remaining', 'label' => 'Inspections Remaining'],
                     ['field' => 'achievement_rate', 'label' => 'Target Achievement %'],
                 ]),
-                self::section('Enforcement', [
-                    ['field' => 'violations_found', 'label' => 'Violations Found'],
-                    ['field' => 'fine_imposed', 'label' => 'Fine Deposited'],
-                    ['field' => 'citizen_complaint_action', 'label' => 'Complaint Action'],
-                ]),
-                self::section('Observation Summary', [
-                    ['field' => 'obs_over_price', 'label' => 'Over Price'],
-                    ['field' => 'obs_non_availability', 'label' => 'Non-Availability of Plain Bread'],
-                    ['field' => 'obs_fine_imposed', 'label' => 'Fine Imposed'],
-                    ['field' => 'obs_complaint_action', 'label' => 'Complaint Action'],
+                self::section('Compliance Findings', [
+                    ['field' => 'violating_entities', 'label' => 'Violating Bakeries'],
+                    ['field' => 'obs_over_price', 'label' => 'Overpricing Cases'],
+                    ['field' => 'obs_non_availability', 'label' => 'Plain Bread Unavailable'],
+                    ['field' => 'fines_count', 'label' => 'Fines Imposed'],
+                    ['field' => 'fine_deposited', 'label' => 'Fine Deposited'],
+                    ['field' => 'complaints_actioned', 'label' => 'Complaints Actioned'],
                 ]),
             ],
             'price-control-of-essential-commodities' => [
-                self::section('Daily Inspection', [
-                    ['field' => 'tier_target', 'label' => 'Daily Target'],
+                self::section('Operational Performance', [
+                    ['field' => 'inspections_total_target', 'label' => 'Daily Inspection Target'],
                     ['field' => 'market_inspections', 'label' => 'Sale Points Inspected'],
+                    ['field' => 'operational_remaining', 'label' => 'Inspections Remaining'],
                     ['field' => 'achievement_rate', 'label' => 'Target Achievement %'],
                 ]),
-                self::section('Enforcement', [
-                    ['field' => 'sb_violations', 'label' => 'Commodity Violations'],
-                    ['field' => 'fine_imposed', 'label' => 'Fine Deposited'],
-                    ['field' => 'citizen_violations', 'label' => 'Citizen/SB Reports Actioned'],
-                ]),
-                self::section('Observation Summary', [
+                self::section('Inspection and Enforcement Findings', [
+                    ['field' => 'violating_entities', 'label' => 'Violating Sale Points'],
+                    ['field' => 'obs_over_price', 'label' => 'Overpricing Cases'],
                     ['field' => 'obs_commodity_types', 'label' => 'Commodity Types Checked'],
-                    ['field' => 'obs_over_price', 'label' => 'Over Price'],
-                    ['field' => 'obs_citizen_report', 'label' => 'Citizen Report'],
-                    ['field' => 'obs_sb_report', 'label' => 'Special Branch Report'],
-                    ['field' => 'obs_fine_imposed', 'label' => 'Fine Imposed'],
+                    ['field' => 'reports_actioned', 'label' => 'Reports Actioned'],
                 ]),
             ],
             'repair-of-small-roads-in-both-urban-and-rural-areas' => [
-                self::section('Weekly Progress', [
+                self::section('Weekly Work Progress', [
                     ['field' => 'weekly_road_target', 'label' => 'Weekly Road Target'],
-                    ['field' => 'repair_completed', 'label' => 'Roads Maintained'],
-                    ['field' => 'achievement_rate', 'label' => 'Achievement %'],
+                    ['field' => 'roads_selected', 'label' => 'Roads Selected / Inspected'],
+                    ['field' => 'roads_work_completed', 'label' => 'Roads Completed'],
+                    ['field' => 'completion_achievement', 'label' => 'Completion Achievement %'],
                 ]),
-                self::section('Work Details', [
-                    ['field' => 'lane_marking_done', 'label' => 'Lane Marking Done'],
-                    ['field' => 'roads_in_progress', 'label' => 'In Progress'],
-                    ['field' => 'roads_work_completed', 'label' => 'Completed'],
-                ]),
-                self::section('Observation Summary', [
-                    ['field' => 'obs_work_type', 'label' => 'Work Type'],
-                    ['field' => 'obs_work_status', 'label' => 'Work Status'],
-                    ['field' => 'obs_length_covered', 'label' => 'Length Covered (m)'],
-                    ['field' => 'obs_lane_marking', 'label' => 'Lane Marking Done'],
-                    ['field' => 'obs_sb_complaint', 'label' => 'SB Complaint'],
+                self::section('Work Details and Quality Findings', [
+                    ['field' => 'roads_patched', 'label' => 'Roads Patched'],
+                    ['field' => 'lane_marking_done', 'label' => 'Lane-Marking Locations Completed'],
+                    ['field' => 'obs_length_covered', 'label' => 'Total Length Repaired (m)'],
+                    ['field' => 'roads_in_progress', 'label' => 'Work in Progress'],
                 ]),
                 self::reviewSection(),
             ],
             'dysfunctional-streetlights' => [
-                self::section('Weekly Coverage', [
+                self::section('Weekly Inspection Coverage', [
                     ['field' => 'roads_with_streetlights', 'label' => 'Roads with Streetlights'],
-                    ['field' => 'weekly_visit_target', 'label' => 'Weekly Visit Target'],
+                    ['field' => 'weekly_visit_target', 'label' => 'Weekly Inspection Target'],
                     ['field' => 'roads_inspected', 'label' => 'Roads Inspected'],
-                    ['field' => 'faulty_lights_found', 'label' => 'Faulty Lights Found'],
-                    ['field' => 'lights_repaired', 'label' => 'Lights Repaired'],
-                    ['field' => 'repair_rate', 'label' => 'Repair Rate'],
+                    ['field' => 'inspection_coverage', 'label' => 'Inspection Coverage %'],
                 ]),
-                self::section('Observation Summary', [
-                    ['field' => 'obs_streetlight_status', 'label' => 'Streetlight Status'],
-                    ['field' => 'obs_faulty_lights', 'label' => 'Faulty Lights Identified'],
-                    ['field' => 'obs_lights_repaired', 'label' => 'Streetlights Repaired'],
-                    ['field' => 'obs_sb_complaint', 'label' => 'SB Complaint'],
+                self::section('Defect and Repair Findings', [
+                    ['field' => 'faulty_lights_found', 'label' => 'Faulty Lights Identified'],
+                    ['field' => 'lights_repaired', 'label' => 'Lights Repaired'],
+                    ['field' => 'lights_pending_repair', 'label' => 'Lights Pending Repair'],
+                    ['field' => 'roads_with_faulty_lights', 'label' => 'Roads with Faulty Lights'],
                 ]),
                 self::reviewSection(),
             ],
@@ -113,15 +100,13 @@ class KpiMetricSectionDefinitions
                 self::section('Target / Coverage', [
                     ['field' => 'total_ucs', 'label' => 'UCs with Manholes'],
                     ['field' => 'ucs_inspected', 'label' => 'UCs Inspected'],
-                    ['field' => 'open_manholes_found', 'label' => 'Open Manholes Found'],
-                    ['field' => 'manholes_covered', 'label' => 'Manholes Covered'],
                     ['field' => 'compliance_rate', 'label' => 'Coverage %'],
                 ]),
-                self::section('Observation Summary', [
-                    ['field' => 'obs_manhole_status', 'label' => 'Manhole Cover Status'],
-                    ['field' => 'obs_open_manholes', 'label' => 'Open Manholes Count'],
-                    ['field' => 'obs_manholes_covered', 'label' => 'All Manholes Covered'],
-                    ['field' => 'obs_netting_available', 'label' => 'Netting Available'],
+                self::section('Manhole Condition and Safety Findings', [
+                    ['field' => 'open_manholes_found', 'label' => 'Open Manholes Identified'],
+                    ['field' => 'manholes_covered', 'label' => 'Manholes Covered'],
+                    ['field' => 'obs_netting_available', 'label' => 'Safety Nets Installed'],
+                    ['field' => 'manholes_pending', 'label' => 'Manholes Pending Action'],
                 ]),
                 self::reviewSection(),
             ],
@@ -132,9 +117,8 @@ class KpiMetricSectionDefinitions
                     ['field' => 'plants_inspected', 'label' => 'Plants Inspected'],
                     ['field' => 'functional_plants', 'label' => 'Functional Plants'],
                     ['field' => 'clean_plants', 'label' => 'Clean Plants'],
-                    ['field' => 'filter_change_compliance', 'label' => 'RO Filter Date Affixed'],
                 ]),
-                self::section('Observation Summary', [
+                self::section('Plant Functionality Findings', [
                     ['field' => 'obs_functional', 'label' => 'Functional / Non-Functional'],
                     ['field' => 'obs_cleanliness', 'label' => 'Cleanliness'],
                     ['field' => 'filter_change_compliance', 'label' => 'RO Filter Date Affixed'],
@@ -150,7 +134,7 @@ class KpiMetricSectionDefinitions
                     ['field' => 'violations_detected', 'label' => 'Violations Found'],
                     ['field' => 'notices_fines', 'label' => 'Fine / FIR / Sealing'],
                 ]),
-                self::section('Observation Summary', [
+                self::section('Compliance and Enforcement Findings', [
                     ['field' => 'obs_one_dish_rule', 'label' => 'One Dish Rule'],
                     ['field' => 'obs_timing_compliance', 'label' => 'Timing Compliance'],
                     ['field' => 'obs_pra_registration', 'label' => 'PRA Registration'],
@@ -167,7 +151,7 @@ class KpiMetricSectionDefinitions
                     ['field' => 'encroachments_removed', 'label' => 'Encroachments Removed'],
                     ['field' => 'actions_taken', 'label' => 'Enforcement Actions'],
                 ]),
-                self::section('Observation Summary', [
+                self::section('Clearance Activity Findings', [
                     ['field' => 'obs_moveable', 'label' => 'Moveable Encroachment'],
                     ['field' => 'obs_immovable', 'label' => 'Immoveable Encroachment'],
                     ['field' => 'obs_market_cleared', 'label' => 'Market Cleared'],
@@ -182,7 +166,7 @@ class KpiMetricSectionDefinitions
                     ['field' => 'handcart_violations', 'label' => 'Handcart Violations'],
                     ['field' => 'actions_taken', 'label' => 'Warnings / Fines'],
                 ]),
-                self::section('Observation Summary', [
+                self::section('Market Compliance Findings', [
                     ['field' => 'obs_shop_line_compliance', 'label' => 'Shop Line Compliance'],
                     ['field' => 'obs_walkway_obstruction', 'label' => 'Walkway Obstruction'],
                     ['field' => 'obs_waste_debris', 'label' => 'Waste/Debris'],
@@ -198,7 +182,7 @@ class KpiMetricSectionDefinitions
                     ['field' => 'dogs_culled', 'label' => 'Dogs Culled'],
                     ['field' => 'sb_complaints', 'label' => 'SB/Rescue Complaints'],
                 ]),
-                self::section('Observation Summary', [
+                self::section('Field Activity Findings', [
                     ['field' => 'obs_culling_performed', 'label' => 'Culling Activity Performed'],
                     ['field' => 'obs_dogs_observed', 'label' => 'Dogs Observed'],
                     ['field' => 'obs_dogs_culled', 'label' => 'Dogs Culled'],
@@ -214,7 +198,7 @@ class KpiMetricSectionDefinitions
                     ['field' => 'removal_done', 'label' => 'Spots Removed'],
                     ['field' => 'pending_spots', 'label' => 'Pending Spots'],
                 ]),
-                self::section('Observation Summary', [
+                self::section('Removal Activity Findings', [
                     ['field' => 'obs_wall_chalking_removed', 'label' => 'Wall Chalking Removed'],
                     ['field' => 'obs_spots_removed', 'label' => 'Spots Removed'],
                     ['field' => 'obs_sb_complaint', 'label' => 'SB Complaint'],
@@ -227,9 +211,8 @@ class KpiMetricSectionDefinitions
                     ['field' => 'graveyards_cleared', 'label' => 'Graveyards Cleared'],
                     ['field' => 'boundary_wall_issues', 'label' => 'Boundary/Demarcation OK'],
                     ['field' => 'encroachment_removed', 'label' => 'Encroachment Removed'],
-                    ['field' => 'obs_cleanliness', 'label' => 'Cleanliness/Bushes Done'],
                 ]),
-                self::section('Observation Summary', [
+                self::section('Graveyard Condition Findings', [
                     ['field' => 'obs_encroachment_removed', 'label' => 'Encroachment Removed'],
                     ['field' => 'obs_cleanliness', 'label' => 'Cleanliness'],
                     ['field' => 'obs_boundary_wall', 'label' => 'Boundary Wall / Demarcation'],
@@ -238,19 +221,17 @@ class KpiMetricSectionDefinitions
                 self::reviewSection(),
             ],
             'zebra-crossings' => [
-                self::section('School Inspection', [
-                    ['field' => 'schools_to_inspect', 'label' => 'Schools Requiring Zebra Crossing'],
+                self::section('School Inspection Coverage', [
+                    ['field' => 'schools_to_inspect', 'label' => 'Schools in Scope'],
                     ['field' => 'weekly_inspection_target', 'label' => 'Weekly Inspection Target'],
                     ['field' => 'schools_inspected', 'label' => 'Schools Inspected'],
-                    ['field' => 'markings_done', 'label' => 'Visible Crossings'],
-                    ['field' => 'faded_crossings', 'label' => 'Faded / Absent Crossings'],
-                    ['field' => 'resolved_points', 'label' => 'Restored Crossings'],
+                    ['field' => 'inspection_coverage', 'label' => 'Inspection Coverage %'],
                 ]),
-                self::section('Observation Summary', [
-                    ['field' => 'obs_crossing_status', 'label' => 'Zebra Crossing Status'],
-                    ['field' => 'obs_repainted', 'label' => 'Repainted / Restored'],
-                    ['field' => 'obs_action_taken', 'label' => 'Action Taken'],
-                    ['field' => 'obs_sb_complaint', 'label' => 'SB Complaint'],
+                self::section('Crossing Condition and Corrective Action Findings', [
+                    ['field' => 'markings_done', 'label' => 'Crossings Compliant / Visible'],
+                    ['field' => 'faded_only_crossings', 'label' => 'Faded Crossings'],
+                    ['field' => 'missing_crossings', 'label' => 'Missing Crossings'],
+                    ['field' => 'actions_completed', 'label' => 'Actions Completed'],
                 ]),
             ],
             'illegal-decanting' => [
@@ -261,7 +242,7 @@ class KpiMetricSectionDefinitions
                     ['field' => 'fines_imposed', 'label' => 'Fines'],
                     ['field' => 'enforcement_actions', 'label' => 'FIR / Sealed'],
                 ]),
-                self::section('Observation Summary', [
+                self::section('Violation and Enforcement Findings', [
                     ['field' => 'obs_illegal_decanting', 'label' => 'Illegal Decanting Observed'],
                     ['field' => 'obs_license_missing', 'label' => 'License Missing'],
                     ['field' => 'obs_unsafe_equipment', 'label' => 'Unsafe Equipment'],
@@ -278,7 +259,7 @@ class KpiMetricSectionDefinitions
                     ['field' => 'containers_placed', 'label' => 'Containers Placed'],
                     ['field' => 'heaps_cleared', 'label' => 'Garbage Heaps Cleared'],
                 ]),
-                self::section('Observation Summary', [
+                self::section('Cleanliness Compliance Findings', [
                     ['field' => 'obs_hr_attendance', 'label' => 'HR Attendance >85%'],
                     ['field' => 'obs_machinery_field', 'label' => 'Machinery in Field >80%'],
                     ['field' => 'obs_containers', 'label' => 'Containers at Designated Points'],
@@ -294,7 +275,7 @@ class KpiMetricSectionDefinitions
                     ['field' => 'kerb_painting_target', 'label' => 'Kerb Painting Target'],
                     ['field' => 'beautification', 'label' => 'Road Painted'],
                 ]),
-                self::section('Observation Summary', [
+                self::section('Maintenance Condition Findings', [
                     ['field' => 'obs_kerb_paint', 'label' => 'Kerb Stone Paint Done'],
                     ['field' => 'obs_flowering_grass', 'label' => 'Flowering & Grass Maintained'],
                     ['field' => 'obs_greenbelt_maintained', 'label' => 'Greenbelt Fully Maintained'],
@@ -311,7 +292,7 @@ class KpiMetricSectionDefinitions
                     ['field' => 'stagnant_water', 'label' => 'Stagnant Water Points'],
                     ['field' => 'resolved_points', 'label' => 'Resolved Points'],
                 ]),
-                self::section('Observation Summary', [
+                self::section('Sewerage Condition and Resolution Findings', [
                     ['field' => 'obs_blocked', 'label' => 'Sewerage Lines Blocked/Choked'],
                     ['field' => 'obs_overflowing', 'label' => 'Overflowing'],
                     ['field' => 'obs_stagnant_water', 'label' => 'Stagnant Water'],
@@ -327,7 +308,7 @@ class KpiMetricSectionDefinitions
                     ['field' => 'water_washroom_ok', 'label' => 'Water/Washroom OK'],
                     ['field' => 'cleanliness_checked', 'label' => 'Cleanliness OK'],
                 ]),
-                self::section('Observation Summary', [
+                self::section('Terminal Facility Compliance Findings', [
                     ['field' => 'obs_fare_display', 'label' => 'Fare Display'],
                     ['field' => 'obs_waiting_area', 'label' => 'Waiting Area'],
                     ['field' => 'obs_drinking_water', 'label' => 'Drinking Water'],
@@ -336,13 +317,11 @@ class KpiMetricSectionDefinitions
                 self::reviewSection(),
             ],
             'chief-ministers-complaint-cell' => [
-                self::section('Complaint Summary', [
+                self::section('Complaint Outcome Findings', [
                     ['field' => 'complaints_received', 'label' => 'Complaints Received'],
                     ['field' => 'complaints_resolved', 'label' => 'Complaints Resolved'],
                     ['field' => 'pending_complaints', 'label' => 'Complaints Pending'],
                     ['field' => 'overdue_complaints', 'label' => 'Complaints Overdue'],
-                    ['field' => 'resolution_rate', 'label' => 'Resolution Rate'],
-                    ['field' => 'avg_resolution_days', 'label' => 'Average Resolution Time'],
                 ]),
             ],
             'e-biz' => [
@@ -354,17 +333,44 @@ class KpiMetricSectionDefinitions
                     ['field' => 'branding_available', 'label' => 'Branding Available'],
                     ['field' => 'meeting_held', 'label' => 'Meeting Held'],
                 ]),
-                self::section('Observation Summary', [
+                self::section('Application and Help-Desk Findings', [
                     ['field' => 'obs_help_desk', 'label' => 'Help Desk Established'],
                     ['field' => 'obs_branding', 'label' => 'Branding with Standees/Flexes'],
                     ['field' => 'obs_pending_apps', 'label' => 'Applications Pending >7 Days'],
                     ['field' => 'obs_processed_apps', 'label' => 'Applications Processed'],
-                    ['field' => 'meeting_held', 'label' => 'DC Meeting Held'],
                 ]),
             ],
-            'land-management-services' => [],
+            'land-management-services' => [
+                self::section('Service Delivery Findings', [
+                    ['field' => 'records_processed', 'label' => 'Records Processed'],
+                    ['field' => 'services_completed', 'label' => 'Services Completed'],
+                    ['field' => 'pending_cases', 'label' => 'Cases Pending'],
+                    ['field' => 'service_delivery_rate', 'label' => 'Service Delivery Rate'],
+                ]),
+            ],
             default => [],
         };
+
+        $sections = array_map(static function (array $section): array {
+            if (str_contains($section['title'], 'Findings')) {
+                $section['metrics'] = array_slice($section['metrics'], 0, 4);
+            }
+
+            return $section;
+        }, $sections);
+
+        $hasReviewSection = collect($sections)
+            ->flatMap(fn (array $section): array => $section['metrics'] ?? [])
+            ->contains(fn (array $metric): bool => ($metric['field'] ?? null) === 'review_target');
+
+        if ($sections !== [] && ! $hasReviewSection) {
+            $reviewTitle = match ($slug) {
+                'chief-ministers-complaint-cell' => 'Resolution Verification',
+                'e-biz' => 'Application & Office Validation',
+                default => 'Review & Validation',
+            };
+            $sections[] = self::reviewSection($reviewTitle);
+        }
 
         return $sections;
     }
@@ -379,14 +385,17 @@ class KpiMetricSectionDefinitions
     }
 
     /** @return array{title: string, metrics: list<array{field: string, label: string}>} */
-    private static function reviewSection(): array
+    private static function reviewSection(string $title = 'Review & Validation'): array
     {
-        return self::section('Review Status', [
+        return self::section($title, [
             ['field' => 'review_target', 'label' => 'Review Target'],
             ['field' => 'reviewed', 'label' => 'Reviewed'],
             ['field' => 'inspections_pending', 'label' => 'Pending Review'],
             ['field' => 'inspections_approved', 'label' => 'Approved'],
             ['field' => 'inspections_rejected', 'label' => 'Rejected'],
+            ['field' => 'inspected_only', 'label' => 'Inspected Only'],
+            ['field' => 'review_target_balance', 'label' => 'Reviews Remaining'],
+            ['field' => 'review_completion_rate', 'label' => 'Review Target Met %'],
         ]);
     }
 }

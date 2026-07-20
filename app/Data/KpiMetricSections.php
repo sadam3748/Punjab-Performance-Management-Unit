@@ -142,49 +142,35 @@ class KpiMetricSections
      */
     private static function rotiSections(?string $role): array
     {
-        $target = [
-            ['field' => 'total_inspectors', 'label' => 'Inspectors'],
-            ['field' => 'tier_target', 'label' => 'Target / Inspector'],
-            ['field' => 'inspections_total_target', 'label' => 'Total Target'],
-            ['field' => 'tandoor_inspections', 'label' => 'Conducted'],
+        return [
+            ['title' => 'Operational Performance', 'metrics' => [
+                ['field' => 'inspections_total_target', 'label' => 'Daily Inspection Target'],
+                ['field' => 'tandoor_inspections', 'label' => 'Tandoors Inspected'],
+                ['field' => 'operational_remaining', 'label' => 'Inspections Remaining'],
+                ['field' => 'achievement_rate', 'label' => 'Target Achievement %'],
+            ]],
+            ['title' => 'Compliance Findings', 'metrics' => [
+                ['field' => 'violating_entities', 'label' => 'Violating Tandoors'],
+                ['field' => 'obs_over_price', 'label' => 'Overpricing Cases'],
+                ['field' => 'obs_under_weight', 'label' => 'Underweight Roti Cases'],
+                ['field' => 'obs_non_availability', 'label' => 'Roti Unavailable Cases'],
+            ]],
+            ['title' => 'Complaint Outcome', 'metrics' => [
+                ['field' => 'complaints_received', 'label' => 'Complaints Received'],
+                ['field' => 'complaints_resolved', 'label' => 'Complaints Resolved'],
+                ['field' => 'complaint_resolution_rate', 'label' => 'Complaint Resolution %'],
+            ]],
+            ['title' => 'Review and Validation', 'metrics' => [
+                ['field' => 'review_target', 'label' => 'Review Target'],
+                ['field' => 'reviewed', 'label' => 'Reviewed'],
+                ['field' => 'inspections_pending', 'label' => 'Pending Review'],
+                ['field' => 'inspections_approved', 'label' => 'Approved'],
+                ['field' => 'inspections_rejected', 'label' => 'Rejected'],
+                ['field' => 'inspected_only', 'label' => 'Inspected Only'],
+                ['field' => 'review_target_balance', 'label' => 'Reviews Remaining'],
+                ['field' => 'review_completion_rate', 'label' => 'Review Target Met %'],
+            ]],
         ];
-
-        $compliance = [
-            ['field' => 'violations_found', 'label' => 'Violations'],
-            ['field' => 'over_price_violations', 'label' => 'Over Price'],
-            ['field' => 'under_weight_violations', 'label' => 'Under Weight'],
-        ];
-
-        $complaints = [
-            ['field' => 'citizen_complaints_received', 'label' => 'Complaints'],
-            ['field' => 'complaints_resolved', 'label' => 'Resolved'],
-            ['field' => 'complaint_resolution_rate', 'label' => 'Resolution %'],
-        ];
-
-        $validation = [
-            ['field' => 'validation_target', 'label' => 'Validation Target'],
-            ['field' => 'validated_inspections', 'label' => 'Validated'],
-            ['field' => 'approved_validations', 'label' => 'Approved'],
-            ['field' => 'rejected_validations', 'label' => 'Rejected'],
-        ];
-
-        $sections = [
-            ['title' => 'Target / Inspection', 'metrics' => $target],
-            ['title' => 'Compliance / Enforcement', 'metrics' => $compliance],
-            ['title' => 'Complaints', 'metrics' => $complaints],
-            ['title' => 'Validation', 'metrics' => $validation],
-        ];
-
-        if (! in_array($role, ['dc', 'commissioner', 'chief_secretary', 'super_admin', 'pmru_user'], true)) {
-            return $sections;
-        }
-
-        array_splice($sections, 1, 0, [[
-            'title' => 'Review Meetings',
-            'metrics' => [['field' => 'dc_weekly_review', 'label' => 'DC Weekly Review Meetings']],
-        ]]);
-
-        return $sections;
     }
 
     /**

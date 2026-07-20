@@ -80,7 +80,7 @@ class KpiDashboardConfigService
             ],
             'repair-of-small-roads-in-both-urban-and-rural-areas' => [
                 'target' => 'Roads Target',
-                'completed' => 'Roads Repaired',
+                'completed' => 'Roads Completed',
             ],
             'functional-and-clean-water-filtration-plants' => [
                 'target' => 'Plants Target',

@@ -75,7 +75,77 @@
     </div>
 </div>
 
-@if(!empty($observationCards))
+@if(!empty($structuredObservations))
+    <div class="card-ppmf ppmu-inspection-panel ppmu-inspection-panel-compact">
+        <h3><i class="bi bi-list-check"></i> Observations and Findings</h3>
+        @foreach(($observationGroups ?? []) as $observationGroup)
+            <section class="ppmu-finding-group">
+                <div class="ppmu-finding-group-head">
+                    <span class="ppmu-finding-group-icon"><i class="bi bi-clipboard2-check"></i></span>
+                    <h4 class="ppmu-finding-group-title">{{ $observationGroup['title'] }}</h4>
+                </div>
+                <div class="ppmu-finding-card-grid">
+            @foreach($observationGroup['observations'] as $observation)
+                @php
+                    $tone = match($observation['status']) {
+                        'Compliant', 'Resolved', 'Satisfactory' => 'success',
+                        'Non-Compliant', 'Fault Identified', 'Action Required' => 'danger',
+                        'Needs Improvement', 'Pending Action' => 'warning',
+                        'Not Applicable' => 'secondary',
+                        default => 'secondary',
+                    };
+                @endphp
+                <article class="ppmu-finding-card ppmu-finding-card-{{ $tone }}">
+                    <span class="ppmu-finding-card-icon" aria-hidden="true">
+                        <i class="bi {{ match($tone) { 'success' => 'bi-check2-circle', 'warning' => 'bi-exclamation-triangle', 'danger' => 'bi-x-octagon', default => 'bi-dash-circle' } }}"></i>
+                    </span>
+                    <div class="ppmu-finding-card-head">
+                        <small class="ppmu-finding-card-section">{{ $observationGroup['title'] }}</small>
+                        <h4>{{ $observation['label'] }}</h4>
+                        <span class="badge text-bg-{{ $tone }}">{{ $observation['status'] }}</span>
+                    </div>
+                    <div class="ppmu-finding-value">{{ $observation['value'] }}</div>
+                    @if(($observation['remarks'] ?? '—') !== '—')
+                        <p><strong>Remarks:</strong> {{ $observation['remarks'] }}</p>
+                    @endif
+                    @if(($observation['action_required'] ?? '—') !== '—')
+                        <p><strong>Action:</strong> {{ $observation['action_required'] }}</p>
+                    @endif
+                    @if($observation['evidence_anchor'] && ($observation['evidence_url'] ?? null))
+                        <button type="button" class="ppmu-obs-evidence-link"
+                                data-bs-toggle="modal" data-bs-target="#ppmuObservationEvidenceModal"
+                                data-evidence-url="{{ $observation['evidence_url'] }}"
+                                data-evidence-label="{{ $observation['label'] }}"
+                                data-observation-key="{{ $observation['key'] }}">
+                            <i class="bi bi-image"></i> View Evidence
+                        </button>
+                    @endif
+                </article>
+            @endforeach
+                </div>
+            </section>
+        @endforeach
+        @foreach(($repeatedObservationGroups ?? []) as $group)
+            <h4 class="mt-3">{{ $group['title'] }}</h4>
+            <div class="table-responsive">
+                <table class="table-ppmf ppmu-table ppmu-observation-subtable">
+                    <thead><tr>@foreach($group['columns'] as $column)<th>{{ $column }}</th>@endforeach</tr></thead>
+                    <tbody>@foreach($group['rows'] as $row)<tr>@foreach($group['columns'] as $column)<td>{{ $row[$column] ?? '—' }}</td>@endforeach</tr>@endforeach</tbody>
+                </table>
+            </div>
+        @endforeach
+    </div>
+    @if(!empty($observationSummaryItems))
+    <div class="card-ppmf ppmu-inspection-panel ppmu-inspection-panel-compact">
+        <h3><i class="bi bi-clipboard2-check"></i> Inspection Summary and Corrective Action</h3>
+        <dl class="ppmu-info-grid ppmu-info-grid-balanced ppmu-observation-summary-grid mb-0">
+            @foreach($observationSummaryItems as $summaryItem)
+                <div class="ppmu-info-item"><dt>{{ $summaryItem['label'] }}</dt><dd>{{ $summaryItem['value'] }}</dd></div>
+            @endforeach
+        </dl>
+    </div>
+    @endif
+@elseif(!empty($observationCards))
     @php $detailFieldCount = count($observationCards); @endphp
     <div class="card-ppmf ppmu-inspection-panel ppmu-inspection-panel-compact">
         <h3><i class="bi bi-list-check"></i> Observations</h3>
@@ -132,8 +202,13 @@
                                     <img src="{{ $url }}" alt="{{ $attachment->caption ?? 'Evidence image' }}" loading="lazy">
                                 </a>
                                 <figcaption>
-                                    <strong>Field evidence photo {{ $loop->iteration }}</strong>
-                                    <small>{{ $attachment->created_at?->format('d M Y') }}</small>
+                                    <strong>{{ $attachment->caption ?: 'Field evidence photo '.$loop->iteration }}</strong>
+                                    <small>
+                                        {{ $attachment->observation_key ? 'Observation: '.str($attachment->observation_key)->headline().' · ' : '' }}
+                                        {{ $attachment->created_at?->format('d M Y, h:i A') }}
+                                        @if($attachment->latitude && $attachment->longitude) · {{ $attachment->latitude }}, {{ $attachment->longitude }} @endif
+                                    </small>
+                                    <small>Uploaded by {{ $inspection->inspectedBy?->name ?? 'Inspector' }}</small>
                                 </figcaption>
                             </figure>
                         @endforeach

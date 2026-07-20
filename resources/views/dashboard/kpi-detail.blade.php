@@ -68,7 +68,7 @@
                 <strong>{{ number_format($header['completed'] ?? $header['achieved'], 1) }}</strong>
             </div>
             <div class="ppmu-ds-item ppmu-ds-pct" data-stat="pct" title="Completed ÷ Operational Target × 100">
-                <span>Progress</span>
+                <span>{{ $isVisitKpiDashboard ? 'Progress' : 'Achievement' }}</span>
                 <strong>{{ $pct }}%</strong>
             </div>
             @if($isVisitKpiDashboard)
@@ -78,7 +78,7 @@
             </div>
             @endif
             <div class="ppmu-ds-item ppmu-ds-status" data-stat="status" title="Performance status from progress">
-                <span>Status</span>
+                <span>{{ $isVisitKpiDashboard ? 'Status' : 'Performance Status' }}</span>
                 <x-status-badge :status="$header['status_label']"/>
             </div>
         </div>

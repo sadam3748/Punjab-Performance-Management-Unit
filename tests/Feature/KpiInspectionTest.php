@@ -335,37 +335,22 @@ class KpiInspectionTest extends TestCase
         $this->assertSame($ac->id, $inspection->reviewed_by);
         $this->assertSame('Verified on site.', $inspection->review_remarks);
 
-        $rejectTarget = KpiInspection::where('kpi_card_id', $card->id)
+        $notSelected = KpiInspection::where('kpi_card_id', $card->id)
             ->where('tehsil_id', $ac->tehsil_id)
-            ->where('status', KpiInspection::STATUS_PENDING)
+            ->where('selected_for_review', false)
             ->firstOrFail();
 
         $this->actingAs($ac)
-            ->post(route('kpi.inspections.reject', [$card, $rejectTarget]), [
-                'remarks' => '',
+            ->from(route('kpi.inspections.show', [$card, $notSelected]))
+            ->post(route('kpi.inspections.reject', [$card, $notSelected]), [
+                'remarks' => 'Should not be accepted.',
             ])
-            ->assertRedirect(route('kpi.inspections.show', [$card, $rejectTarget]));
+            ->assertRedirect(route('kpi.inspections.show', [$card, $notSelected]))
+            ->assertSessionHasErrors('review');
 
-        $rejectTarget->refresh();
-        $this->assertSame(KpiInspection::STATUS_REJECTED, $rejectTarget->status);
-        $this->assertNull($rejectTarget->review_remarks);
-        $this->assertNull($rejectTarget->rejection_reason);
-
-        $rejectWithRemarks = KpiInspection::where('kpi_card_id', $card->id)
-            ->where('tehsil_id', $ac->tehsil_id)
-            ->where('status', KpiInspection::STATUS_PENDING)
-            ->firstOrFail();
-
-        $this->actingAs($ac)
-            ->post(route('kpi.inspections.reject', [$card, $rejectWithRemarks]), [
-                'remarks' => 'Incomplete photographic evidence submitted.',
-            ])
-            ->assertRedirect(route('kpi.inspections.show', [$card, $rejectWithRemarks]));
-
-        $rejectWithRemarks->refresh();
-        $this->assertSame(KpiInspection::STATUS_REJECTED, $rejectWithRemarks->status);
-        $this->assertSame('Incomplete photographic evidence submitted.', $rejectWithRemarks->review_remarks);
-        $this->assertSame('Incomplete photographic evidence submitted.', $rejectWithRemarks->rejection_reason);
+        $notSelected->refresh();
+        $this->assertSame(KpiInspection::STATUS_INSPECTED, $notSelected->status);
+        $this->assertFalse($notSelected->selected_for_review);
     }
 
     public function test_ac_scope_limits_inspections_to_tehsil(): void
@@ -431,8 +416,13 @@ class KpiInspectionTest extends TestCase
         $this->assertSame(400, KpiInspection::count());
 
         $total = KpiInspection::count();
-        $this->assertEqualsWithDelta(.62, KpiInspection::where('status', 'approved')->count() / $total, .08);
-        $this->assertEqualsWithDelta(.24, KpiInspection::where('status', 'pending_review')->count() / $total, .08);
-        $this->assertEqualsWithDelta(.14, KpiInspection::where('status', 'rejected')->count() / $total, .08);
+        $this->assertGreaterThan(0, KpiInspection::where('status', KpiInspection::STATUS_INSPECTED)->count());
+        $sampleKpiIds = KpiCard::whereNotIn('slug', ['inspection-of-health-facilities', 'inspection-of-educational-institutions'])->pluck('id');
+        $this->assertSame(
+            KpiInspection::whereIn('kpi_card_id', $sampleKpiIds)->where('selected_for_review', true)->count(),
+            KpiInspection::whereIn('kpi_card_id', $sampleKpiIds)
+                ->whereIn('status', [KpiInspection::STATUS_PENDING, KpiInspection::STATUS_APPROVED, KpiInspection::STATUS_REJECTED])
+                ->count(),
+        );
     }
 }

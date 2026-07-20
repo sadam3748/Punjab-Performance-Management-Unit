@@ -121,6 +121,9 @@ class KpiDashboardService
                 ? $this->inspectionService->healthInspectionsForMetrics($card, $user, $request)
                 : $this->inspectionService->educationInspectionsForMetrics($card, $user, $request))
             : $this->inspectionService->getInspectionsCollection($card, $user, $request);
+        if (! in_array($card->slug, ['inspection-of-health-facilities', 'inspection-of-educational-institutions'], true)) {
+            $inspectionCollection = $this->inspectionService->synchronizeReviewSample($card, $user, $request, $inspectionCollection);
+        }
         $inspectionStatusCounts = $this->inspectionService->buildStatusCounts($card, $user, $request);
         $inspectionTableColumns = $this->inspectionService->getTableColumnsForKpi($card->slug);
         $visitContext = in_array($card->slug, [
@@ -213,6 +216,7 @@ class KpiDashboardService
                 $card->slug === 'inspection-of-health-facilities' || $card->slug === 'inspection-of-educational-institutions'
                     ? $visitContext
                     : [],
+                (string) $request->input('period_type', 'weekly'),
             ),
             'filters' => $this->filterOptionsForView($card->slug, $request),
             'geo' => $this->geoFilterService->state($request),
@@ -504,6 +508,10 @@ class KpiDashboardService
             ? match ($card->slug) {
                 'inspection-of-health-facilities' => $this->inspectionService->countHealthInspected($card, $user, $request),
                 'inspection-of-educational-institutions' => $this->inspectionService->countEducationInspected($card, $user, $request),
+                'repair-of-small-roads-in-both-urban-and-rural-areas' => $this->inspectionService
+                    ->getInspectionsCollection($card, $user, $request)
+                    ->filter(fn (KpiInspection $inspection): bool => data_get($inspection->detail_data, 'completion_status') === 'Completed')
+                    ->count(),
                 default => $this->inspectionService->countScopedInspections($card, $user, $request),
             }
             : null;
@@ -739,6 +747,13 @@ class KpiDashboardService
                     'description' => '',
                     'formula_text' => '',
                 ]);
+                if ($item['field'] === 'review_completion_rate' && $inspectionContext !== []) {
+                    $base['formula_text'] = sprintf(
+                        '%s records reviewed against a minimum required target of %s.',
+                        number_format((int) ($inspectionContext['reviewed'] ?? 0)),
+                        number_format((int) ($inspectionContext['review_target'] ?? 0)),
+                    );
+                }
 
                 return $this->decorateMetricCard(
                     array_merge($base, ['label' => $item['label']], array_filter([
@@ -756,6 +771,16 @@ class KpiDashboardService
     {
         $field = (string) ($metric['field'] ?? '');
         $unit = $metric['unit'] ?? null;
+
+        if ($field === 'fine_deposited') {
+            $value = 'PKR '.number_format((float) $value);
+            $unit = null;
+        }
+
+        if ($field === 'review_completion_rate') {
+            $metric['formula_text'] = ($metric['formula_text'] ?? null) ?: 'Minimum review requirement completed for the selected reporting period.';
+            $metric['description'] = $metric['formula_text'];
+        }
 
         if ($field === 'total_health_facilities') {
             $metric['description'] = 'Total health facilities in this area';
@@ -1618,7 +1643,7 @@ class KpiDashboardService
         if ($slug === 'price-of-roti') {
             return [
                 ['type' => 'line', 'title' => 'Daily Inspection Trend', 'subtitle' => 'Tandoor inspections recorded for the selected day.', 'key' => 'daily_inspections_trend'],
-                ['type' => 'donut', 'title' => 'Violation Breakdown', 'subtitle' => 'Violation types observed during inspections.', 'key' => 'violation_type_breakdown'],
+                ['type' => 'bar', 'title' => 'Violation Type Breakdown', 'subtitle' => 'Confirmed observation categories from inspected tandoors.', 'key' => 'violation_type_breakdown'],
                 ['type' => 'bar', 'title' => 'Fine Recovery', 'subtitle' => 'Fines imposed versus fines collected.', 'key' => 'fine_recovery'],
             ];
         }
@@ -1648,7 +1673,7 @@ class KpiDashboardService
             return true;
         })->values();
 
-        return $filtered->all();
+        return $filtered->take(3)->all();
     }
 
     private function usesInspectionOperationalAchieved(string $slug): bool

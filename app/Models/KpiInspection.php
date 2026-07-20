@@ -8,6 +8,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class KpiInspection extends Model
 {
+    public const STATUS_INSPECTED = 'inspected_only';
+
     public const STATUS_PENDING = 'pending_review';
 
     public const STATUS_APPROVED = 'approved';
@@ -18,7 +20,8 @@ class KpiInspection extends Model
         'uuid', 'reference_no', 'kpi_card_id', 'kpi_submission_id',
         'division_id', 'district_id', 'tehsil_id', 'inspected_by', 'reviewed_by',
         'inspection_title', 'entity_name', 'entity_type', 'identifier', 'address',
-        'latitude', 'longitude', 'inspection_datetime', 'status',
+        'latitude', 'longitude', 'inspection_datetime', 'status', 'selected_for_review',
+        'selected_by', 'selected_at', 'review_level',
         'observations', 'actions_required', 'actions_taken', 'detail_data',
         'review_remarks', 'rejection_reason', 'reviewed_at', 'is_demo', 'seed_batch',
     ];
@@ -26,6 +29,8 @@ class KpiInspection extends Model
     protected $casts = [
         'inspection_datetime' => 'datetime',
         'reviewed_at' => 'datetime',
+        'selected_at' => 'datetime',
+        'selected_for_review' => 'boolean',
         'observations' => 'array',
         'actions_required' => 'array',
         'actions_taken' => 'array',
@@ -70,6 +75,11 @@ class KpiInspection extends Model
         return $this->belongsTo(User::class, 'reviewed_by');
     }
 
+    public function selectedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'selected_by');
+    }
+
     public function attachments(): HasMany
     {
         return $this->hasMany(KpiInspectionAttachment::class)->orderBy('sort_order');
@@ -92,6 +102,12 @@ class KpiInspection extends Model
 
     public function statusLabel(): string
     {
+        if ($this->usesSampleReviewModel()
+            && ! $this->selected_for_review
+            && $this->status === self::STATUS_INSPECTED) {
+            return 'Inspected Only';
+        }
+
         return match ($this->status) {
             self::STATUS_APPROVED => 'Approved',
             self::STATUS_REJECTED => 'Rejected',
@@ -99,8 +115,73 @@ class KpiInspection extends Model
         };
     }
 
+    public function displayStatusFor(?User $user): string
+    {
+        if (! $this->usesSampleReviewModel()) {
+            return $this->statusLabel();
+        }
+
+        if (! $this->isSelectedFor($user)) {
+            return 'Inspected Only';
+        }
+
+        return match ($this->status) {
+            self::STATUS_APPROVED => 'Approved',
+            self::STATUS_REJECTED => 'Rejected',
+            default => 'Pending Review',
+        };
+    }
+
+    public function displayStatusKeyFor(?User $user): string
+    {
+        if (! $this->usesSampleReviewModel()) {
+            return $this->status;
+        }
+
+        if (! $this->isSelectedFor($user)) {
+            return self::STATUS_INSPECTED;
+        }
+
+        return $this->status;
+    }
+
+    public function displayStatusClassFor(?User $user): string
+    {
+        return match ($this->displayStatusKeyFor($user)) {
+            self::STATUS_APPROVED => 'success',
+            self::STATUS_REJECTED => 'danger',
+            self::STATUS_PENDING => 'warning',
+            default => 'primary',
+        };
+    }
+
+    public function isSelectedFor(?User $user): bool
+    {
+        if (! $this->usesSampleReviewModel()) {
+            return true;
+        }
+
+        return $this->selected_for_review
+            && $user !== null
+            && $this->review_level === ($user->role?->slug ?? '');
+    }
+
+    private function usesSampleReviewModel(): bool
+    {
+        return ! in_array($this->kpiCard?->slug, [
+            'inspection-of-health-facilities',
+            'inspection-of-educational-institutions',
+        ], true);
+    }
+
     public function statusClass(): string
     {
+        if ($this->usesSampleReviewModel()
+            && ! $this->selected_for_review
+            && $this->status === self::STATUS_INSPECTED) {
+            return 'primary';
+        }
+
         return match ($this->status) {
             self::STATUS_APPROVED => 'success',
             self::STATUS_REJECTED => 'danger',

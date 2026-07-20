@@ -190,6 +190,13 @@ class KpiInspectionSeeder extends Seeder
             }
         }
 
+        $inspectionRows = array_map(fn (array $row): array => array_replace([
+            'selected_for_review' => false,
+            'selected_by' => null,
+            'selected_at' => null,
+            'review_level' => null,
+        ], $row), $inspectionRows);
+
         DB::transaction(function () use ($inspectionRows, $attachmentPlan) {
             foreach (array_chunk($inspectionRows, 300) as $chunk) {
                 DB::table('kpi_inspections')->insert($chunk);
@@ -216,6 +223,10 @@ class KpiInspectionSeeder extends Seeder
                         $keys = $this->educationObservationAttachmentKeys();
                         $observationKey = $keys[$a % count($keys)] ?? null;
                     }
+                    if ($observationKey === null) {
+                        $keys = $this->operationalObservationAttachmentKeys($plan['slug']);
+                        $observationKey = $keys[$a % count($keys)] ?? 'overall_finding';
+                    }
 
                     $attachmentRows[] = [
                         'kpi_inspection_id' => $inspectionId,
@@ -223,10 +234,10 @@ class KpiInspectionSeeder extends Seeder
                         'file_name' => basename($imagePath),
                         'file_type' => 'image',
                         'mime_type' => 'image/png',
-                        'caption' => 'Field evidence photo '.($a + 1),
+                        'caption' => ['Before inspection evidence', 'During inspection evidence', 'After corrective action evidence'][$a % 3],
                         'observation_key' => $observationKey,
-                        'latitude' => null,
-                        'longitude' => null,
+                        'latitude' => $plan['lat'] ?? null,
+                        'longitude' => $plan['lng'] ?? null,
                         'sort_order' => $a,
                         'is_demo' => true,
                         'created_at' => $plan['ts'],
@@ -239,6 +250,20 @@ class KpiInspectionSeeder extends Seeder
                 DB::table('kpi_inspection_attachments')->insert($chunk);
             }
         });
+    }
+
+    /** @return list<string> */
+    private function operationalObservationAttachmentKeys(string $slug): array
+    {
+        return match ($slug) {
+            'price-of-roti' => ['observed_price', 'observed_weight_g', 'price_list_displayed'],
+            'price-of-plain-bakery-bread' => ['observed_price', 'plain_bread_available', 'price_list_displayed'],
+            'price-control-of-essential-commodities' => ['commodity', 'observed_price', 'violation'],
+            'dysfunctional-streetlights' => ['dysfunctional_lights', 'fault_type', 'repaired_lights'],
+            'zebra-crossings' => ['crossing_status', 'action_completion_status', 'warning_sign_available'],
+            'repair-of-small-roads-in-both-urban-and-rural-areas' => ['damage_type', 'length_covered_m', 'completion_status'],
+            default => ['overall_finding', 'corrective_action', 'action_status'],
+        };
     }
 
     /** @return list<string> */

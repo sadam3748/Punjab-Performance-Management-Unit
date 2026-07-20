@@ -13,6 +13,7 @@ use App\Services\KpiPeriodService;
 use Database\Seeders\PpmuSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Tests\TestCase;
 
 class KpiDashboardTest extends TestCase
@@ -1269,7 +1270,7 @@ class KpiDashboardTest extends TestCase
         $this->actingAs($user)
             ->get(route('kpi.dashboard', $card))
             ->assertOk()
-            ->assertSee('School Zebra Crossing Map')
+            ->assertSee('School Zebra Crossing Inspection Map')
             ->assertSee('5 inspections mapped')
             ->assertSee('locationMap:', false)
             ->assertSee('"pin_count":5', false)
@@ -1303,5 +1304,254 @@ class KpiDashboardTest extends TestCase
         $this->assertSame(6, $map['pin_count']);
         $this->assertCount(6, $map['pins']);
         $this->assertSame('daily', $detail['period']['period_type']);
+    }
+
+    public function test_every_operational_inspection_kpi_has_synchronized_review_metrics(): void
+    {
+        $this->seed(PpmuSeeder::class);
+        $user = User::where('username', 'ac.layyah')->firstOrFail();
+        $excluded = [
+            'inspection-of-health-facilities',
+            'inspection-of-educational-institutions',
+            'land-management-services',
+        ];
+
+        KpiCard::query()
+            ->where('is_active', true)
+            ->whereNotIn('slug', $excluded)
+            ->get()
+            ->each(function (KpiCard $card) use ($user): void {
+                $detail = app(KpiDashboardService::class)->detail(
+                    $card,
+                    $user,
+                    Request::create('/kpi/'.$card->slug.'/dashboard', 'GET'),
+                );
+                $review = collect($detail['metricSections'])
+                    ->first(fn (array $section): bool => collect($section['metrics'])->contains('label', 'Review Target'));
+
+                $this->assertNotNull($review, $card->slug.' is missing its review section.');
+                $values = collect($review['metrics'])->mapWithKeys(fn (array $metric) => [$metric['label'] => $metric['value']]);
+
+                foreach ([
+                    'Review Target', 'Reviewed', 'Pending Review', 'Approved',
+                    'Rejected', 'Inspected Only', 'Reviews Remaining', 'Review Target Met %',
+                ] as $label) {
+                    $this->assertTrue($values->has($label), $card->slug.' is missing '.$label.'.');
+                }
+
+                $this->assertSame(
+                    (int) $values['Approved'] + (int) $values['Rejected'],
+                    (int) $values['Reviewed'],
+                    $card->slug.' reviewed count is not synchronized.'
+                );
+                $this->assertSame(
+                    (int) $values['Review Target'],
+                    (int) $values['Approved'] + (int) $values['Rejected'] + (int) $values['Pending Review'],
+                    $card->slug.' selected review sample does not equal its target.'
+                );
+                $this->assertSame(
+                    (int) $detail['inspectionRecords']->total(),
+                    (int) $values['Inspected Only'] + (int) $values['Review Target'],
+                    $card->slug.' inspected-only count does not reconcile.'
+                );
+                $this->assertSame(
+                    max(0, (int) $values['Review Target'] - (int) $values['Reviewed']),
+                    (int) $values['Reviews Remaining'],
+                    $card->slug.' review balance is incorrect.'
+                );
+                $this->assertLessThanOrEqual(100, (float) $values['Review Target Met %']);
+            });
+    }
+
+    public function test_operational_map_reports_unmapped_records_without_creating_synthetic_pins(): void
+    {
+        $this->seed(PpmuSeeder::class);
+        $card = KpiCard::where('slug', 'zebra-crossings')->firstOrFail();
+        $user = User::where('username', 'ac.layyah')->firstOrFail();
+        $inspection = KpiInspection::query()
+            ->where('kpi_card_id', $card->id)
+            ->where('tehsil_id', $user->tehsil_id)
+            ->firstOrFail();
+        $inspection->update(['latitude' => null, 'longitude' => null]);
+
+        $detail = app(KpiDashboardService::class)->detail(
+            $card,
+            $user,
+            Request::create('/kpi/'.$card->slug.'/dashboard', 'GET'),
+        );
+        $map = $detail['locationMap'];
+
+        $this->assertSame(1, (int) $map['unmapped_count']);
+        $this->assertSame((int) $map['record_count'] - 1, (int) $map['pin_count']);
+        $this->assertNotContains($inspection->id, $map['inspection_ids']);
+    }
+
+    public function test_operational_review_targets_follow_each_role_quota(): void
+    {
+        $this->seed(PpmuSeeder::class);
+        $card = KpiCard::where('slug', 'zebra-crossings')->firstOrFail();
+
+        foreach (['ac.layyah' => 0.20, 'dc.layyah' => 0.05, 'com.dgkhan' => 0.05, 'cs.pmru' => 0.03] as $username => $rate) {
+            $detail = app(KpiDashboardService::class)->detail(
+                $card,
+                User::where('username', $username)->firstOrFail(),
+                Request::create('/kpi/'.$card->slug.'/dashboard', 'GET'),
+            );
+            $metrics = collect($detail['metricSections'])
+                ->flatMap(fn (array $section) => $section['metrics'])
+                ->mapWithKeys(fn (array $metric) => [$metric['label'] => $metric['value']]);
+            $sourceRecords = in_array($username, ['ac.layyah'], true)
+                ? (int) $detail['inspectionRecords']->total()
+                : app(KpiInspectionService::class)->healthEligibleApprovedCount(
+                    User::where('username', $username)->firstOrFail(),
+                    app(KpiInspectionService::class)->getInspectionsCollection(
+                        $card,
+                        User::where('username', $username)->firstOrFail(),
+                        Request::create('/kpi/'.$card->slug.'/dashboard', 'GET'),
+                    ),
+                );
+            $expected = $sourceRecords > 0 ? max(1, (int) ceil($sourceRecords * $rate)) : 0;
+
+            $this->assertSame($expected, (int) $metrics['Review Target'], $username.' has an incorrect quota target.');
+        }
+    }
+
+    public function test_priority_kpis_use_management_titles_and_reconciled_review_states(): void
+    {
+        $this->seed(PpmuSeeder::class);
+        $user = User::where('username', 'ac.layyah')->firstOrFail();
+        $expectations = [
+            'price-of-roti' => ['Daily Inspection Target', 'Tandoors Inspected', 'Complaints Received'],
+            'price-of-plain-bakery-bread' => ['Daily Inspection Target', 'Bakeries Inspected', 'Violating Bakeries'],
+            'price-control-of-essential-commodities' => ['Sale Points Inspected', 'Violating Sale Points', 'Reports Actioned'],
+            'dysfunctional-streetlights' => ['Weekly Inspection Target', 'Lights Pending Repair', 'Repair Rate %'],
+            'zebra-crossings' => ['Schools in Scope', 'Actions Completed', 'Actions Pending'],
+            'repair-of-small-roads-in-both-urban-and-rural-areas' => ['Roads Selected / Inspected', 'Roads Completed', 'Completed Pending Review'],
+        ];
+
+        foreach ($expectations as $slug => $requiredLabels) {
+            $detail = app(KpiDashboardService::class)->detail(
+                KpiCard::where('slug', $slug)->firstOrFail(),
+                $user,
+                Request::create('/kpi/'.$slug.'/dashboard', 'GET'),
+            );
+            $metrics = collect($detail['metricSections'])->flatMap(fn (array $section) => $section['metrics']);
+            $values = $metrics->mapWithKeys(fn (array $metric) => [$metric['label'] => $metric['value']]);
+
+            foreach ($requiredLabels as $label) {
+                $this->assertTrue($values->has($label), $slug.' is missing '.$label.'.');
+            }
+            $this->assertSame((int) $values['Approved'] + (int) $values['Rejected'], (int) $values['Reviewed']);
+            $this->assertFalse($values->has('Eligible for Review'));
+            $this->assertSame((int) $values['Review Target'], (int) $values['Reviewed'] + (int) $values['Pending Review']);
+            $this->assertSame((int) $detail['inspectionRecords']->total(), (int) $values['Inspected Only'] + (int) $values['Review Target']);
+            $this->assertLessThanOrEqual(3, count($detail['charts']['definitions']));
+            $this->assertSame(
+                (int) $detail['locationMap']['pin_count'] + (int) $detail['locationMap']['unmapped_count'],
+                (int) $detail['inspectionRecords']->total(),
+            );
+            $this->assertSame(
+                (int) $detail['locationMap']['pin_count'],
+                array_sum($detail['locationMap']['status_counts']),
+            );
+        }
+    }
+
+    public function test_seeded_roti_sample_has_four_inspected_only_one_approved_and_one_pending(): void
+    {
+        $this->seed(PpmuSeeder::class);
+        $detail = app(KpiDashboardService::class)->detail(
+            KpiCard::where('slug', 'price-of-roti')->firstOrFail(),
+            User::where('username', 'ac.layyah')->firstOrFail(),
+            Request::create('/kpi/price-of-roti/dashboard', 'GET', ['period_type' => 'daily', 'date' => now()->toDateString()]),
+        );
+        $values = collect($detail['metricSections'])->flatMap(fn (array $section) => $section['metrics'])
+            ->mapWithKeys(fn (array $metric) => [$metric['label'] => $metric['value']]);
+
+        $this->assertSame(2, (int) $values['Review Target']);
+        $this->assertSame(1, (int) $values['Approved']);
+        $this->assertSame(1, (int) $values['Pending Review']);
+        $this->assertSame(0, (int) $values['Rejected']);
+        $this->assertSame(4, (int) $values['Inspected Only']);
+        $this->assertSame(['approved' => 1, 'inspected' => 4, 'pending_review' => 1, 'rejected' => 0], collect($detail['locationMap']['status_counts'])->sortKeys()->all());
+    }
+
+    public function test_daily_priority_kpi_chart_uses_hourly_points(): void
+    {
+        $this->seed(PpmuSeeder::class);
+        $detail = app(KpiDashboardService::class)->detail(
+            KpiCard::where('slug', 'price-of-roti')->firstOrFail(),
+            User::where('username', 'ac.layyah')->firstOrFail(),
+            Request::create('/kpi/price-of-roti/dashboard', 'GET', ['period_type' => 'daily', 'date' => now()->toDateString()]),
+        );
+        $trend = collect($detail['charts']['definitions'])->firstWhere('key', 'daily_inspections_trend')['data'];
+
+        $this->assertGreaterThan(1, count($trend['labels']));
+        foreach ($trend['labels'] as $label) {
+            $this->assertMatchesRegularExpression('/^\d{2}:00$/', $label);
+        }
+    }
+
+    public function test_roti_observation_cards_chart_and_seed_details_reconcile(): void
+    {
+        $this->seed(PpmuSeeder::class);
+        $card = KpiCard::where('slug', 'price-of-roti')->firstOrFail();
+        $user = User::where('username', 'ac.layyah')->firstOrFail();
+        $request = Request::create('/kpi/price-of-roti/dashboard', 'GET', ['period_type' => 'daily', 'date' => now()->toDateString()]);
+        $detail = app(KpiDashboardService::class)->detail($card, $user, $request);
+        $values = collect($detail['metricSections'])->flatMap(fn (array $section) => $section['metrics'])
+            ->mapWithKeys(fn (array $metric) => [$metric['label'] => $metric['value']]);
+        $violationChart = collect($detail['charts']['definitions'])->firstWhere('key', 'violation_type_breakdown')['data'];
+        $chartValues = array_combine($violationChart['labels'], $violationChart['values']);
+
+        $this->assertSame(4, (int) $values['Violating Tandoors']);
+        $this->assertSame(2, (int) $values['Overpricing Cases']);
+        $this->assertSame(2, (int) $values['Underweight Roti Cases']);
+        $this->assertSame(1, (int) $values['Roti Unavailable Cases']);
+        $this->assertSame(2, (int) $chartValues['Overpricing']);
+        $this->assertSame(2, (int) $chartValues['Underweight']);
+        $this->assertSame(1, (int) $chartValues['Roti Unavailable']);
+
+        $inspection = app(KpiInspectionService::class)->getInspectionsCollection($card, $user, $request)->firstOrFail();
+        $this->actingAs($user)->get(route('kpi.inspections.show', [$card, $inspection]))
+            ->assertOk()
+            ->assertSee('Observations and Findings')
+            ->assertSee('Approved Roti Price')
+            ->assertSee('Observed Roti Weight')
+            ->assertSee('Overall Inspection Finding');
+    }
+
+    public function test_weekly_priority_observation_examples_are_mathematically_consistent(): void
+    {
+        $this->seed(PpmuSeeder::class);
+        $user = User::where('username', 'ac.layyah')->firstOrFail();
+        $dashboard = app(KpiDashboardService::class);
+
+        $metricValues = function (string $slug) use ($dashboard, $user): Collection {
+            $detail = $dashboard->detail(
+                KpiCard::where('slug', $slug)->firstOrFail(),
+                $user,
+                Request::create('/kpi/'.$slug.'/dashboard', 'GET'),
+            );
+
+            return collect($detail['metricSections'])->flatMap(fn (array $section) => $section['metrics'])
+                ->mapWithKeys(fn (array $metric) => [$metric['label'] => $metric['value']]);
+        };
+
+        $streetlights = $metricValues('dysfunctional-streetlights');
+        $this->assertSame(5, (int) $streetlights['Faulty Lights Identified']);
+        $this->assertSame(3, (int) $streetlights['Lights Repaired']);
+        $this->assertSame(2, (int) $streetlights['Lights Pending Repair']);
+
+        $zebra = $metricValues('zebra-crossings');
+        $this->assertSame(2, (int) $zebra['Crossings Compliant / Visible']);
+        $this->assertSame(2, (int) $zebra['Faded Crossings']);
+        $this->assertSame(1, (int) $zebra['Missing Crossings']);
+        $this->assertSame(1, (int) $zebra['Actions Completed']);
+
+        $roads = $metricValues('repair-of-small-roads-in-both-urban-and-rural-areas');
+        $this->assertSame(1, (int) $roads['Roads Patched']);
+        $this->assertSame(120, (int) $roads['Total Length Repaired (m)']);
+        $this->assertSame(1, (int) $roads['Lane-Marking Locations Completed']);
     }
 }

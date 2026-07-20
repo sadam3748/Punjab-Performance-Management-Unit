@@ -26,9 +26,10 @@ class KpiChartService
         Collection $areaScores,
         array $definitions,
         array $healthContext = [],
+        string $periodType = 'weekly',
     ): array {
         $legacy = $this->build($submissions, $user, $target, $achieved, $areaScores);
-        $datasets = $this->buildDatasets($slug, $submissions, $inspections, $user, $target, $achieved, $areaScores, $legacy, $healthContext);
+        $datasets = $this->buildDatasets($slug, $submissions, $inspections, $user, $target, $achieved, $areaScores, $legacy, $healthContext, $periodType);
 
         $configured = collect($definitions)->map(function (array $definition) use ($datasets, $user): array {
             $key = $definition['key'];
@@ -47,7 +48,17 @@ class KpiChartService
             }
 
             return array_merge($definition, ['data' => $data]);
-        })->values()->all();
+        })->filter(function (array $definition) use ($slug): bool {
+            if (in_array($slug, ['inspection-of-health-facilities', 'inspection-of-educational-institutions'], true)) {
+                return true;
+            }
+
+            if (! in_array($definition['type'] ?? '', ['donut', 'pie'], true)) {
+                return true;
+            }
+
+            return collect($definition['data']['values'] ?? [])->filter(fn ($value) => (float) $value > 0)->count() > 1;
+        })->take(in_array($slug, ['inspection-of-health-facilities', 'inspection-of-educational-institutions'], true) ? PHP_INT_MAX : 3)->values()->all();
 
         return array_merge($legacy, [
             'definitions' => $configured,
@@ -117,12 +128,19 @@ class KpiChartService
         Collection $areaScores,
         array $legacy,
         array $healthContext = [],
+        string $periodType = 'weekly',
     ): array {
         $pct = $this->formula->achievementPercentage($achieved, $target);
 
+        $trendFormat = match ($periodType) {
+            'daily' => 'H:00',
+            'monthly' => '\\Wk W',
+            'yearly' => 'M Y',
+            default => 'D d M',
+        };
         $inspectionTrend = $inspections
             ->sortBy('inspection_datetime')
-            ->groupBy(fn (KpiInspection $item) => $item->inspection_datetime->format('d M'))
+            ->groupBy(fn (KpiInspection $item) => $item->inspection_datetime->format($trendFormat))
             ->map(fn ($group) => $group->count())
             ->take(14);
 
@@ -145,8 +163,15 @@ class KpiChartService
         $educationInspectionTargetAchievement = ['labels' => [], 'values' => []];
         $educationStudentAttendanceSummary = ['labels' => [], 'values' => []];
 
-        $violationBreakdown = $this->detailFieldBreakdown($inspections, ['violation', 'violation_type', 'complaint_status', 'cleanliness_status', 'functional_status'])
-            ->reject(fn ($count, $label) => strcasecmp((string) $label, 'Compliant') === 0);
+        $violationBreakdown = $slug === 'price-of-roti'
+            ? collect([
+                'Overpricing' => $this->observationValueCount($inspections, 'Over Price'),
+                'Underweight' => $this->observationValueCount($inspections, 'Under Weight'),
+                'Roti Unavailable' => $this->observationValueCount($inspections, 'Non-Availability'),
+                'Price List Not Displayed' => $inspections->filter(fn ($item) => data_get($item->detail_data, 'price_list_displayed') === 'No')->count(),
+            ])->filter(fn ($count) => $count > 0)
+            : $this->detailFieldBreakdown($inspections, ['violation', 'violation_type', 'complaint_status', 'cleanliness_status', 'functional_status'])
+                ->reject(fn ($count, $label) => strcasecmp((string) $label, 'Compliant') === 0);
         $typeBreakdown = $this->detailFieldBreakdown($inspections, ['plant_type', 'facility_type', 'service_type', 'type', 'commodity', 'action_type']);
 
         $tehsilComparison = $inspections
@@ -407,10 +432,21 @@ class KpiChartService
             'inspection_coverage_vs_target' => $toChart(collect(['Target %' => 25, 'Coverage %' => $gaugeValue])),
             'repairs_trend' => $toChart($inspectionTrend),
             'light_status_breakdown' => $toChart(collect([
+                'Functional' => $inspections->sum(fn ($i) => (int) data_get($i->detail_data, 'functional_lights', 0)),
                 'Faulty' => $inspections->sum(fn ($i) => (int) data_get($i->detail_data, 'dysfunctional_lights', 0)),
                 'Repaired' => $inspections->sum(fn ($i) => (int) data_get($i->detail_data, 'repaired_lights', 0)),
+                'Pending Repair' => max(0, $inspections->sum(fn ($i) => (int) data_get($i->detail_data, 'dysfunctional_lights', 0)) - $inspections->sum(fn ($i) => (int) data_get($i->detail_data, 'repaired_lights', 0))),
             ])->filter(fn ($v) => $v > 0)),
             'functional_rate' => ['labels' => ['Functional'], 'values' => [$gaugeValue]],
+            'streetlight_repair_rate' => ['labels' => ['Repair Rate'], 'values' => [$this->formula->percentage(
+                $inspections->sum(fn ($i) => (int) data_get($i->detail_data, 'repaired_lights', 0)),
+                $inspections->sum(fn ($i) => (int) data_get($i->detail_data, 'dysfunctional_lights', 0)),
+            )]],
+            'crossing_action_completion' => ['labels' => ['Completion'], 'values' => [$this->formula->percentage(
+                $inspections->filter(fn ($i) => $i->status === KpiInspection::STATUS_APPROVED && in_array(strtolower((string) data_get($i->detail_data, 'action_taken', '')), ['repainted', 'restored', 'marking restored', 'crossing repainted'], true))->count(),
+                $inspections->filter(fn ($i) => in_array(data_get($i->detail_data, 'crossing_status'), ['Faded', 'Missing', 'Absent'], true))->count(),
+            )]],
+            'length_repaired_trend' => $toChart($inspections->sortBy('inspection_datetime')->groupBy(fn ($i) => $i->inspection_datetime->format($trendFormat))->map(fn ($group) => $group->sum(fn ($i) => (int) data_get($i->detail_data, 'length_covered_m', 0)))),
             'faulty_vs_repaired_lights' => $toChart(collect([
                 'Faulty' => $inspections->sum(fn ($i) => (int) data_get($i->detail_data, 'dysfunctional_lights', 0)),
                 'Repaired' => $inspections->sum(fn ($i) => (int) data_get($i->detail_data, 'repaired_lights', 0)),
@@ -897,5 +933,15 @@ class KpiChartService
             'student_enrolment_checked' => ($detail['student_enrolment_checked'] ?? 'yes') === 'no' ? 'no' : 'yes',
             default => 'available',
         };
+    }
+
+    private function observationValueCount(Collection $inspections, string $value): int
+    {
+        return $inspections->filter(function (KpiInspection $inspection) use ($value): bool {
+            $detail = is_array($inspection->detail_data) ? $inspection->detail_data : [];
+            $types = is_array($detail['violation_types'] ?? null) ? $detail['violation_types'] : [];
+
+            return in_array($value, $types, true) || ($detail['violation'] ?? null) === $value;
+        })->count();
     }
 }

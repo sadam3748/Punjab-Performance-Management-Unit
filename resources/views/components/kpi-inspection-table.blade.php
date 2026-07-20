@@ -62,7 +62,7 @@
                             </td>
                         @elseif($key === 'status')
                             <td class="ppmu-td-status" data-col="{{ $key }}">
-                                <span class="ppmu-inspection-status ppmu-inspection-status-{{ $inspection->status }}">{{ $inspection->statusLabel() }}</span>
+                                <span class="ppmu-inspection-status ppmu-inspection-status-{{ $inspection->displayStatusKeyFor(auth()->user()) }}">{{ $inspection->displayStatusFor(auth()->user()) }}</span>
                             </td>
                         @elseif($key === 'inspection_link')
                             <td class="ppmu-cell-ellipsis" data-col="{{ $key }}">

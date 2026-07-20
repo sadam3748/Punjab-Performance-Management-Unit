@@ -15,6 +15,7 @@ class KpiInspectionMapService
 
     public function __construct(
         private readonly KpiInspectionService $inspectionService,
+        private readonly KpiObservationService $observationService,
     ) {}
 
     /**
@@ -27,8 +28,11 @@ class KpiInspectionMapService
             return [];
         }
 
-        $inspections = $this->dashboardInspections($card, $user, $request);
-        $statusMap = $this->buildPinStatusMap($inspections);
+        $allInspections = $this->inspectionService->getInspectionsCollection($card, $user, $request)
+            ->sortByDesc(fn (KpiInspection $inspection) => $inspection->inspection_datetime)
+            ->values();
+        $inspections = $this->dashboardInspections($allInspections);
+        $statusMap = $this->buildPinStatusMap($inspections, $user);
 
         $pins = $inspections
             ->map(fn (KpiInspection $inspection) => $this->inspectionPin(
@@ -39,6 +43,7 @@ class KpiInspectionMapService
             ->all();
 
         $center = $this->centerForPins($pins, $user);
+        $statusCounts = collect($pins)->countBy('status');
 
         return [
             'title' => KpiLocationSlugs::mapTitle($card->slug),
@@ -47,46 +52,29 @@ class KpiInspectionMapService
             'center' => $center,
             'pins' => $pins,
             'pin_count' => count($pins),
+            'record_count' => $allInspections->count(),
+            'unmapped_count' => max(0, $allInspections->count() - count($pins)),
+            'status_counts' => [
+                'inspected' => (int) $statusCounts->get('inspected', 0),
+                'pending_review' => (int) $statusCounts->get('pending_review', 0),
+                'approved' => (int) $statusCounts->get('approved', 0),
+                'rejected' => (int) $statusCounts->get('rejected', 0),
+            ],
             'inspection_ids' => $inspections->pluck('id')->all(),
             'empty_message' => 'No inspection locations found for the selected period.',
         ];
     }
 
     /** @return Collection<int, KpiInspection> */
-    private function dashboardInspections(KpiCard $card, User $user, Request $request): Collection
+    private function dashboardInspections(Collection $inspections): Collection
     {
-        return $this->inspectionService->getInspectionsCollection($card, $user, $request)
-            ->map(fn (KpiInspection $inspection) => $this->resolveInspectionCoordinates($inspection))
+        return $inspections
             ->filter(fn (KpiInspection $inspection) => $this->hasCoordinates($inspection))
-            ->sortByDesc(fn (KpiInspection $inspection) => $inspection->inspection_datetime)
+            ->each(function (KpiInspection $inspection): void {
+                $inspection->loadMissing(['kpiCard:id,slug', 'inspectedBy:id,name', 'reviewedBy:id,name', 'attachments']);
+                $inspection->loadCount('attachments');
+            })
             ->values();
-    }
-
-    private function resolveInspectionCoordinates(KpiInspection $inspection): KpiInspection
-    {
-        if ($this->hasCoordinates($inspection)) {
-            return $inspection;
-        }
-
-        $center = $this->tehsilCenter((int) $inspection->tehsil_id);
-        $seed = (int) ($inspection->id ?: crc32((string) $inspection->reference_no));
-        $inspection->latitude = round($center['lat'] + ((($seed % 17) - 8) * 0.00115), 7);
-        $inspection->longitude = round($center['lng'] + (((($seed + 3) % 13) - 6) * 0.00115), 7);
-
-        return $inspection;
-    }
-
-    /** @return array{lat: float, lng: float} */
-    private function tehsilCenter(int $tehsilId): array
-    {
-        return match ($tehsilId) {
-            24 => ['lat' => 30.9617, 'lng' => 70.9397], // Layyah
-            25 => ['lat' => 30.9520, 'lng' => 70.9280], // Karor Lal Esan
-            26 => ['lat' => 30.9005, 'lng' => 71.6512], // Chaubara
-            81 => ['lat' => 31.5204, 'lng' => 74.3587], // Lahore City
-            82 => ['lat' => 31.5320, 'lng' => 74.3420], // Lahore Cantt
-            default => self::PUNJAB_CENTER,
-        };
     }
 
     /**
@@ -94,20 +82,25 @@ class KpiInspectionMapService
      *
      * @return array<int, array{key: string, label: string, color: string}>
      */
-    private function buildPinStatusMap(Collection $inspections): array
+    private function buildPinStatusMap(Collection $inspections, User $user): array
     {
         $map = [];
 
         foreach ($inspections as $inspection) {
-            $map[$inspection->id] = $this->statusForPin((string) $inspection->status);
+            $map[$inspection->id] = $this->statusForPin($inspection, $user);
         }
 
         return $map;
     }
 
     /** @return array{key: string, label: string, color: string} */
-    private function statusForPin(string $status): array
+    private function statusForPin(KpiInspection $inspection, User $user): array
     {
+        if (! $inspection->isSelectedFor($user)) {
+            return $this->inspectedStatus();
+        }
+
+        $status = (string) $inspection->status;
         $normalized = strtolower(trim(str_replace([' ', '-'], '_', $status)));
 
         return match ($normalized) {
@@ -148,6 +141,9 @@ class KpiInspectionMapService
             'status' => $status['key'],
             'status_label' => $status['label'],
             'inspection_id' => $inspection->reference_no,
+            'kpi_name' => $card->title,
+            'kpi_slug' => $card->slug,
+            'is_reference_kpi' => KpiLocationSlugs::isVisitKpi($card->slug),
             'inspection_type' => $inspection->inspection_title ?: $card->title,
             'location_name' => $inspection->entity_name ?: '—',
             'facility_name' => $inspection->entity_name ?: '—',
@@ -157,13 +153,68 @@ class KpiInspectionMapService
             'tehsil' => $inspection->tehsil?->name ?? '—',
             'district' => $inspection->district?->name ?? '—',
             'address' => $this->shortAddress($inspection),
-            'review_status' => $status['label'],
+            'review_status' => $status['key'] === 'inspected' ? 'Inspected Only' : $status['label'],
+            'rejection_reason' => $status['key'] === 'rejected' ? ($inspection->rejection_reason ?: 'â€”') : null,
+            'operational_status' => $this->operationalStatus($detail, $inspection),
+            'inspector' => $inspection->inspectedBy?->name ?? '—',
+            'reviewer' => $status['key'] === 'inspected' ? '—' : ($inspection->reviewedBy?->name ?? '—'),
+            'evidence_count' => (int) ($inspection->attachments_count ?? 0),
+            'popup_details' => $this->popupDetails($card->slug, $detail),
             'issue_summary' => $this->issueSummary($detail, $inspection),
             'action_summary' => $this->issueSummary($detail, $inspection),
             'observation_issues' => $this->issueSummary($detail, $inspection),
+            'important_finding' => $this->observationService->importantFindingForInspection($inspection),
             'school_name' => $card->slug === 'zebra-crossings' ? ($inspection->entity_name ?: null) : null,
             'detail_url' => route('kpi.inspections.show', [$card, $inspection]),
         ];
+    }
+
+    /** @param array<string, mixed> $detail @return array<string, string|int|float> */
+    private function popupDetails(string $slug, array $detail): array
+    {
+        $fields = match ($slug) {
+            'dysfunctional-streetlights' => [
+                'Lights Checked' => 'total_lights', 'Faulty Lights Found' => 'dysfunctional_lights',
+                'Lights Repaired' => 'repaired_lights',
+            ],
+            'zebra-crossings' => [
+                'School Type' => 'school_type', 'Crossing Condition' => 'crossing_status',
+                'Corrective Action Required' => 'action_required', 'Corrective Action Status' => 'action_taken',
+            ],
+            'repair-of-small-roads-in-both-urban-and-rural-areas' => [
+                'Work Type' => 'repair_type', 'Length Repaired (m)' => 'length_covered_m',
+                'Lane Marking Status' => 'lane_marking_done', 'Work Start Date' => 'work_start_date',
+                'Completion Date' => 'completion_date',
+            ],
+            default => [],
+        };
+
+        $result = [];
+        foreach ($fields as $label => $key) {
+            $value = $detail[$key] ?? null;
+            if ($value !== null && $value !== '') {
+                $result[$label] = is_scalar($value) ? $value : json_encode($value);
+            }
+        }
+
+        if ($slug === 'dysfunctional-streetlights') {
+            $result['Lights Pending Repair'] = max(0, (int) ($detail['dysfunctional_lights'] ?? 0) - (int) ($detail['repaired_lights'] ?? 0));
+        }
+
+        return $result;
+    }
+
+    /** @param  array<string, mixed>  $detail */
+    private function operationalStatus(array $detail, KpiInspection $inspection): string
+    {
+        foreach (['operational_status', 'completion_status', 'work_status', 'cleaned_status', 'inspection_status'] as $key) {
+            $value = trim((string) ($detail[$key] ?? ''));
+            if ($value !== '') {
+                return $value;
+            }
+        }
+
+        return $inspection->status === KpiInspection::STATUS_PENDING ? 'Submitted' : 'Completed';
     }
 
     /** @param  array<string, mixed>  $detail */
