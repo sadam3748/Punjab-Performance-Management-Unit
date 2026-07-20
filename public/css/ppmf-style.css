@@ -72,8 +72,20 @@ body {
   border-radius: 8px;
   box-shadow: 0 3px 9px rgba(6,77,49,.1);
 }
-.sidebar-logo { height: 28px; width: auto; }
-.footer-logo { height: 18px; width: auto; opacity: .95; }
+.sidebar-logo { height: 36px; width: auto; }
+.footer-logo {
+  display: block;
+  height: 38px;
+  width: auto;
+  max-width: 112px;
+  padding: 3px 7px;
+  opacity: 1;
+  object-fit: contain;
+  background: #fff;
+  border: 1.5px solid #5ca47b;
+  border-radius: 7px;
+  box-shadow: 0 3px 9px rgba(6, 77, 49, .13);
+}
 
 /* Official header brand (logo + identity) */
 .header-brand {
@@ -142,21 +154,31 @@ body {
   flex-shrink: 0;
 }
 .sidebar-brand-icon {
-  width: 40px; height: 40px;
-  background: rgba(255,255,255,.15);
-  border: 1.5px solid rgba(255,255,255,.25);
+  width: 48px; height: 44px;
+  padding: 3px 5px;
+  background: #fff;
+  border: 1.5px solid #8bc3a3;
   border-radius: 10px;
   display: grid;
   place-items: center;
   font-size: 18px;
   color: #fff;
   flex-shrink: 0;
+  box-shadow: 0 4px 12px rgba(2, 35, 20, .24);
+  overflow: hidden;
 }
 .sidebar-brand-icon img {
-  max-width: 30px;
-  max-height: 30px;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  padding: 0;
   object-fit: contain;
   display: block;
+  background: #fff;
+  border: 0;
+  border-radius: 5px;
+  box-shadow: none;
 }
 .sidebar-brand-text { line-height: 1.2; }
 .sidebar-brand-title {
@@ -1280,6 +1302,60 @@ body {
 .footer-ppmf a { color: var(--gov-green); text-decoration: none; }
 .ppmf-footer a:hover,
 .footer-ppmf a:hover { text-decoration: underline; }
+
+.ppmf-footer-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.ppmf-footer-identity {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  color: #355447;
+  line-height: 1.35;
+}
+
+.ppmf-footer-identity strong {
+  color: var(--gov-green);
+  font-weight: 800;
+}
+
+.ppmf-footer-separator {
+  color: #79a28d;
+  font-weight: 700;
+}
+
+.ppmf-footer-copyright {
+  flex: 0 0 auto;
+  margin-left: 18px;
+  color: #526c60;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+@media (max-width: 767.98px) {
+  .ppmf-footer,
+  .footer-ppmf {
+    align-items: flex-start;
+    padding: 10px 14px;
+  }
+
+  .ppmf-footer-identity {
+    display: block;
+  }
+
+  .ppmf-footer-identity > * {
+    margin-right: 4px;
+  }
+
+  .ppmf-footer-copyright {
+    margin-left: 10px;
+  }
+}
 
 /* ── Responsive ──────────────────────────────────────────── */
 @media (max-width: 1024px) {

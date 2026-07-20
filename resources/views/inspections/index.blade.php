@@ -50,12 +50,7 @@
 
     <div class="ppmu-section-head ppmu-inspection-list-head">
         <div>
-            <p id="inspectionDateRangeLabel">
-                <i class="bi bi-calendar3"></i>
-                Inspections for
-                <strong>{{ $inspectionDateRange['start']->format('d M Y') }}</strong>
-                · Till {{ $inspectionDateRange['end']->format('g:i A') }}
-            </p>
+            <p id="inspectionDateRangeLabel"><i class="bi bi-clock-history"></i> Latest completed inspection records</p>
             <p><strong id="inspectionListCount">{{ number_format($inspectionRecords->total()) }}</strong> inspection{{ $inspectionRecords->total() === 1 ? '' : 's' }} in scope</p>
         </div>
     </div>

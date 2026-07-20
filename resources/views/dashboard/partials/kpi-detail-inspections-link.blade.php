@@ -3,11 +3,6 @@
 
     $query = array_filter([
         'kpi_card_id' => $kpiCard->id,
-        'period_type' => $period['period_type'] ?? null,
-        'week_no' => $period['week_no'] ?? null,
-        'month' => $period['month'] ?? null,
-        'year' => $period['year'] ?? null,
-        'date' => $period['date'] ?? null,
         'geo_division' => $geo['geo_division'] ?? null,
         'geo_district' => $geo['geo_district'] ?? null,
         'geo_tehsil' => $geo['geo_tehsil'] ?? null,

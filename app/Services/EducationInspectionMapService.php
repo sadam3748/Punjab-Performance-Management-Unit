@@ -28,18 +28,21 @@ class EducationInspectionMapService
         }
 
         $institutionsInspected = max(0, (int) ($context['institutions_inspected'] ?? 0));
-        $approvedQuota = max(0, (int) ($context['approved'] ?? 0));
-        $pendingQuota = max(0, (int) ($context['pending'] ?? 0));
-        $rejectedQuota = max(0, (int) ($context['rejected'] ?? 0));
-
-        $inspections = $this->dashboardInspections($card, $user, $request, $institutionsInspected);
-        $statusMap = $this->buildPinStatusMap($inspections, $approvedQuota, $pendingQuota, $rejectedQuota);
+        $statusQuotas = [
+            KpiInspection::STATUS_APPROVED => max(0, (int) ($context['approved'] ?? 0)),
+            KpiInspection::STATUS_PENDING => max(0, (int) ($context['pending'] ?? 0)),
+            KpiInspection::STATUS_REJECTED => max(0, (int) ($context['rejected'] ?? 0)),
+        ];
+        $inspections = $this->dashboardInspections($card, $user, $request, $institutionsInspected, $statusQuotas);
+        $reviewedPinIds = $this->reviewedPinIds($inspections, $statusQuotas);
 
         $pins = $inspections
             ->map(fn (KpiInspection $inspection) => $this->inspectionPin(
                 $card,
                 $inspection,
-                $statusMap[$inspection->id] ?? $this->inspectedStatus(),
+                in_array($inspection->id, $reviewedPinIds, true)
+                    ? $this->statusForInspection($inspection)
+                    : $this->inspectedStatus(),
             ))
             ->all();
 
@@ -57,7 +60,7 @@ class EducationInspectionMapService
     }
 
     /** @return Collection<int, KpiInspection> */
-    private function dashboardInspections(KpiCard $card, User $user, Request $request, int $institutionsInspected): Collection
+    private function dashboardInspections(KpiCard $card, User $user, Request $request, int $institutionsInspected, array $statusQuotas): Collection
     {
         if ($institutionsInspected <= 0) {
             return collect();
@@ -65,25 +68,27 @@ class EducationInspectionMapService
 
         $inspections = $this->inspectionService->educationInspectionsForMetrics($card, $user, $request);
 
-        return $this->limitLikeObservationCards($inspections, $institutionsInspected)
+        return $this->limitLikeObservationCards($inspections, $institutionsInspected, $statusQuotas)
             ->map(fn (KpiInspection $inspection) => $this->resolveInspectionCoordinates($inspection))
             ->filter(fn (KpiInspection $inspection) => $this->hasCoordinates($inspection))
             ->values();
     }
 
     /** @return Collection<int, KpiInspection> */
-    private function limitLikeObservationCards(Collection $inspections, int $limit): Collection
+    private function limitLikeObservationCards(Collection $inspections, int $limit, array $statusQuotas): Collection
     {
         if ($limit <= 0) {
             return collect();
         }
 
-        if ($inspections->count() <= $limit) {
-            return $inspections->values();
+        $sorted = $inspections->sortByDesc(fn (KpiInspection $inspection) => $inspection->inspection_datetime)->values();
+        $selected = collect();
+        foreach ($statusQuotas as $status => $quota) {
+            $selected = $selected->concat($sorted->where('status', $status)->take($quota));
         }
 
-        return $inspections
-            ->sortByDesc(fn (KpiInspection $inspection) => $inspection->inspection_datetime)
+        return $selected
+            ->concat($sorted->whereNotIn('id', $selected->pluck('id'))->take(max(0, $limit - $selected->count())))
             ->take($limit)
             ->values();
     }
@@ -130,68 +135,25 @@ class EducationInspectionMapService
         return $identifier;
     }
 
-    /**
-     * @return array<int, array{key: string, label: string, color: string}>
-     */
-    private function buildPinStatusMap(
-        Collection $inspections,
-        int $approvedQuota,
-        int $pendingQuota,
-        int $rejectedQuota,
-    ): array {
-        $sorted = $inspections
-            ->sortByDesc(fn (KpiInspection $inspection) => $inspection->inspection_datetime)
-            ->values();
-
-        $map = [];
-        $usedIds = [];
-
-        foreach ($sorted->filter(fn (KpiInspection $inspection) => $inspection->status === KpiInspection::STATUS_APPROVED) as $inspection) {
-            if ($this->statusCount($map, 'approved') >= $approvedQuota) {
-                break;
-            }
-
-            $map[$inspection->id] = $this->approvedStatus();
-            $usedIds[] = $inspection->id;
-        }
-
-        foreach ($sorted->filter(
-            fn (KpiInspection $inspection) => $inspection->status === KpiInspection::STATUS_REJECTED
-                && ! in_array($inspection->id, $usedIds, true)
-        ) as $inspection) {
-            if ($this->statusCount($map, 'rejected') >= $rejectedQuota) {
-                break;
-            }
-
-            $map[$inspection->id] = $this->rejectedStatus();
-            $usedIds[] = $inspection->id;
-        }
-
-        foreach ($sorted->filter(
-            fn (KpiInspection $inspection) => $inspection->status === KpiInspection::STATUS_PENDING
-                && ! in_array($inspection->id, $usedIds, true)
-        ) as $inspection) {
-            if ($this->statusCount($map, 'pending_review') >= $pendingQuota) {
-                break;
-            }
-
-            $map[$inspection->id] = $this->pendingReviewStatus();
-            $usedIds[] = $inspection->id;
-        }
-
-        foreach ($sorted as $inspection) {
-            if (! isset($map[$inspection->id])) {
-                $map[$inspection->id] = $this->inspectedStatus();
-            }
-        }
-
-        return $map;
+    /** @return array{key: string, label: string, color: string} */
+    private function statusForInspection(KpiInspection $inspection): array
+    {
+        return match ($inspection->status) {
+            KpiInspection::STATUS_APPROVED => $this->approvedStatus(),
+            KpiInspection::STATUS_PENDING => $this->pendingReviewStatus(),
+            KpiInspection::STATUS_REJECTED => $this->rejectedStatus(),
+            default => $this->inspectedStatus(),
+        };
     }
 
-    /** @param  array<int, array{key: string, label: string, color: string}>  $map */
-    private function statusCount(array $map, string $key): int
+    /** @return list<int> */
+    private function reviewedPinIds(Collection $inspections, array $statusQuotas): array
     {
-        return collect($map)->where('key', $key)->count();
+        return collect($statusQuotas)
+            ->flatMap(fn (int $quota, string $status) => $inspections->where('status', $status)->take($quota)->pluck('id'))
+            ->map(fn ($id) => (int) $id)
+            ->values()
+            ->all();
     }
 
     private function hasCoordinates(KpiInspection $inspection): bool

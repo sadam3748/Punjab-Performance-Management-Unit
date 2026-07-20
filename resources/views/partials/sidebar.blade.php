@@ -1,7 +1,7 @@
 @php $roleSlug = auth()->user()?->role?->slug; $isAdmin = $roleSlug === 'super_admin'; $mainNavLabel = request()->routeIs('kpi.dashboard', 'kpi.dashboard.data') ? 'Dashboard' : 'Home'; @endphp
 <aside class="ppmf-sidebar" id="ppmfSidebar">
   <a href="{{ route('dashboard') }}" class="sidebar-brand">
-    <div class="sidebar-brand-icon"><img src="{{ asset('images/pmru-logo.png') }}" alt="PPMU Logo" class="portal-logo sidebar-logo"></div>
+    <div class="sidebar-brand-icon"><img src="{{ asset('images/pmru-logo.png') }}" alt="Punjab Performance Management Unit logo" class="portal-logo sidebar-logo"></div>
     <div class="sidebar-brand-text">
       <div class="sidebar-brand-title">PPMU</div>
       <div class="sidebar-brand-sub">Punjab Performance Management Unit</div>

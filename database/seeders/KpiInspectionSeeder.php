@@ -87,6 +87,10 @@ class KpiInspectionSeeder extends Seeder
                 [$visitRows, $visitAttachments] = $card->slug === 'inspection-of-health-facilities'
                     ? $this->buildHealthFacilityInspections($card, $users, $refCounter, $now, $batch)
                     : $this->buildEducationInstitutionInspections($card, $users, $refCounter, $now, $batch);
+                [$visitRows, $visitAttachments] = $this->placeVisitDataInLatestCompletedWeek(
+                    $visitRows,
+                    $visitAttachments,
+                );
                 $inspectionRows = array_merge($inspectionRows, $visitRows);
                 $attachmentPlan = array_merge($attachmentPlan, $visitAttachments);
 
@@ -1335,6 +1339,45 @@ class KpiInspectionSeeder extends Seeder
         }
 
         return $candidate->setTimezone($databaseTimezone);
+    }
+
+    /**
+     * Keep seeded visit KPI data aligned with the dashboard's default completed week.
+     *
+     * @param  list<array<string, mixed>>  $rows
+     * @param  list<array<string, mixed>>  $attachments
+     * @return array{0: list<array<string, mixed>>, 1: list<array<string, mixed>>}
+     */
+    private function placeVisitDataInLatestCompletedWeek(array $rows, array $attachments): array
+    {
+        $tz = config('app.inspection_timezone', 'Asia/Karachi');
+        $databaseTimezone = config('app.timezone', 'UTC');
+        $period = app(\App\Services\KpiPeriodService::class);
+        $range = $period->getWeekDateRange($period->latestCompletedWeekNo());
+        $start = ($range['start'] ?? now($tz)->subWeek()->startOfDay())->copy()->setTimezone($tz);
+        $datesByReference = [];
+
+        foreach ($rows as $index => &$row) {
+            $inspectedAt = $start->copy()
+                ->addDays($index % 7)
+                ->setTime(9 + ($index % 8), 10 * ($index % 6), 0)
+                ->setTimezone($databaseTimezone);
+            $reviewedAt = $row['status'] === 'pending_review' ? null : $inspectedAt->copy()->addHours(3);
+
+            $row['inspection_datetime'] = $inspectedAt;
+            $row['reviewed_at'] = $reviewedAt;
+            $row['created_at'] = $inspectedAt;
+            $row['updated_at'] = $reviewedAt ?? $inspectedAt;
+            $datesByReference[$row['reference_no']] = $inspectedAt;
+        }
+        unset($row);
+
+        foreach ($attachments as &$attachment) {
+            $attachment['ts'] = $datesByReference[$attachment['reference_no']] ?? $attachment['ts'];
+        }
+        unset($attachment);
+
+        return [$rows, $attachments];
     }
 
     private function latestCompletedDayDateForIndex(int $index): Carbon

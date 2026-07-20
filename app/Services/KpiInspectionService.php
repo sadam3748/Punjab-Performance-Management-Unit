@@ -565,7 +565,7 @@ class KpiInspectionService
         if ($request->filled('insp_status')) {
             $query->where('status', $request->string('insp_status')->toString());
         }
-        $this->applyCompletedDayDateRange($query);
+        $this->geoFilterService->apply($query, $request, $user);
 
         $perPage = min(50, max(10, (int) $request->input('insp_per_page', 10)));
 

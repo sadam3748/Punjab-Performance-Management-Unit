@@ -29,7 +29,6 @@ class KpiInspectionController extends Controller
             'geo' => $geoFilterService->state($request),
             'inspectionFilters' => $inspectionService->filterOptions($user),
             'selectedKpiCardId' => (int) $request->input('kpi_card_id'),
-            'inspectionDateRange' => $inspectionService->completedDayDateRange(),
         ]);
     }
 
