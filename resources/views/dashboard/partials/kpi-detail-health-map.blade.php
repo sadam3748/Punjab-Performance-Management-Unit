@@ -33,6 +33,7 @@
 
         @php $mapStatusCounts = $map['status_counts'] ?? null; @endphp
         <div class="ppmu-health-map-legend" aria-label="Map legend">
+            <span class="ppmu-health-map-legend-item is-grey" data-map-status="not_inspected"><i class="ppmu-health-map-legend-dot grey"></i> Not Inspected{{ $mapStatusCounts ? ' ('.number_format($mapStatusCounts['not_inspected'] ?? 0).')' : '' }}</span>
             <span class="ppmu-health-map-legend-item is-blue" data-map-status="inspected"><i class="ppmu-health-map-legend-dot blue"></i> Inspected{{ $mapStatusCounts ? ' ('.number_format($mapStatusCounts['inspected'] ?? 0).')' : '' }}</span>
             <span class="ppmu-health-map-legend-item is-orange" data-map-status="pending_review"><i class="ppmu-health-map-legend-dot orange"></i> Pending Review{{ $mapStatusCounts ? ' ('.number_format($mapStatusCounts['pending_review'] ?? 0).')' : '' }}</span>
             <span class="ppmu-health-map-legend-item is-green" data-map-status="approved"><i class="ppmu-health-map-legend-dot green"></i> Approved{{ $mapStatusCounts ? ' ('.number_format($mapStatusCounts['approved'] ?? 0).')' : '' }}</span>

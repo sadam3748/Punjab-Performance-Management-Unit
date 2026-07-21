@@ -36,15 +36,17 @@ class EducationInspectionMapService
         $inspections = $this->dashboardInspections($card, $user, $request, $institutionsInspected, $statusQuotas);
         $reviewedPinIds = $this->reviewedPinIds($inspections, $statusQuotas);
 
-        $pins = $inspections
-            ->map(fn (KpiInspection $inspection) => $this->inspectionPin(
-                $card,
-                $inspection,
-                in_array($inspection->id, $reviewedPinIds, true)
-                    ? $this->statusForInspection($inspection)
-                    : $this->inspectedStatus(),
-            ))
-            ->all();
+        $inspectionByCode = $inspections
+            ->groupBy(fn (KpiInspection $inspection) => $this->institutionCodeFromIdentifier((string) $inspection->identifier))
+            ->map(fn (Collection $records) => $records->sortByDesc(fn (KpiInspection $record) => $this->statusPriority($record))->first());
+        $baselines = $this->assignedInstitutions($user);
+        $pins = $baselines->map(function (EducationInstitutionBaseline $institution) use ($card, $request, $inspectionByCode, $reviewedPinIds) {
+            $inspection = $inspectionByCode->get($institution->institution_code);
+            if (! $inspection || $inspection->status === KpiInspection::STATUS_DRAFT) return $this->uninspectedPin($card, $institution, $request);
+            $status = in_array($inspection->id, $reviewedPinIds, true) ? $this->statusForInspection($inspection) : $this->inspectedStatus();
+            return $this->inspectionPin($card, $inspection, $status);
+        })->all();
+        $statusCounts = collect($pins)->countBy('status')->all();
 
         return [
             'title' => 'Educational Institution Inspection Map',
@@ -53,22 +55,45 @@ class EducationInspectionMapService
             'center' => self::PUNJAB_CENTER,
             'pins' => $pins,
             'pin_count' => count($pins),
+            'status_counts' => array_merge(['not_inspected' => 0, 'inspected' => 0, 'pending_review' => 0, 'approved' => 0, 'rejected' => 0], $statusCounts),
             'inspection_ids' => $inspections->pluck('id')->all(),
             'empty_message' => 'No education inspections found for the selected period.',
             'entity_label' => 'Institution',
         ];
     }
 
+    private function assignedInstitutions(User $user): Collection
+    {
+        $query = EducationInstitutionBaseline::query()->with(['tehsil', 'district'])->where('is_active', true);
+        if ($user->tehsil_id) $query->where('tehsil_id', $user->tehsil_id);
+        elseif ($user->district_id) $query->where('district_id', $user->district_id);
+        elseif ($user->division_id) $query->where('division_id', $user->division_id);
+        return $query->orderBy('institution_code')->get();
+    }
+
+    private function uninspectedPin(KpiCard $card, EducationInstitutionBaseline $institution, Request $request): array
+    {
+        return [
+            'id' => 'education-'.$institution->id, 'lat' => (float) $institution->latitude, 'lng' => (float) $institution->longitude,
+            'color' => 'grey', 'status' => 'not_inspected', 'status_label' => 'Not Inspected',
+            'inspection_id' => 'Not assigned', 'inspection_type' => $institution->institution_type ?: 'School',
+            'facility_name' => $institution->name, 'institution_name' => $institution->name,
+            'inspection_date' => 'Not yet inspected', 'operational_status' => 'Not Inspected', 'tehsil' => $institution->tehsil?->name ?? '—',
+            'district' => $institution->district?->name ?? '—', 'address' => $institution->address ?: '—',
+            'review_status' => 'Not Applicable', 'observation_issues' => 0, 'important_finding' => 'Inspection pending',
+            'students_enrolled' => '—', 'students_present' => '—', 'action_label' => 'View Details',
+            'detail_url' => route('kpi.entities.show', [$card, 'education', $institution->id] + $request->only(['period_type', 'week_no', 'month', 'year', 'date'])),
+        ];
+    }
+
     /** @return Collection<int, KpiInspection> */
     private function dashboardInspections(KpiCard $card, User $user, Request $request, int $institutionsInspected, array $statusQuotas): Collection
     {
-        if ($institutionsInspected <= 0) {
-            return collect();
-        }
+        $inspections = $this->inspectionService->getInspectionsCollection($card, $user, $request);
+        $drafts = $inspections->where('status', KpiInspection::STATUS_DRAFT);
+        $completed = $inspections->where('status', '!=', KpiInspection::STATUS_DRAFT);
 
-        $inspections = $this->inspectionService->educationInspectionsForMetrics($card, $user, $request);
-
-        return $this->limitLikeObservationCards($inspections, $institutionsInspected, $statusQuotas)
+        return $this->limitLikeObservationCards($completed, $institutionsInspected, $statusQuotas)->concat($drafts)
             ->map(fn (KpiInspection $inspection) => $this->resolveInspectionCoordinates($inspection))
             ->filter(fn (KpiInspection $inspection) => $this->hasCoordinates($inspection))
             ->values();
@@ -146,6 +171,18 @@ class EducationInspectionMapService
         };
     }
 
+    private function statusPriority(KpiInspection $inspection): int
+    {
+        return match ($inspection->status) {
+            KpiInspection::STATUS_REJECTED => 60,
+            KpiInspection::STATUS_APPROVED => 50,
+            KpiInspection::STATUS_PENDING => 40,
+            KpiInspection::STATUS_INSPECTED => 30,
+            KpiInspection::STATUS_DRAFT => 20,
+            default => 10,
+        };
+    }
+
     /** @return list<int> */
     private function reviewedPinIds(Collection $inspections, array $statusQuotas): array
     {
@@ -193,8 +230,12 @@ class EducationInspectionMapService
                 : '—',
             'tehsil' => $inspection->tehsil?->name ?? '—',
             'address' => $this->shortAddress($inspection),
+            'district' => $inspection->district?->name ?? '—',
             'review_status' => $status['label'],
+            'operational_status' => 'Completed',
+            'action_label' => 'View Details',
             'observation_issues' => $this->inspectionService->countEducationDeficiencies($inspection),
+            'important_finding' => $this->inspectionService->educationDeficiencySummary($inspection),
             'students_enrolled' => $detail['students_enrolled'] ?? '—',
             'students_present' => $detail['students_present'] ?? '—',
             'detail_url' => route('kpi.inspections.show', [$card, $inspection]),

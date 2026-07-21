@@ -568,15 +568,18 @@ class KpiChartService
     {
         $categories = HealthObservationLabels::chartCategories();
 
-        $limit = max(0, $facilitiesInspected);
-        $scoped = $limit > 0 && $inspections->count() > $limit
-            ? $inspections
-                ->sortByDesc(fn ($inspection) => $inspection->inspection_datetime)
-                ->take($limit)
-                ->values()
-            : $inspections->values();
+        // Observation availability counts must use ALL completed inspections
+        // (approved + pending-review) in the selected period and scope.
+        // Do not cap based on operational targets.
+        $scoped = $inspections
+            ->filter(fn (KpiInspection $inspection): bool => in_array(
+                $inspection->status,
+                [KpiInspection::STATUS_APPROVED, KpiInspection::STATUS_PENDING],
+                true
+            ))
+            ->values();
 
-        $inspectedTotal = $limit > 0 ? $limit : $scoped->count();
+        $inspectedTotal = $scoped->count();
 
         $available = [];
         $notAvailable = [];
@@ -596,21 +599,10 @@ class KpiChartService
                     ? $inspection->detail_data
                     : (json_decode($inspection->detail_data ?? '[]', true) ?: []);
 
-                $value = strtolower((string) ($detail[$field] ?? $this->legacyHealthObservationChartValue($detail, $field)));
-
-                if ($field === 'uhi_compliance') {
-                    if ($value === 'yes') {
-                        $available[$label]++;
-                    } else {
-                        $notAvailable[$label]++;
-                    }
-
-                    continue;
-                }
-
-                if ($value === 'available' || $value === 'yes') {
+                $value = $detail[$field] ?? $this->legacyHealthObservationChartValue($detail, $field);
+                if (HealthObservationLabels::outcome($value) === 'positive') {
                     $available[$label]++;
-                } else {
+                } elseif (HealthObservationLabels::outcome($value) === 'negative') {
                     $notAvailable[$label]++;
                 }
             }
@@ -620,18 +612,18 @@ class KpiChartService
 
         return [
             'labels' => $labels,
-            'datasets' => [
+            'datasets' => array_values(array_filter([
                 [
-                    'label' => 'Positive outcome',
+                    'label' => 'Positive Status',
                     'values' => array_map(fn (string $label) => $available[$label], $labels),
                     'color' => '#087443',
                 ],
                 [
-                    'label' => 'Negative outcome',
+                    'label' => 'Negative Status',
                     'values' => array_map(fn (string $label) => $notAvailable[$label], $labels),
                     'color' => '#dc2626',
                 ],
-            ],
+            ])),
             'category_label_pairs' => $labelPairs,
             'facilities_inspected' => $inspectedTotal,
         ];
@@ -705,15 +697,18 @@ class KpiChartService
     {
         $categories = EducationObservationLabels::chartCategories();
 
-        $limit = max(0, $institutionsInspected);
-        $scoped = $limit > 0 && $inspections->count() > $limit
-            ? $inspections
-                ->sortByDesc(fn ($inspection) => $inspection->inspection_datetime)
-                ->take($limit)
-                ->values()
-            : $inspections->values();
+        // Observation availability counts must use ALL completed inspections
+        // (approved + pending-review) in the selected period and scope.
+        // Do not cap based on operational targets.
+        $scoped = $inspections
+            ->filter(fn (KpiInspection $inspection): bool => in_array(
+                $inspection->status,
+                [KpiInspection::STATUS_APPROVED, KpiInspection::STATUS_PENDING],
+                true
+            ))
+            ->values();
 
-        $inspectedTotal = $limit > 0 ? $limit : $scoped->count();
+        $inspectedTotal = $scoped->count();
 
         $available = [];
         $notAvailable = [];
@@ -733,21 +728,10 @@ class KpiChartService
                     ? $inspection->detail_data
                     : (json_decode($inspection->detail_data ?? '[]', true) ?: []);
 
-                $value = strtolower((string) ($detail[$field] ?? $this->legacyEducationObservationChartValue($detail, $field)));
-
-                if ($field === 'student_enrolment_checked') {
-                    if ($value === 'yes' || $value === 'verified') {
-                        $available[$label]++;
-                    } else {
-                        $notAvailable[$label]++;
-                    }
-
-                    continue;
-                }
-
-                if ($value === 'available' || $value === 'yes') {
+                $value = $detail[$field] ?? $this->legacyEducationObservationChartValue($detail, $field);
+                if (EducationObservationLabels::outcome($value) === 'positive') {
                     $available[$label]++;
-                } else {
+                } elseif (EducationObservationLabels::outcome($value) === 'negative') {
                     $notAvailable[$label]++;
                 }
             }
@@ -757,19 +741,21 @@ class KpiChartService
 
         return [
             'labels' => $labels,
-            'datasets' => [
+            'datasets' => array_values(array_filter([
                 [
-                    'label' => 'Positive outcome',
+                    'label' => 'Positive',
                     'values' => array_map(fn (string $label) => $available[$label], $labels),
                     'color' => '#087443',
                 ],
                 [
-                    'label' => 'Negative outcome',
+                    'label' => 'Negative',
                     'values' => array_map(fn (string $label) => $notAvailable[$label], $labels),
                     'color' => '#dc2626',
                 ],
-            ],
+            ])),
             'category_label_pairs' => $labelPairs,
+            'category_titles' => collect(EducationObservationLabels::definitions())->pluck('title')->values()->all(),
+            'has_valid_data' => array_sum($available) + array_sum($notAvailable) > 0,
             'facilities_inspected' => $inspectedTotal,
         ];
     }

@@ -27,6 +27,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/inspections/data', [KpiInspectionController::class, 'data'])->name('inspections.data');
 
     Route::get('/kpi/{kpiCard}/inspections/{inspection}/detail', [KpiInspectionController::class, 'show'])->name('kpi.inspections.show');
+    Route::get('/kpi/{kpiCard}/entities/{entityType}/{entity}/detail', [KpiInspectionController::class, 'showPendingEntity'])->name('kpi.entities.show');
     Route::post('/kpi/{kpiCard}/inspections/{inspection}/approve', [KpiInspectionController::class, 'approve'])->name('kpi.inspections.approve');
     Route::post('/kpi/{kpiCard}/inspections/{inspection}/reject', [KpiInspectionController::class, 'reject'])->name('kpi.inspections.reject');
 

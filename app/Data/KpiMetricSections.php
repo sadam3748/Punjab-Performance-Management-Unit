@@ -64,16 +64,9 @@ class KpiMetricSections
             $sections[] = ['title' => 'Visits & Meetings', 'metrics' => $visits];
         }
 
-        $sections[] = ['title' => 'Observations', 'metrics' => [
-            ['field' => 'observation_deep_cleaning', 'label' => 'Deep Cleaning'],
-            ['field' => 'observation_staff_availability', 'label' => 'Staff Availability'],
-            ['field' => 'observation_medicine_flex', 'label' => 'Medicine Availability'],
-            ['field' => 'observation_testing_equipment', 'label' => 'Testing Equipment'],
-            ['field' => 'observation_drinking_water', 'label' => 'Drinking Water'],
-            ['field' => 'observation_utilities', 'label' => 'Utilities'],
-            ['field' => 'observation_uhi_compliance', 'label' => 'UHI Compliance'],
-            ['field' => 'observation_attention_required', 'label' => 'Observation Issues'],
-        ]];
+        // Tests and dashboard spec expect this section to be labeled "Observations".
+        $sections[] = ['title' => 'Observations', 'metrics' => collect(HealthObservationLabels::definitions())
+            ->map(fn (array $definition, string $field) => ['field' => $field, 'label' => $definition['title']])->values()->all()];
 
         return $sections;
     }
@@ -123,16 +116,8 @@ class KpiMetricSections
             $sections[] = ['title' => 'Visits & Meetings', 'metrics' => $visits];
         }
 
-        $sections[] = ['title' => 'Observations', 'metrics' => [
-            ['field' => 'observation_cleanliness', 'label' => 'Cleanliness and General Outlook'],
-            ['field' => 'observation_teachers_staff', 'label' => 'Teachers and Staff Attendance'],
-            ['field' => 'observation_books_learning_material', 'label' => 'Books and Learning Material'],
-            ['field' => 'observation_school_facilities_utilities', 'label' => 'School Facilities and Utilities'],
-            ['field' => 'observation_drinking_water', 'label' => 'Drinking Water'],
-            ['field' => 'observation_student_enrolment', 'label' => 'Student Enrolment Checked'],
-            ['field' => 'observation_student_attendance', 'label' => 'Student Attendance'],
-            ['field' => 'observation_attention_required', 'label' => 'Observation Issues'],
-        ]];
+        $sections[] = ['title' => 'School Observation Findings', 'metrics' => collect(EducationObservationLabels::definitions())
+            ->map(fn (array $definition, string $field) => ['field' => $field, 'label' => $definition['title']])->values()->all()];
 
         return $sections;
     }

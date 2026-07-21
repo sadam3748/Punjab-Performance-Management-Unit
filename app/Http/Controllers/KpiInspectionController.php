@@ -4,9 +4,12 @@ namespace App\Http\Controllers;
 
 use App\Models\KpiCard;
 use App\Models\KpiInspection;
+use App\Models\EducationInstitutionBaseline;
+use App\Models\HealthFacilityBaseline;
 use App\Services\KpiDashboardService;
 use App\Services\KpiGeoFilterService;
 use App\Services\KpiInspectionService;
+use App\Services\KpiPeriodService;
 use Illuminate\Http\Request;
 
 class KpiInspectionController extends Controller
@@ -87,6 +90,36 @@ class KpiInspectionController extends Controller
             'user' => $user,
             'backUrl' => $this->inspectionListBackUrl($request),
         ] + $data);
+    }
+
+    public function showPendingEntity(
+        Request $request,
+        KpiCard $kpiCard,
+        string $entityType,
+        int $entity,
+        KpiDashboardService $dashboardService,
+        KpiPeriodService $periodService,
+    ) {
+        $user = $request->user()->loadMissing(['role', 'division', 'district', 'tehsil']);
+        abort_unless($dashboardService->canAccess($user, $kpiCard), 403);
+
+        $model = match ([$kpiCard->slug, $entityType]) {
+            ['inspection-of-health-facilities', 'health'] => HealthFacilityBaseline::query()->with(['division', 'district', 'tehsil'])->where('is_active', true)->findOrFail($entity),
+            ['inspection-of-educational-institutions', 'education'] => EducationInstitutionBaseline::query()->with(['district', 'tehsil'])->where('is_active', true)->findOrFail($entity),
+            default => abort(404),
+        };
+
+        if ($user->tehsil_id) abort_unless((int) $model->tehsil_id === (int) $user->tehsil_id, 403);
+        elseif ($user->district_id) abort_unless((int) $model->district_id === (int) $user->district_id, 403);
+        elseif ($user->division_id) abort_unless((int) $model->division_id === (int) $user->division_id, 403);
+
+        return view('kpi-inspections.pending-entity', [
+            'kpiCard' => $kpiCard,
+            'entity' => $model,
+            'entityType' => $entityType,
+            'periodDescription' => $periodService->description($request),
+            'backUrl' => route('kpi.dashboard', [$kpiCard] + $request->only(['period_type', 'week_no', 'month', 'year', 'date'])),
+        ]);
     }
 
     public function approve(Request $request, KpiCard $kpiCard, KpiInspection $inspection, KpiInspectionService $service, KpiDashboardService $dashboardService)

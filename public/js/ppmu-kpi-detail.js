@@ -68,6 +68,14 @@
                 const labels = payload.labels || [];
                 const values = payload.values || [];
 
+                if (def.key === 'education_observation_availability' && payload.has_valid_data === false) {
+                    const parent = canvas.closest('.card-ppmf-body');
+                    if (parent) {
+                        parent.innerHTML = '<div class="ppmu-chart-empty"><i class="bi bi-bar-chart"></i><span>No observation data available</span></div>';
+                    }
+                    return;
+                }
+
                 if (!labels.length && !values.length && !(payload.datasets || []).length) {
                     const parent = canvas.closest('.card-ppmf-body');
                     if (parent) {
@@ -82,23 +90,29 @@
 
                 if (chartType === 'bar' && Array.isArray(payload.datasets) && payload.datasets.length) {
                     const isStacked = def.type === 'stacked_bar';
+                    const isEducationObservationChart = def.key === 'education_observation_availability';
+                    const useCompactObservationStack = isEducationObservationChart;
+                    const usesStackedBars = isStacked || useCompactObservationStack;
                     const horizontal = def.type === 'grouped_bar' || def.type === 'stacked_bar' || String(def.key || '').includes('observation');
                     const facilitiesInspected = Number(payload.facilities_inspected ?? 0);
                     const categoryLabelPairs = Array.isArray(payload.category_label_pairs) ? payload.category_label_pairs : [];
+                    const categoryTitles = Array.isArray(payload.category_titles) ? payload.category_titles : [];
                     const isObservationAvailabilityChart = ['health_observation_availability', 'education_observation_availability']
                         .includes(String(def.key || ''));
                     const datasets = payload.datasets.map((series, seriesIndex) => ({
                         label: series.label || ('Series ' + (seriesIndex + 1)),
                         data: series.values || [],
                         backgroundColor: series.color || chartColors(payload.datasets.length)[seriesIndex],
-                        borderRadius: isStacked
+                        borderRadius: usesStackedBars
                             ? (seriesIndex === 0
                                 ? { topLeft: 4, bottomLeft: 4, topRight: 0, bottomRight: 0 }
                                 : { topLeft: 0, bottomLeft: 0, topRight: 4, bottomRight: 4 })
                             : 4,
                         borderSkipped: false,
-                        maxBarThickness: 18,
-                        stack: isStacked ? 'observations' : undefined,
+                        maxBarThickness: isEducationObservationChart ? 20 : 18,
+                        categoryPercentage: isEducationObservationChart ? 0.72 : undefined,
+                        barPercentage: isEducationObservationChart ? 0.78 : undefined,
+                        stack: usesStackedBars ? 'observations' : undefined,
                     }));
                     const barValueLabels = {
                         id: 'ppmuBarValueLabels',
@@ -106,7 +120,7 @@
                             const { ctx, chartArea } = chart;
                             if (!chartArea) return;
                             ctx.save();
-                            ctx.font = '600 10px "Plus Jakarta Sans", system-ui, sans-serif';
+                            ctx.font = `${isEducationObservationChart ? '700 11px' : '600 10px'} "Plus Jakarta Sans", system-ui, sans-serif`;
                             ctx.textBaseline = 'middle';
                             chart.data.datasets.forEach((dataset, datasetIndex) => {
                                 const meta = chart.getDatasetMeta(datasetIndex);
@@ -114,6 +128,7 @@
                                 meta.data.forEach((bar, index) => {
                                     const value = Number(dataset.data[index] ?? 0);
                                     if (!value) return;
+                                    if (isEducationObservationChart && Math.abs(bar.x - bar.base) < 22) return;
                                     const label = String(value);
                                     const inside = horizontal
                                         ? (bar.x - chartArea.left) > 28
@@ -139,40 +154,65 @@
                             responsive: true,
                             maintainAspectRatio: false,
                             layout: {
-                                padding: horizontal ? { left: 6, right: 10 } : { top: 8, bottom: 4 },
+                                padding: isEducationObservationChart
+                                    ? { top: 4, right: 22, bottom: 8, left: 8 }
+                                    : (horizontal ? { left: 6, right: 10 } : { top: 8, bottom: 4 }),
                             },
                             scales: {
                                 y: {
                                     beginAtZero: true,
-                                    stacked: isStacked,
+                                    stacked: usesStackedBars,
                                     grid: horizontal ? { display: false } : grid,
                                     ticks: {
-                                        font: fnt,
+                                        font: isEducationObservationChart
+                                            ? { family: 'Plus Jakarta Sans', size: 11, weight: '700' }
+                                            : fnt,
                                         autoSkip: false,
                                         padding: horizontal ? 10 : 6,
                                     },
                                     afterFit(axis) {
                                         if (horizontal) {
-                                            axis.width = Math.max(axis.width, 152);
+                                            axis.width = Math.max(axis.width, isEducationObservationChart ? 124 : 152);
                                         }
                                     },
                                 },
                                 x: {
                                     beginAtZero: true,
-                                    stacked: isStacked,
+                                    stacked: usesStackedBars,
                                     grid: horizontal ? grid : { display: false },
-                                    ticks: { font: fnt, padding: horizontal ? 6 : 4 },
+                                    ticks: {
+                                        font: isEducationObservationChart
+                                            ? { family: 'Plus Jakarta Sans', size: 11, weight: '600' }
+                                            : fnt,
+                                        padding: horizontal ? 6 : 4,
+                                        precision: 0,
+                                    },
                                 },
                             },
                             plugins: {
                                 legend: {
-                                    position: 'bottom',
-                                    labels: { padding: 12, usePointStyle: true, pointStyle: 'circle', font: fnt },
+                                    position: def.key === 'education_observation_availability' ? 'top' : 'bottom',
+                                    labels: {
+                                        padding: isEducationObservationChart ? 18 : 12,
+                                        boxWidth: 10,
+                                        boxHeight: 10,
+                                        usePointStyle: true,
+                                        pointStyle: 'circle',
+                                        font: isEducationObservationChart
+                                            ? { family: 'Plus Jakarta Sans', size: 12, weight: '700' }
+                                            : fnt,
+                                    },
                                 },
                                 tooltip: {
-                                    mode: isStacked ? 'index' : 'nearest',
-                                    intersect: !isStacked,
+                                    mode: usesStackedBars ? 'index' : 'nearest',
+                                    intersect: !usesStackedBars,
                                     callbacks: {
+                                        title(items) {
+                                            if (def.key === 'education_observation_availability' && items?.length) {
+                                                return categoryTitles[items[0].dataIndex] || items[0].label;
+                                            }
+                                            return items?.[0]?.label || '';
+                                        },
                                         label(context) {
                                             const value = context.parsed?.x ?? context.parsed?.y ?? 0;
                                             if (isObservationAvailabilityChart && categoryLabelPairs.length) {
@@ -186,7 +226,7 @@
                                             return ` ${series}: ${value}`;
                                         },
                                         footer(items) {
-                                            if (!isStacked || !items?.length) return '';
+                                            if (!usesStackedBars || !items?.length || isEducationObservationChart) return '';
                                             const available = Number(items[0]?.parsed?.x ?? items[0]?.parsed?.y ?? 0);
                                             const notAvailable = Number(items[1]?.parsed?.x ?? items[1]?.parsed?.y ?? 0);
                                             const total = available + notAvailable;
@@ -608,6 +648,9 @@
             || pin.school_name
             || pin.location_name
             || pin.facility_name;
+        const action = pin.detail_url
+            ? `<a href="${escapeHtml(pin.detail_url)}" class="ppmu-health-map-popup-btn" target="_blank" rel="noopener noreferrer"><i class="bi bi-box-arrow-up-right"></i> ${escapeHtml(pin.action_label || 'View Inspection Details')}</a>`
+            : `<span class="ppmu-health-map-popup-btn is-disabled" aria-disabled="true">View Details</span>`;
         return `
             <div class="ppmu-health-map-popup ppmu-map-popup-card">
                 <div class="ppmu-map-popup-heading ppmu-map-popup-header">
@@ -621,11 +664,10 @@
                     <div><dt>Location</dt><dd class="ppmu-popup-value">${escapeHtml(pin.tehsil)} Tehsil, ${escapeHtml(pin.district)} District</dd></div>
                     <div><dt>Inspected</dt><dd class="ppmu-popup-value">${escapeHtml(pin.inspection_date)}</dd></div>
                     <div><dt>Operational Status</dt><dd><span class="ppmu-map-operational-status">${escapeHtml(pin.operational_status)}</span></dd></div>
-                    <div><dt>Review Status</dt><dd><span class="ppmu-health-map-status ppmu-health-map-status-${escapeHtml(pin.color)}">${escapeHtml(pin.review_status)}</span></dd></div>
-                    <div><dt>Key Finding</dt><dd class="ppmu-popup-value">${escapeHtml(pin.important_finding || pin.issue_summary)}</dd></div>
+                    <div><dt>Review Status</dt><dd><span class="ppmu-health-map-status ppmu-health-map-status-${escapeHtml(pin.review_color || pin.color)}">${escapeHtml(pin.review_status)}</span></dd></div>
                 </dl>
                 <div class="ppmu-map-popup-footer">
-                    <a href="${escapeHtml(pin.detail_url)}" class="ppmu-health-map-popup-btn" target="_blank" rel="noopener noreferrer"><i class="bi bi-box-arrow-up-right"></i> View Details</a>
+                    ${action}
                 </div>
             </div>`;
     }
@@ -775,7 +817,7 @@
             unmappedEl.innerHTML = `Records without mapped location: <strong>${unmappedCount.toLocaleString()}</strong>`;
         }
         if (mapData?.status_counts) {
-            const labels = { inspected: 'Inspected', pending_review: 'Pending Review', approved: 'Approved', rejected: 'Rejected' };
+            const labels = { not_inspected: 'Not Inspected', inspected: 'Inspected', pending_review: 'Pending Review', approved: 'Approved', rejected: 'Rejected' };
             Object.entries(labels).forEach(([key, label]) => {
                 const item = document.querySelector(`[data-map-status="${key}"]`);
                 if (item) {

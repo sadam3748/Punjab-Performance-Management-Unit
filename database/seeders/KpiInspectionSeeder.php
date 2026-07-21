@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Data\EducationObservationLabels;
+use App\Data\HealthObservationLabels;
 use Carbon\Carbon;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
@@ -213,7 +214,12 @@ class KpiInspectionSeeder extends Seeder
                 }
 
                 $imagePath = $this->resolveImagePath($plan['slug']);
-                for ($a = 0; $a < $plan['count']; $a++) {
+                $attachmentCount = match ($plan['slug']) {
+                    'inspection-of-health-facilities' => count($this->healthObservationAttachmentKeys()),
+                    'inspection-of-educational-institutions' => count($this->educationObservationAttachmentKeys()),
+                    default => $plan['count'],
+                };
+                for ($a = 0; $a < $attachmentCount; $a++) {
                     $observationKey = null;
                     if ($plan['slug'] === 'inspection-of-health-facilities') {
                         $keys = $this->healthObservationAttachmentKeys();
@@ -275,15 +281,7 @@ class KpiInspectionSeeder extends Seeder
     /** @return list<string> */
     private function healthObservationAttachmentKeys(): array
     {
-        return [
-            'deep_cleaning',
-            'staff_availability',
-            'medicine_flex',
-            'testing_equipment',
-            'drinking_water',
-            'utilities',
-            'uhi_compliance',
-        ];
+        return HealthObservationLabels::evidenceKeys();
     }
 
     private function resolveImagePath(string $slug): string
@@ -526,6 +524,9 @@ class KpiInspectionSeeder extends Seeder
                 if ($card->slug === 'inspection-of-health-facilities' && (int) $plan['tehsil_id'] === 24 && $i >= 2) {
                     $status = 'pending_review';
                 }
+                if ($card->slug === 'inspection-of-health-facilities' && (int) $plan['tehsil_id'] === 24 && $i === $plan['count'] - 1) {
+                    $status = 'draft';
+                }
                 $completedDayRecordCount = $this->healthCompletedDayRecordCount($card->slug, $demoStatuses, $plan['count']);
                 $isHealthCompletedDayRecord = $card->slug === 'inspection-of-health-facilities'
                     && $demoStatuses !== null
@@ -594,7 +595,7 @@ class KpiInspectionSeeder extends Seeder
                     'district_id' => $side['district_id'],
                     'tehsil_id' => $side['tehsil_id'],
                     'inspected_by' => $inspector?->id,
-                    'reviewed_by' => $status === 'pending_review' ? null : $reviewer?->id,
+                    'reviewed_by' => in_array($status, ['pending_review', 'draft'], true) ? null : $reviewer?->id,
                     'inspection_title' => $inspectionType,
                     'entity_name' => $inspectionName,
                     'entity_type' => $entity['type'],
@@ -617,11 +618,11 @@ class KpiInspectionSeeder extends Seeder
                     'detail_data' => json_encode($detailData),
                     'review_remarks' => $status === 'approved' ? 'Inspection evidence verified and accepted.' : null,
                     'rejection_reason' => $status === 'rejected' ? 'Evidence incomplete or compliance below required threshold.' : null,
-                    'reviewed_at' => $status === 'pending_review' ? null : $inspectedAt->copy()->addHours(6),
+                    'reviewed_at' => in_array($status, ['pending_review', 'draft'], true) ? null : $inspectedAt->copy()->addHours(6),
                     'is_demo' => true,
                     'seed_batch' => $batch,
                     'created_at' => $inspectedAt,
-                    'updated_at' => $status === 'pending_review' ? $inspectedAt : $inspectedAt->copy()->addHours(6),
+                    'updated_at' => in_array($status, ['pending_review', 'draft'], true) ? $inspectedAt : $inspectedAt->copy()->addHours(6),
                 ];
 
                 $attachments[] = [
@@ -678,6 +679,9 @@ class KpiInspectionSeeder extends Seeder
                 if ((int) $plan['tehsil_id'] === 25 && $i >= 2) {
                     $status = 'pending_review';
                 }
+                if ((int) $plan['tehsil_id'] === 25 && $i === $plan['count'] - 1) {
+                    $status = 'draft';
+                }
                 $completedDayRecordCount = $this->educationCompletedDayRecordCount($plan['tehsil_id'], $plan['count']);
                 $isCompletedDayRecord = (int) $plan['tehsil_id'] === 25 && $i >= 2;
                 $inspectedAt = $this->educationInspectionDateForIndex($i, $globalIndex, $plan['count'], $completedDayRecordCount, $demoStatuses !== null, (int) $plan['tehsil_id']);
@@ -733,7 +737,7 @@ class KpiInspectionSeeder extends Seeder
                     'district_id' => $side['district_id'],
                     'tehsil_id' => $side['tehsil_id'],
                     'inspected_by' => $inspector?->id,
-                    'reviewed_by' => $status === 'pending_review' ? null : $reviewer?->id,
+                    'reviewed_by' => in_array($status, ['pending_review', 'draft'], true) ? null : $reviewer?->id,
                     'inspection_title' => 'AC School Field Visit',
                     'entity_name' => $inspectionName,
                     'entity_type' => 'AC School Field Visit',
@@ -753,11 +757,11 @@ class KpiInspectionSeeder extends Seeder
                     'detail_data' => json_encode($detailData),
                     'review_remarks' => $status === 'approved' ? 'Education inspection evidence verified and accepted.' : null,
                     'rejection_reason' => $status === 'rejected' ? 'Evidence incomplete or compliance below required threshold.' : null,
-                    'reviewed_at' => $status === 'pending_review' ? null : $inspectedAt->copy()->addHours(6),
+                    'reviewed_at' => in_array($status, ['pending_review', 'draft'], true) ? null : $inspectedAt->copy()->addHours(6),
                     'is_demo' => true,
                     'seed_batch' => $batch,
                     'created_at' => $inspectedAt,
-                    'updated_at' => $status === 'pending_review' ? $inspectedAt : $inspectedAt->copy()->addHours(6),
+                    'updated_at' => in_array($status, ['pending_review', 'draft'], true) ? $inspectedAt : $inspectedAt->copy()->addHours(6),
                 ];
 
                 $attachments[] = [
@@ -839,9 +843,21 @@ class KpiInspectionSeeder extends Seeder
     /** @return array<string, mixed> */
     private function educationObservationTemplate(int $index, int $tehsilId): array
     {
-        $patterns = $this->educationObservationMixedPatterns();
-        $slot = ($tehsilId * 3 + $index) % count($patterns);
-        $pattern = $patterns[$slot];
+        $slot = $index % 5;
+        $pattern = [
+            'school_premises_condition' => $slot < 4 ? 'satisfactory' : 'unsatisfactory',
+            'classroom_cleanliness' => $slot < 3 ? 'satisfactory' : 'unsatisfactory',
+            'teachers_staff_present' => $slot < 4 ? 'present' : 'absent',
+            // Never seed mandatory responses as null; dashboard aggregation
+            // counts only positive/negative mapped outcomes.
+            'teacher_dress_compliance' => ($slot < 2 ? 'compliant' : 'non_compliant'),
+            'learning_material_available' => $slot < 4 ? 'available' : 'unavailable',
+            'electricity_facilities_functional' => $slot < 4 ? 'functional' : 'non_functional',
+            'drinking_water_available' => $slot < 3 ? 'available' : 'unavailable',
+            'toilets_functional_clean' => $slot < 3 ? 'functional' : 'non_functional',
+            'boundary_wall_available' => 'available',
+            'playground_maintained' => $slot < 2 ? 'maintained' : 'not_maintained',
+        ];
         $enrolled = 140 + (($index * 23 + $tehsilId * 7) % 360);
         $attendanceRate = 0.72 + (($index + $tehsilId) % 6) * 0.04;
         $pattern['students_enrolled'] = $enrolled;
@@ -1221,10 +1237,20 @@ class KpiInspectionSeeder extends Seeder
     private function healthObservationTemplate(int $index, int $tehsilId): array
     {
         $base = \Database\Seeders\Support\KpiInspectionDetailFactory::forSlug('inspection-of-health-facilities', $index);
-        $patterns = $this->healthObservationMixedPatterns();
-        $slot = ($tehsilId * 3 + $index) % count($patterns);
+        $slot = $index % 5;
 
-        return array_merge($base, $patterns[$slot]);
+        return array_merge($base, [
+            'deep_cleaning_available' => $slot < 4 ? 'satisfactory' : 'unsatisfactory',
+            'doctors_paramedics_available' => $slot < 3 ? 'available' : 'unavailable',
+            'medicines_available' => $slot < 4 ? 'available' : 'unavailable',
+            'medicine_flex_displayed' => $slot < 2 ? 'displayed' : 'not_displayed',
+            // Never seed mandatory responses as null.
+            'medicine_led_functional' => ($slot < 3 ? 'functional' : 'non_functional'),
+            'diagnostic_services_functional' => $slot < 4 ? 'functional' : 'non_functional',
+            'uhi_compliance' => $slot < 3 ? 'compliant' : 'non_compliant',
+            'utilities_available' => $slot < 4 ? 'functional' : 'non_functional',
+            'drinking_water_available' => $slot < 4 ? 'available' : 'unavailable',
+        ]);
     }
 
     /** @return list<array<string, string>> */
@@ -1378,6 +1404,10 @@ class KpiInspectionSeeder extends Seeder
         $tz = config('app.inspection_timezone', 'Asia/Karachi');
         $databaseTimezone = config('app.timezone', 'UTC');
         $period = app(\App\Services\KpiPeriodService::class);
+        // The Education and Health dashboards open on the most recent fully
+        // completed Thu-Wed reporting week. Keep fresh demo inspections in that
+        // exact window so charts, observation cards, maps, and inspection lists
+        // all resolve the same seeded records without changing the period filter.
         $range = $period->getWeekDateRange($period->latestCompletedWeekNo());
         $start = ($range['start'] ?? now($tz)->subWeek()->startOfDay())->copy()->setTimezone($tz);
         $datesByReference = [];

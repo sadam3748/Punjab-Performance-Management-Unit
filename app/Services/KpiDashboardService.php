@@ -805,6 +805,7 @@ class KpiDashboardService
                 'display_mode' => 'observation_availability',
                 'observation_available' => (int) ($value['available'] ?? 0),
                 'observation_not_available' => (int) ($value['not_available'] ?? 0),
+                'observation_not_recorded' => (int) ($value['not_recorded'] ?? 0),
                 'observation_positive_label' => $labels['positive'],
                 'observation_negative_label' => $labels['negative'],
             ]);
@@ -1233,18 +1234,14 @@ class KpiDashboardService
 
     private function healthObservationInspections(Collection $inspections, float $facilitiesInspected): Collection
     {
-        $limit = max(0, (int) round($facilitiesInspected));
-        if ($limit <= 0) {
-            return collect();
-        }
-
-        if ($inspections->count() <= $limit) {
-            return $inspections->values();
-        }
-
+        // Observation cards must aggregate real inspection responses from ALL completed inspections
+        // in the selected period and authorized geography.
         return $inspections
-            ->sortByDesc(fn ($inspection) => $inspection->inspection_datetime)
-            ->take($limit)
+            ->filter(fn (KpiInspection $inspection): bool => in_array(
+                $inspection->status,
+                [KpiInspection::STATUS_APPROVED, KpiInspection::STATUS_PENDING],
+                true
+            ))
             ->values();
     }
 
@@ -1267,43 +1264,19 @@ class KpiDashboardService
     /** @return array<string, mixed> */
     private function observationCountsFromInspections(Collection $inspections): array
     {
-        $fields = [
-            'deep_cleaning' => 'deep_cleaning_available',
-            'staff_availability' => 'staff_available',
-            'medicine_flex' => 'medicine_flex_available',
-            'testing_equipment' => 'testing_equipment_available',
-            'drinking_water' => 'drinking_water_available',
-            'utilities' => 'utilities_available',
-        ];
-
-        $counts = [];
-        foreach ($fields as $key => $field) {
-            $counts[$key] = ['available' => 0, 'not_available' => 0];
-        }
-        $counts['uhi_compliance'] = ['yes' => 0, 'no' => 0];
-        $counts['attention_required'] = 0;
+        $definitions = HealthObservationLabels::definitions();
+        $counts = collect($definitions)->map(fn () => ['available' => 0, 'not_available' => 0, 'partial' => 0, 'not_recorded' => 0, 'not_applicable' => 0])->all();
 
         foreach ($inspections as $inspection) {
             $detail = is_array($inspection->detail_data)
                 ? $inspection->detail_data
                 : (json_decode($inspection->detail_data ?? '[]', true) ?: []);
 
-            foreach ($fields as $key => $field) {
-                $value = strtolower((string) ($detail[$field] ?? $this->legacyHealthObservationValue($detail, $field)));
-                if ($value === 'available' || $value === 'yes') {
-                    $counts[$key]['available']++;
-                } elseif ($value === 'not_available' || $value === 'no') {
-                    $counts[$key]['not_available']++;
-                    $counts['attention_required']++;
-                }
-            }
-
-            $uhi = strtolower((string) ($detail['uhi_compliance'] ?? ''));
-            if ($uhi === 'yes') {
-                $counts['uhi_compliance']['yes']++;
-            } elseif ($uhi === 'no') {
-                $counts['uhi_compliance']['no']++;
-                $counts['attention_required']++;
+            foreach ($definitions as $metric => $definition) {
+                $value = $detail[$definition['detail_field']] ?? $this->legacyHealthObservationValue($detail, $definition['detail_field']);
+                $outcome = HealthObservationLabels::outcome($value);
+                $bucket = match ($outcome) { 'positive' => 'available', 'negative' => 'not_available', default => $outcome };
+                $counts[$metric][$bucket]++;
             }
         }
 
@@ -1313,60 +1286,21 @@ class KpiDashboardService
     /** @return array<string, mixed> */
     private function educationObservationCountsFromInspections(Collection $inspections): array
     {
-        $fields = [
-            'cleanliness' => 'cleanliness_available',
-            'teachers_staff' => 'teachers_staff_available',
-            'books_learning_material' => 'books_learning_material_available',
-            'school_facilities_utilities' => 'school_facilities_utilities_available',
-            'drinking_water' => 'drinking_water_available',
-        ];
-
-        $counts = [];
-        foreach ($fields as $key => $field) {
-            $counts[$key] = ['available' => 0, 'not_available' => 0];
-        }
-        $counts['student_enrolment'] = ['yes' => 0, 'no' => 0];
-        $counts['student_attendance'] = ['enrolled' => 0, 'present' => 0, 'percent' => 0.0];
-        $counts['attention_required'] = 0;
+        $definitions = EducationObservationLabels::definitions();
+        $counts = collect($definitions)->map(fn () => ['available' => 0, 'not_available' => 0, 'partial' => 0, 'not_recorded' => 0, 'not_applicable' => 0])->all();
 
         foreach ($inspections as $inspection) {
             $detail = is_array($inspection->detail_data)
                 ? $inspection->detail_data
                 : (json_decode($inspection->detail_data ?? '[]', true) ?: []);
 
-            foreach ($fields as $key => $field) {
-                $value = strtolower((string) ($detail[$field] ?? $this->legacyEducationObservationValue($detail, $field)));
-                if ($value === 'available' || $value === 'yes') {
-                    $counts[$key]['available']++;
-                } elseif ($value === 'not_available' || $value === 'no') {
-                    $counts[$key]['not_available']++;
-                    $counts['attention_required']++;
-                }
-            }
-
-            $enrolment = strtolower((string) ($detail['student_enrolment_checked'] ?? 'yes'));
-            if ($enrolment === 'yes' || $enrolment === 'verified') {
-                $counts['student_enrolment']['yes']++;
-            } elseif ($enrolment === 'no' || $enrolment === 'not_verified') {
-                $counts['student_enrolment']['no']++;
-                $counts['attention_required']++;
-            }
-
-            $enrolled = (int) ($detail['students_enrolled'] ?? 0);
-            $present = (int) ($detail['students_present'] ?? 0);
-            $counts['student_attendance']['enrolled'] += $enrolled;
-            $counts['student_attendance']['present'] += $present;
-
-            if (EducationObservationLabels::studentAttendanceIssue($detail)) {
-                $counts['attention_required']++;
+            foreach ($definitions as $metric => $definition) {
+                $value = $detail[$definition['detail_field']] ?? $this->legacyEducationObservationValue($detail, $definition['detail_field']);
+                $outcome = EducationObservationLabels::outcome($value);
+                $bucket = match ($outcome) { 'positive' => 'available', 'negative' => 'not_available', default => $outcome };
+                $counts[$metric][$bucket]++;
             }
         }
-
-        $enrolledTotal = (int) $counts['student_attendance']['enrolled'];
-        $presentTotal = (int) $counts['student_attendance']['present'];
-        $counts['student_attendance']['percent'] = $enrolledTotal > 0
-            ? round(($presentTotal / $enrolledTotal) * 100, 1)
-            : 0.0;
 
         return $counts;
     }
@@ -1590,25 +1524,25 @@ class KpiDashboardService
             return match ($role) {
                 'ac', 'field_user' => [
                     ['type' => 'bar', 'title' => 'Review Target Status', 'subtitle' => 'Approved, rejected, and pending reviews against AC review target.', 'key' => 'health_review_target_status'],
-                    ['type' => 'stacked_bar', 'title' => 'Observation Availability', 'subtitle' => 'Observation outcomes from inspected health facilities.', 'key' => 'health_observation_availability'],
+                    ['type' => 'grouped_bar', 'title' => 'Health Facility Observation Status by Parameter', 'subtitle' => 'Positive and negative counts from inspected health facilities.', 'key' => 'health_observation_availability'],
                 ],
                 'dc' => [
                     ['type' => 'bar', 'title' => 'Tehsil Inspection Progress', 'subtitle' => 'Weekly AC inspections by tehsil, capped at 2 per tehsil.', 'key' => 'health_tehsil_inspection_progress'],
                     ['type' => 'bar', 'title' => 'Inspection Target Achievement', 'subtitle' => 'Completed inspections against weekly target.', 'key' => 'health_inspection_target_achievement'],
                     ['type' => 'bar', 'title' => 'Review Target Status', 'subtitle' => 'Approved, rejected, and pending reviews against DC review target.', 'key' => 'health_review_target_status'],
-                    ['type' => 'stacked_bar', 'title' => 'Observation Availability', 'subtitle' => 'Observation outcomes from inspected health facilities.', 'key' => 'health_observation_availability'],
+                    ['type' => 'grouped_bar', 'title' => 'Health Facility Observation Status by Parameter', 'subtitle' => 'Positive and negative counts from inspected health facilities.', 'key' => 'health_observation_availability'],
                 ],
                 'commissioner' => [
                     ['type' => 'bar', 'title' => 'District Inspection Progress', 'subtitle' => 'Completed inspections by district, capped against district target.', 'key' => 'health_district_inspection_progress'],
                     ['type' => 'bar', 'title' => 'Inspection Target Achievement', 'subtitle' => 'Completed inspections against division weekly target.', 'key' => 'health_inspection_target_achievement'],
                     ['type' => 'bar', 'title' => 'Review Target Status', 'subtitle' => 'Approved, rejected, and pending reviews against Commissioner review target.', 'key' => 'health_review_target_status'],
-                    ['type' => 'stacked_bar', 'title' => 'Observation Availability', 'subtitle' => 'Observation outcomes from inspected health facilities.', 'key' => 'health_observation_availability'],
+                    ['type' => 'grouped_bar', 'title' => 'Health Facility Observation Status by Parameter', 'subtitle' => 'Positive and negative counts from inspected health facilities.', 'key' => 'health_observation_availability'],
                 ],
                 default => [
                     ['type' => 'bar', 'title' => 'District Inspection Progress', 'subtitle' => 'Completed inspections by district, capped against weekly target.', 'key' => 'health_district_inspection_progress'],
                     ['type' => 'bar', 'title' => 'Inspection Target Achievement', 'subtitle' => 'Completed inspections against Punjab weekly target.', 'key' => 'health_inspection_target_achievement'],
                     ['type' => 'bar', 'title' => 'Review Target Status', 'subtitle' => 'Approved, rejected, and pending reviews against CS review target.', 'key' => 'health_review_target_status'],
-                    ['type' => 'stacked_bar', 'title' => 'Observation Availability', 'subtitle' => 'Observation outcomes from inspected health facilities.', 'key' => 'health_observation_availability'],
+                    ['type' => 'grouped_bar', 'title' => 'Health Facility Observation Status by Parameter', 'subtitle' => 'Positive and negative counts from inspected health facilities.', 'key' => 'health_observation_availability'],
                 ],
             };
         }
@@ -1617,25 +1551,25 @@ class KpiDashboardService
             return match ($role) {
                 'ac', 'field_user' => [
                     ['type' => 'bar', 'title' => 'Review Target Status', 'subtitle' => 'Approved, rejected, and pending reviews against AC review target.', 'key' => 'education_review_target_status'],
-                    ['type' => 'stacked_bar', 'title' => 'Observation Summary', 'subtitle' => 'Observation outcomes from inspected educational institutions.', 'key' => 'education_observation_availability'],
+                    ['type' => 'grouped_bar', 'title' => 'School Observation Summary', 'subtitle' => 'Positive and negative findings from inspected schools.', 'key' => 'education_observation_availability'],
                 ],
                 'dc' => [
                     ['type' => 'bar', 'title' => 'Education Inspection Progress', 'subtitle' => 'Weekly AC inspections by tehsil, capped at 2 per tehsil.', 'key' => 'education_tehsil_inspection_progress'],
                     ['type' => 'bar', 'title' => 'Inspection Target Achievement', 'subtitle' => 'Completed inspections against weekly target.', 'key' => 'education_inspection_target_achievement'],
                     ['type' => 'bar', 'title' => 'Review Target Status', 'subtitle' => 'Approved, rejected, and pending reviews against DC review target.', 'key' => 'education_review_target_status'],
-                    ['type' => 'stacked_bar', 'title' => 'Observation Summary', 'subtitle' => 'Observation outcomes from inspected educational institutions.', 'key' => 'education_observation_availability'],
+                    ['type' => 'grouped_bar', 'title' => 'School Observation Summary', 'subtitle' => 'Positive and negative findings from inspected schools.', 'key' => 'education_observation_availability'],
                 ],
                 'commissioner' => [
                     ['type' => 'bar', 'title' => 'District Inspection Progress', 'subtitle' => 'Completed inspections by district, capped against district target.', 'key' => 'education_district_inspection_progress'],
                     ['type' => 'bar', 'title' => 'Inspection Target Achievement', 'subtitle' => 'Completed inspections against division weekly target.', 'key' => 'education_inspection_target_achievement'],
                     ['type' => 'bar', 'title' => 'Review Target Status', 'subtitle' => 'Approved, rejected, and pending reviews against Commissioner review target.', 'key' => 'education_review_target_status'],
-                    ['type' => 'stacked_bar', 'title' => 'Observation Summary', 'subtitle' => 'Observation outcomes from inspected educational institutions.', 'key' => 'education_observation_availability'],
+                    ['type' => 'grouped_bar', 'title' => 'School Observation Summary', 'subtitle' => 'Positive and negative findings from inspected schools.', 'key' => 'education_observation_availability'],
                 ],
                 default => [
                     ['type' => 'bar', 'title' => 'District Inspection Progress', 'subtitle' => 'Completed inspections by district, capped against weekly target.', 'key' => 'education_district_inspection_progress'],
                     ['type' => 'bar', 'title' => 'Inspection Target Achievement', 'subtitle' => 'Completed inspections against Punjab weekly target.', 'key' => 'education_inspection_target_achievement'],
                     ['type' => 'bar', 'title' => 'Review Target Status', 'subtitle' => 'Approved, rejected, and pending reviews against CS review target.', 'key' => 'education_review_target_status'],
-                    ['type' => 'stacked_bar', 'title' => 'Observation Summary', 'subtitle' => 'Observation outcomes from inspected educational institutions.', 'key' => 'education_observation_availability'],
+                    ['type' => 'grouped_bar', 'title' => 'School Observation Summary', 'subtitle' => 'Positive and negative findings from inspected schools.', 'key' => 'education_observation_availability'],
                 ],
             };
         }
@@ -1769,20 +1703,13 @@ class KpiDashboardService
                 'ac_visit_achievement' => (float) ($visitContext['ac_visit_achievement'] ?? 0),
                 'district_visits' => (int) ($visitContext['district_visits'] ?? 0),
                 'districts_reporting' => (int) ($visitContext['districts_reporting'] ?? 0),
-                'observation_deep_cleaning' => $observations['deep_cleaning'] ?? ['available' => 0, 'not_available' => 0],
-                'observation_staff_availability' => $observations['staff_availability'] ?? ['available' => 0, 'not_available' => 0],
-                'observation_medicine_flex' => $observations['medicine_flex'] ?? ['available' => 0, 'not_available' => 0],
-                'observation_testing_equipment' => $observations['testing_equipment'] ?? ['available' => 0, 'not_available' => 0],
-                'observation_drinking_water' => $observations['drinking_water'] ?? ['available' => 0, 'not_available' => 0],
-                'observation_utilities' => $observations['utilities'] ?? ['available' => 0, 'not_available' => 0],
-                'observation_uhi_compliance' => $observations['uhi_compliance'] ?? ['yes' => 0, 'no' => 0],
-                'observation_attention_required' => (int) ($observations['attention_required'] ?? 0),
-                'observation_cleanliness' => $observations['cleanliness'] ?? ['available' => 0, 'not_available' => 0],
-                'observation_teachers_staff' => $observations['teachers_staff'] ?? ['available' => 0, 'not_available' => 0],
-                'observation_books_learning_material' => $observations['books_learning_material'] ?? ['available' => 0, 'not_available' => 0],
-                'observation_school_facilities_utilities' => $observations['school_facilities_utilities'] ?? ['available' => 0, 'not_available' => 0],
-                'observation_student_enrolment' => $observations['student_enrolment'] ?? ['yes' => 0, 'no' => 0],
-                'observation_student_attendance' => $observations['student_attendance'] ?? ['enrolled' => 0, 'present' => 0, 'percent' => 0.0],
+                'observation_deep_cleaning', 'observation_staff_availability', 'observation_medicines_availability',
+                'observation_medicine_flex', 'observation_medicine_led', 'observation_diagnostic_services',
+                'observation_uhi_compliance', 'observation_utilities', 'observation_drinking_water',
+                'observation_school_premises', 'observation_classroom_cleanliness', 'observation_teachers_staff',
+                'observation_teacher_dress', 'observation_learning_material', 'observation_electricity_facilities',
+                'observation_toilets', 'observation_boundary_wall', 'observation_playground'
+                    => $observations[$field] ?? ['available' => 0, 'not_available' => 0, 'partial' => 0, 'not_recorded' => 0, 'not_applicable' => 0],
                 'issues_cleanliness' => (int) ($issues['cleanliness'] ?? 0),
                 'issues_staff_absence' => (int) ($issues['staff_absence'] ?? 0),
                 'issues_medicine_shortage' => (int) ($issues['medicine_shortage'] ?? 0),

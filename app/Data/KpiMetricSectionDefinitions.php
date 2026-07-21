@@ -71,6 +71,7 @@ class KpiMetricSectionDefinitions
                     ['field' => 'weekly_road_target', 'label' => 'Weekly Road Target'],
                     ['field' => 'roads_selected', 'label' => 'Roads Selected / Inspected'],
                     ['field' => 'roads_work_completed', 'label' => 'Roads Completed'],
+                    ['field' => 'completed_pending_review', 'label' => 'Completed Pending Review'],
                     ['field' => 'completion_achievement', 'label' => 'Completion Achievement %'],
                 ]),
                 self::section('Work Details and Quality Findings', [
@@ -92,6 +93,7 @@ class KpiMetricSectionDefinitions
                     ['field' => 'faulty_lights_found', 'label' => 'Faulty Lights Identified'],
                     ['field' => 'lights_repaired', 'label' => 'Lights Repaired'],
                     ['field' => 'lights_pending_repair', 'label' => 'Lights Pending Repair'],
+                    ['field' => 'repair_rate', 'label' => 'Repair Rate %'],
                     ['field' => 'roads_with_faulty_lights', 'label' => 'Roads with Faulty Lights'],
                 ]),
                 self::reviewSection(),
@@ -228,10 +230,13 @@ class KpiMetricSectionDefinitions
                     ['field' => 'inspection_coverage', 'label' => 'Inspection Coverage %'],
                 ]),
                 self::section('Crossing Condition and Corrective Action Findings', [
+                    ['field' => 'actions_completed', 'label' => 'Actions Completed'],
+                    ['field' => 'actions_pending', 'label' => 'Actions Pending'],
+                    // Keep required labels (Actions Completed / Actions Pending) within the
+                    // first 4 metrics. KpiMetricSectionDefinitions slices "Findings" sections.
                     ['field' => 'markings_done', 'label' => 'Crossings Compliant / Visible'],
                     ['field' => 'faded_only_crossings', 'label' => 'Faded Crossings'],
                     ['field' => 'missing_crossings', 'label' => 'Missing Crossings'],
-                    ['field' => 'actions_completed', 'label' => 'Actions Completed'],
                 ]),
             ],
             'illegal-decanting' => [

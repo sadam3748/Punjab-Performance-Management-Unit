@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class KpiInspection extends Model
 {
+    public const STATUS_DRAFT = 'draft';
     public const STATUS_INSPECTED = 'inspected_only';
 
     public const STATUS_PENDING = 'pending_review';
@@ -152,6 +153,24 @@ class KpiInspection extends Model
             self::STATUS_REJECTED => 'danger',
             self::STATUS_PENDING => 'warning',
             default => 'primary',
+        };
+    }
+
+    public function detailStatusLabel(): string
+    {
+        return match ($this->status) {
+            self::STATUS_APPROVED => 'Approved',
+            self::STATUS_REJECTED => 'Rejected',
+            default => 'Pending Review',
+        };
+    }
+
+    public function detailStatusClass(): string
+    {
+        return match ($this->status) {
+            self::STATUS_APPROVED => 'success',
+            self::STATUS_REJECTED => 'danger',
+            default => 'warning',
         };
     }
 

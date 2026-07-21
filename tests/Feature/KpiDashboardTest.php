@@ -878,7 +878,7 @@ class KpiDashboardTest extends TestCase
         );
     }
 
-    public function test_health_observations_section_has_eight_cards(): void
+    public function test_health_observation_findings_section_has_nine_cards(): void
     {
         $this->seed(PpmuSeeder::class);
         $card = KpiCard::where('slug', 'inspection-of-health-facilities')->firstOrFail();
@@ -894,9 +894,8 @@ class KpiDashboardTest extends TestCase
         $observations = collect($detail['metricSections'])->firstWhere('title', 'Observations');
         $labels = collect($observations['metrics'])->pluck('label')->all();
 
-        $this->assertCount(8, $labels);
-        $this->assertContains('Observation Issues', $labels);
-        $deepCleaning = collect($observations['metrics'])->firstWhere('label', 'Deep Cleaning');
+        $this->assertCount(9, $labels);
+        $deepCleaning = collect($observations['metrics'])->firstWhere('label', 'Deep Cleaning of Hospital Areas');
         $this->assertSame('observation_availability', $deepCleaning['display_mode'] ?? null);
         $this->assertSame('Satisfactory', $deepCleaning['observation_positive_label'] ?? null);
         $this->assertSame('Unsatisfactory', $deepCleaning['observation_negative_label'] ?? null);
@@ -907,20 +906,20 @@ class KpiDashboardTest extends TestCase
             (int) ($deepCleaning['observation_available'] ?? 0) + (int) ($deepCleaning['observation_not_available'] ?? 0)
         );
 
-        $staffAvailability = collect($observations['metrics'])->firstWhere('label', 'Staff Availability');
-        $this->assertSame('Present', $staffAvailability['observation_positive_label'] ?? null);
-        $this->assertSame('Absent', $staffAvailability['observation_negative_label'] ?? null);
+        $staffAvailability = collect($observations['metrics'])->firstWhere('label', 'Doctors and Paramedics Availability');
+        $this->assertSame('Available', $staffAvailability['observation_positive_label'] ?? null);
+        $this->assertSame('Unavailable', $staffAvailability['observation_negative_label'] ?? null);
 
-        $utilities = collect($observations['metrics'])->firstWhere('label', 'Utilities');
-        $this->assertSame('Functional', $utilities['observation_positive_label'] ?? null);
-        $this->assertSame('Non-Functional', $utilities['observation_negative_label'] ?? null);
+        $utilities = collect($observations['metrics'])->firstWhere('label', 'Utilities Availability');
+        $this->assertSame('Available/Functional', $utilities['observation_positive_label'] ?? null);
+        $this->assertSame('Unavailable/Non-Functional', $utilities['observation_negative_label'] ?? null);
 
         $uhiCompliance = collect($observations['metrics'])->firstWhere('label', 'UHI Compliance');
-        $this->assertSame('observation_yesno', $uhiCompliance['display_mode'] ?? null);
+        $this->assertSame('observation_availability', $uhiCompliance['display_mode'] ?? null);
         $this->assertSame('Compliant', $uhiCompliance['observation_positive_label'] ?? null);
         $this->assertSame('Non-Compliant', $uhiCompliance['observation_negative_label'] ?? null);
 
-        $medicineAvailability = collect($observations['metrics'])->firstWhere('label', 'Medicine Availability');
+        $medicineAvailability = collect($observations['metrics'])->firstWhere('label', 'Medicines Availability');
         $this->assertNotNull($medicineAvailability);
     }
 
@@ -944,7 +943,7 @@ class KpiDashboardTest extends TestCase
         $this->assertSame('Total health facilities in this area', $totalFacilities['description'] ?? null);
     }
 
-    public function test_health_observation_chart_is_observation_availability_stacked_bar(): void
+    public function test_health_observation_chart_is_horizontal_grouped_status_chart(): void
     {
         $this->seed(PpmuSeeder::class);
         $card = KpiCard::where('slug', 'inspection-of-health-facilities')->firstOrFail();
@@ -959,17 +958,18 @@ class KpiDashboardTest extends TestCase
 
         $chart = collect($detail['charts']['definitions'])->firstWhere('key', 'health_observation_availability');
         $this->assertNotNull($chart);
-        $this->assertSame('Observation Availability', $chart['title']);
-        $this->assertSame('stacked_bar', $chart['type']);
-        $this->assertStringContainsString('Observation outcomes from inspected health facilities', (string) ($chart['subtitle'] ?? ''));
+        $this->assertSame('Health Facility Observation Status by Parameter', $chart['title']);
+        $this->assertSame('grouped_bar', $chart['type']);
         $this->assertCount(2, $chart['data']['datasets'] ?? []);
-        $this->assertSame('Positive outcome', $chart['data']['datasets'][0]['label'] ?? null);
-        $this->assertSame('Negative outcome', $chart['data']['datasets'][1]['label'] ?? null);
-        $this->assertSame(2, (int) ($chart['data']['facilities_inspected'] ?? 0));
+        $this->assertSame('Positive Status', $chart['data']['datasets'][0]['label'] ?? null);
+        $this->assertSame('Negative Status', $chart['data']['datasets'][1]['label'] ?? null);
+        $this->assertCount(9, $chart['data']['labels'] ?? []);
+        $facilitiesInspected = (int) ($chart['data']['facilities_inspected'] ?? 0);
+        $this->assertGreaterThan(0, $facilitiesInspected);
 
         $deepCleaningAvailable = (int) ($chart['data']['datasets'][0]['values'][0] ?? 0);
         $deepCleaningNotAvailable = (int) ($chart['data']['datasets'][1]['values'][0] ?? 0);
-        $this->assertSame(2, $deepCleaningAvailable + $deepCleaningNotAvailable);
+        $this->assertSame($facilitiesInspected, $deepCleaningAvailable + $deepCleaningNotAvailable);
     }
 
     public function test_health_observation_cards_do_not_use_combined_value_text(): void
@@ -987,13 +987,6 @@ class KpiDashboardTest extends TestCase
 
         $observations = collect($detail['metricSections'])->firstWhere('title', 'Observations');
         foreach ($observations['metrics'] as $metric) {
-            if (($metric['label'] ?? '') === 'Observation Issues') {
-                $this->assertSame('attention', $metric['display_mode'] ?? null);
-                $this->assertSame('Deficiencies Found', $metric['card_helper'] ?? null);
-
-                continue;
-            }
-
             $this->assertStringNotContainsString(' / Not ', (string) ($metric['value'] ?? ''));
         }
     }
@@ -1072,7 +1065,7 @@ class KpiDashboardTest extends TestCase
             ->assertSee('KPI Performance Cards')
             ->assertSee('KPI Charts')
             ->assertDontSee('Field Inspections')
-            ->assertDontSee('Not Inspected', false)
+            ->assertSee('Not Inspected', false)
             ->assertDontSee('Deficiency Found', false);
 
         $content = $response->getContent();
@@ -1116,8 +1109,8 @@ class KpiDashboardTest extends TestCase
         $this->assertSame(0, $pending);
         $this->assertSame(0, $rejected);
 
-        $this->assertSame($facilitiesInspected, $map['pin_count']);
-        $this->assertCount($facilitiesInspected, $map['pins']);
+        $this->assertSame((int) $values['Total Health Facilities'], $map['pin_count']);
+        $this->assertCount((int) $values['Total Health Facilities'], $map['pins']);
 
         $statusCounts = collect($map['pins'])->countBy('color');
         $this->assertSame($approved, $statusCounts->get('green', 0));
@@ -1131,18 +1124,19 @@ class KpiDashboardTest extends TestCase
         foreach ($map['pins'] as $pin) {
             $this->assertNotEmpty($pin['lat']);
             $this->assertNotEmpty($pin['lng']);
-            $this->assertContains($pin['color'], ['green', 'orange', 'blue', 'red']);
+            $this->assertContains($pin['color'], ['grey', 'cyan', 'green', 'orange', 'blue', 'red']);
             $this->assertArrayHasKey('inspection_id', $pin);
             $this->assertArrayHasKey('observation_issues', $pin);
-            $this->assertNotNull($pin['detail_url']);
-            $this->assertStringContainsString('/inspections/', $pin['detail_url']);
-            $this->assertContains($pin['review_status'], ['Inspected', 'Pending Review', 'Approved', 'Rejected']);
+            if ($pin['detail_url'] !== null) {
+                $this->assertTrue(
+                    str_contains($pin['detail_url'], '/inspections/') || str_contains($pin['detail_url'], '/entities/'),
+                    'Map pin detail URL must open an inspection or assigned entity detail.'
+                );
+            }
+            $this->assertContains($pin['review_status'], ['Not Applicable', 'Inspected', 'Pending Review', 'Approved', 'Rejected']);
         }
 
-        if ($facilitiesInspected >= 2) {
-            $coordinates = collect($map['pins'])->map(fn (array $pin) => round((float) $pin['lat'], 5).':'.round((float) $pin['lng'], 5));
-            $this->assertSame($facilitiesInspected, $coordinates->unique()->count());
-        }
+        $this->assertSame($map['pin_count'], array_sum($map['status_counts']));
     }
 
     public function test_education_dashboard_renders_inspection_map_section(): void
@@ -1159,7 +1153,7 @@ class KpiDashboardTest extends TestCase
             ->assertSee('Showing education inspection locations for the selected period')
             ->assertSee('id="ppmuHealthDashboardMap"', false)
             ->assertDontSee('Health Facility Inspection Map')
-            ->assertDontSee('Not Inspected', false);
+            ->assertSee('Not Inspected', false);
 
         $content = $response->getContent();
         $metricsPos = strpos($content, 'id="kpiDetailMetrics"');
@@ -1192,14 +1186,14 @@ class KpiDashboardTest extends TestCase
         $this->assertSame(1, (int) $values['Approved']);
         $this->assertSame(0, (int) $values['Pending Review']);
         $this->assertSame(0, (int) $values['Rejected']);
-        $this->assertSame(2, $map['pin_count']);
+        $this->assertSame(20, $map['pin_count']);
 
         $statusCounts = collect($map['pins'])->countBy('color');
         $this->assertSame(1, $statusCounts->get('green', 0));
         $this->assertSame(1, $statusCounts->get('blue', 0));
     }
 
-    public function test_education_observations_section_has_eight_cards(): void
+    public function test_education_observation_findings_section_has_ten_cards(): void
     {
         $this->seed(PpmuSeeder::class);
         $card = KpiCard::where('slug', 'inspection-of-educational-institutions')->firstOrFail();
@@ -1212,12 +1206,12 @@ class KpiDashboardTest extends TestCase
             ])
         );
 
-        $observations = collect($detail['metricSections'])->firstWhere('title', 'Observations');
+        $observations = collect($detail['metricSections'])->firstWhere('title', 'School Observation Findings');
         $labels = collect($observations['metrics'])->pluck('label')->all();
 
-        $this->assertCount(8, $labels);
-        $this->assertContains('Observation Issues', $labels);
-        $this->assertContains('Student Attendance', $labels);
+        $this->assertCount(10, $labels);
+        $this->assertContains('School Premises Condition', $labels);
+        $this->assertContains('Playground Condition', $labels);
     }
 
     public function test_ac_education_dashboard_shows_two_charts_only(): void
@@ -1235,6 +1229,11 @@ class KpiDashboardTest extends TestCase
         $this->assertTrue($keys->contains('education_review_target_status'));
         $this->assertTrue($keys->contains('education_observation_availability'));
         $this->assertFalse($keys->contains('education_student_attendance_summary'));
+
+        $chart = collect($detail['chartDefinitions'])->firstWhere('key', 'education_observation_availability');
+        $this->assertSame('School Observation Summary', $chart['title']);
+        $this->assertSame('Positive and negative findings from inspected schools.', $chart['subtitle']);
+        $this->assertSame(['Positive', 'Negative'], collect($chart['data']['datasets'])->pluck('label')->all());
     }
 
     public function test_operational_kpi_map_shows_pins_for_default_period(): void
@@ -1553,5 +1552,26 @@ class KpiDashboardTest extends TestCase
         $this->assertSame(1, (int) $roads['Roads Patched']);
         $this->assertSame(120, (int) $roads['Total Length Repaired (m)']);
         $this->assertSame(1, (int) $roads['Lane-Marking Locations Completed']);
+    }
+
+    public function test_uninspected_health_entity_has_pending_detail_without_fake_observations(): void
+    {
+        $this->seed(PpmuSeeder::class);
+        $user = User::where('username', 'ac.layyah')->firstOrFail();
+        $card = KpiCard::where('slug', 'inspection-of-health-facilities')->firstOrFail();
+        $request = Request::create('/', 'GET');
+        $detail = app(KpiDashboardService::class)->detail($card, $user, $request);
+        $pin = collect($detail['healthMap']['pins'])->firstWhere('status', 'not_inspected');
+
+        $this->assertNotNull($pin);
+        $this->assertNotNull($pin['detail_url']);
+
+        $this->actingAs($user)->get($pin['detail_url'])
+            ->assertOk()
+            ->assertSee('Inspection Pending')
+            ->assertSee('Not yet inspected')
+            ->assertSee('Observation results will be available after the inspection is completed.')
+            ->assertDontSee('Pending Review')
+            ->assertDontSee('Not Applicable');
     }
 }

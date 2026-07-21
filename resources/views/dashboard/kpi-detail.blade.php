@@ -141,6 +141,7 @@
             <x-chart-card
                 :title="$chart['title']"
                 :subtitle="$chartSubtitle"
+                :chart-key="$chart['key'] ?? null"
                 :canvas="'kpiChart_'.$index"/>
         @endforeach
     </div>

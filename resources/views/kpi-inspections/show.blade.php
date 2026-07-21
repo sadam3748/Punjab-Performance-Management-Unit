@@ -31,7 +31,7 @@
         <a href="{{ $backUrl }}" class="ppmu-back">
             <i class="bi bi-arrow-left-circle-fill"></i> Back
         </a>
-        <span class="badge rounded-pill text-bg-{{ $inspection->statusClass() }} ppmu-inspection-hero-badge">{{ $inspection->statusLabel() }}</span>
+        <span class="badge rounded-pill text-bg-{{ $inspection->detailStatusClass() }} ppmu-inspection-hero-badge">{{ $inspection->detailStatusLabel() }}</span>
     </div>
 
     <div class="ppmu-inspection-hero-main">
@@ -146,20 +146,38 @@
     </div>
     @endif
 @elseif(!empty($observationCards))
-    @php $detailFieldCount = count($observationCards); @endphp
+    @php
+        $observationGroups = collect($observationCards)->groupBy(fn($item) => $item['group'] ?? 'Observations');
+        $isSocialSectorObservationDetail = in_array($kpiCard->slug, ['inspection-of-educational-institutions', 'inspection-of-health-facilities'], true);
+    @endphp
     <div class="card-ppmf ppmu-inspection-panel ppmu-inspection-panel-compact">
         <h3><i class="bi bi-list-check"></i> Observations</h3>
-        <div class="ppmu-kpi-specific-grid ppmu-kpi-specific-grid-count-{{ $detailFieldCount }}">
-            @foreach($observationCards as $observation)
+        @if($isSocialSectorObservationDetail)
+            <div class="ppmu-detail-observation-grid">
+                @foreach($observationCards as $observation)
+                    <x-inspection-observation-card :observation="$observation" />
+                @endforeach
+            </div>
+        @else
+        @foreach($observationGroups as $groupTitle => $groupCards)
+        <section class="ppmu-observation-detail-group">
+            <h4>{{ $groupTitle }}</h4>
+            <div class="ppmu-kpi-specific-grid ppmu-kpi-specific-grid-count-{{ count($groupCards) }}">
+            @foreach($groupCards as $observation)
                 <div class="ppmu-inspection-detail-item ppmu-kpi-specific-card tone-{{ ['green','blue','purple','orange','red','yellow'][$loop->index % 6] }}">
                     <div class="ppmu-kpi-specific-icon">
                         <i class="bi {{ ['bi-check2-circle','bi-buildings','bi-geo-alt','bi-person-check','bi-clipboard2-check','bi-shield-check'][$loop->index % 6] }}"></i>
                     </div>
                     <div class="ppmu-kpi-specific-body">
                         <span>{{ $observation['label'] }}</span>
-                        <span class="badge rounded-pill text-bg-{{ ($observation['status_tone'] ?? 'neutral') === 'warning' ? 'warning' : 'success' }} ppmu-obs-status-badge">
+                        <span class="badge rounded-pill text-bg-{{ match($observation['status_tone'] ?? 'neutral') {'danger' => 'danger', 'warning' => 'warning', 'neutral' => 'secondary', default => 'success'} }} ppmu-obs-status-badge">
                             {{ $observation['value'] }}
                         </span>
+                        @if(isset($observation['picture_number']))
+                            <small class="ppmu-obs-picture-label">Evidence: Picture {{ $observation['picture_number'] }} · {{ ($observation['has_evidence'] ?? false) ? 'Available' : 'Missing' }}</small>
+                        @endif
+                        @if(!empty($observation['remarks']))<p class="ppmu-obs-detail-note"><strong>Remarks:</strong> {{ $observation['remarks'] }}</p>@endif
+                        @if(!empty($observation['corrective_action']))<p class="ppmu-obs-detail-note"><strong>Corrective Action:</strong> {{ $observation['corrective_action'] }}</p>@endif
                         @if(($observation['key'] ?? '') !== 'overall_attention')
                             @if($observation['has_evidence'] ?? false)
                                 <button
@@ -179,7 +197,10 @@
                     </div>
                 </div>
             @endforeach
-        </div>
+            </div>
+        </section>
+        @endforeach
+        @endif
     </div>
 @endif
 
@@ -307,7 +328,7 @@
         </script>
     @else
         <div class="ppmu-review-decision">
-            <p><strong>Status:</strong> <span class="badge rounded-pill text-bg-{{ $inspection->statusClass() }}">{{ $inspection->statusLabel() }}</span></p>
+            <p><strong>Status:</strong> <span class="badge rounded-pill text-bg-{{ $inspection->detailStatusClass() }}">{{ $inspection->detailStatusLabel() }}</span></p>
             @if($inspection->reviewedBy)
                 <p><strong>Reviewed By:</strong> {{ $inspection->reviewedBy->name }} @if($inspection->reviewed_at)<small class="text-muted">· {{ $inspection->reviewed_at->format('d M Y, h:i A') }}</small>@endif</p>
             @endif

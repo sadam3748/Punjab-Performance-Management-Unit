@@ -36,15 +36,17 @@ class HealthInspectionMapService
         $inspections = $this->dashboardInspections($card, $user, $request, $facilitiesInspected, $statusQuotas);
         $reviewedPinIds = $this->reviewedPinIds($inspections, $statusQuotas);
 
-        $pins = $inspections
-            ->map(fn (KpiInspection $inspection) => $this->inspectionPin(
-                $card,
-                $inspection,
-                in_array($inspection->id, $reviewedPinIds, true)
-                    ? $this->statusForInspection($inspection)
-                    : $this->inspectedStatus(),
-            ))
-            ->all();
+        $inspectionByCode = $inspections
+            ->groupBy(fn (KpiInspection $inspection) => $this->facilityCodeFromIdentifier((string) $inspection->identifier))
+            ->map(fn (Collection $records) => $records->sortByDesc(fn (KpiInspection $record) => $this->statusPriority($record))->first());
+        $baselines = $this->assignedFacilities($user);
+        $pins = $baselines->map(function (HealthFacilityBaseline $facility) use ($card, $request, $inspectionByCode, $reviewedPinIds) {
+            $inspection = $inspectionByCode->get($facility->facility_code);
+            if (! $inspection || $inspection->status === KpiInspection::STATUS_DRAFT) return $this->uninspectedPin($card, $facility, $request);
+            $status = in_array($inspection->id, $reviewedPinIds, true) ? $this->statusForInspection($inspection) : $this->inspectedStatus();
+            return $this->inspectionPin($card, $inspection, $status);
+        })->all();
+        $statusCounts = collect($pins)->countBy('status')->all();
 
         return [
             'title' => 'Health Facility Inspection Map',
@@ -53,21 +55,44 @@ class HealthInspectionMapService
             'center' => self::PUNJAB_CENTER,
             'pins' => $pins,
             'pin_count' => count($pins),
+            'status_counts' => array_merge(['not_inspected' => 0, 'inspected' => 0, 'pending_review' => 0, 'approved' => 0, 'rejected' => 0], $statusCounts),
             'inspection_ids' => $inspections->pluck('id')->all(),
             'empty_message' => 'No health inspections found for the selected period.',
+        ];
+    }
+
+    private function assignedFacilities(User $user): Collection
+    {
+        $query = HealthFacilityBaseline::query()->with(['tehsil', 'district'])->where('is_active', true);
+        if ($user->tehsil_id) $query->where('tehsil_id', $user->tehsil_id);
+        elseif ($user->district_id) $query->where('district_id', $user->district_id);
+        elseif ($user->division_id) $query->where('division_id', $user->division_id);
+        return $query->orderBy('facility_code')->get();
+    }
+
+    private function uninspectedPin(KpiCard $card, HealthFacilityBaseline $facility, Request $request): array
+    {
+        return [
+            'id' => 'health-'.$facility->id, 'lat' => (float) $facility->latitude, 'lng' => (float) $facility->longitude,
+            'color' => 'grey', 'status' => 'not_inspected', 'status_label' => 'Not Inspected',
+            'inspection_id' => 'Not assigned', 'inspection_type' => $facility->facility_type ?: 'Health Facility',
+            'facility_name' => $facility->name, 'inspection_date' => 'Not yet inspected', 'operational_status' => 'Not Inspected',
+            'tehsil' => $facility->tehsil?->name ?? '—', 'district' => $facility->district?->name ?? '—',
+            'address' => $facility->address ?: '—', 'review_status' => 'Not Applicable',
+            'observation_issues' => 0, 'important_finding' => 'Inspection pending',
+            'action_label' => 'View Details',
+            'detail_url' => route('kpi.entities.show', [$card, 'health', $facility->id] + $request->only(['period_type', 'week_no', 'month', 'year', 'date'])),
         ];
     }
 
     /** @return Collection<int, KpiInspection> */
     private function dashboardInspections(KpiCard $card, User $user, Request $request, int $facilitiesInspected, array $statusQuotas): Collection
     {
-        if ($facilitiesInspected <= 0) {
-            return collect();
-        }
+        $inspections = $this->inspectionService->getInspectionsCollection($card, $user, $request);
+        $drafts = $inspections->where('status', KpiInspection::STATUS_DRAFT);
+        $completed = $inspections->where('status', '!=', KpiInspection::STATUS_DRAFT);
 
-        $inspections = $this->inspectionService->healthInspectionsForMetrics($card, $user, $request);
-
-        return $this->limitLikeObservationCards($inspections, $facilitiesInspected, $statusQuotas)
+        return $this->limitLikeObservationCards($completed, $facilitiesInspected, $statusQuotas)->concat($drafts)
             ->map(fn (KpiInspection $inspection) => $this->resolveInspectionCoordinates($inspection))
             ->filter(fn (KpiInspection $inspection) => $this->hasCoordinates($inspection))
             ->values();
@@ -145,6 +170,18 @@ class HealthInspectionMapService
         };
     }
 
+    private function statusPriority(KpiInspection $inspection): int
+    {
+        return match ($inspection->status) {
+            KpiInspection::STATUS_REJECTED => 60,
+            KpiInspection::STATUS_APPROVED => 50,
+            KpiInspection::STATUS_PENDING => 40,
+            KpiInspection::STATUS_INSPECTED => 30,
+            KpiInspection::STATUS_DRAFT => 20,
+            default => 10,
+        };
+    }
+
     /** @return list<int> */
     private function reviewedPinIds(Collection $inspections, array $statusQuotas): array
     {
@@ -187,8 +224,12 @@ class HealthInspectionMapService
                 : '—',
             'tehsil' => $inspection->tehsil?->name ?? '—',
             'address' => $this->shortAddress($inspection),
+            'district' => $inspection->district?->name ?? '—',
             'review_status' => $status['label'],
+            'operational_status' => 'Completed',
+            'action_label' => 'View Details',
             'observation_issues' => $this->inspectionService->countHealthDeficiencies($inspection),
+            'important_finding' => $this->inspectionService->healthDeficiencySummary($inspection),
             'detail_url' => route('kpi.inspections.show', [$card, $inspection]),
         ];
     }
