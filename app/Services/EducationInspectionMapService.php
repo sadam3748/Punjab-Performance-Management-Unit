@@ -220,6 +220,7 @@ class EducationInspectionMapService
         $detail = is_array($inspection->detail_data)
             ? $inspection->detail_data
             : (json_decode($inspection->detail_data ?? '[]', true) ?: []);
+        [$reviewStatus, $reviewColor] = $this->popupReviewStatus($inspection);
 
         return [
             'id' => $inspection->id,
@@ -238,8 +239,8 @@ class EducationInspectionMapService
             'tehsil' => $inspection->tehsil?->name ?? '—',
             'address' => $this->shortAddress($inspection),
             'district' => $inspection->district?->name ?? '—',
-            'review_status' => $status['key'] === 'inspected' ? 'Pending Review' : $status['label'],
-            'review_color' => $status['key'] === 'inspected' ? 'amber' : $status['color'],
+            'review_status' => $reviewStatus,
+            'review_color' => $reviewColor,
             'operational_status' => 'Completed',
             'action_label' => 'View Details',
             'observation_issues' => $this->inspectionService->countEducationDeficiencies($inspection),
@@ -252,6 +253,16 @@ class EducationInspectionMapService
                 'return_url' => route('kpi.dashboard', [$card] + $request->only(['period_type', 'week_no', 'month', 'year', 'date'])),
             ]),
         ];
+    }
+
+    /** @return array{0: string, 1: string} */
+    private function popupReviewStatus(KpiInspection $inspection): array
+    {
+        return match ($inspection->status) {
+            KpiInspection::STATUS_APPROVED => ['Approved', 'green'],
+            KpiInspection::STATUS_REJECTED => ['Rejected', 'red'],
+            default => ['Pending Review', 'yellow'],
+        };
     }
 
     private function shortAddress(KpiInspection $inspection): string

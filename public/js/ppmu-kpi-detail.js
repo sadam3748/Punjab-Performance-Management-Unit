@@ -643,7 +643,7 @@
 
     function popupReviewColor(pin) {
         const status = String(pin?.review_status || '').trim().toLowerCase();
-        if (status === 'pending review') return 'orange';
+        if (status === 'pending review') return 'yellow';
         if (status === 'approved') return 'green';
         if (status === 'rejected') return 'red';
         if (status === 'inspected') return 'blue';
@@ -653,8 +653,9 @@
 
     function popupReviewBadge(pin) {
         const color = popupReviewColor(pin);
-        const pendingClass = color === 'orange' ? ' is-pending-review' : '';
-        const pendingStyle = color === 'orange'
+        const isPending = color === 'yellow' || color === 'orange' || color === 'amber';
+        const pendingClass = isPending ? ' is-pending-review' : '';
+        const pendingStyle = isPending
             ? ' style="background:#fef9c3!important;color:#854d0e!important;border:1px solid #fde047!important"'
             : '';
         return `<span class="ppmu-health-map-status ppmu-health-map-status-${escapeHtml(color)}${pendingClass}"${pendingStyle}>${escapeHtml(pin.review_status)}</span>`;
