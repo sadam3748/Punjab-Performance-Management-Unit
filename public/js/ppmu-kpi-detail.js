@@ -4,8 +4,8 @@
     const cfg = window.PPMU_KPI_DETAIL;
     if (!cfg) return;
 
-    const G = '#087443', B = '#2563eb', O = '#e07b00', R = '#dc2626', T = '#0891b2';
-    const statusPalette = { Approved: G, Submitted: B, Pending: O, Rejected: R };
+    const G = '#087443', B = '#2563eb', O = '#e07b00', Y = '#eab308', R = '#dc2626', T = '#0891b2';
+    const statusPalette = { Approved: G, Submitted: B, Pending: Y, 'Pending Review': Y, Rejected: R };
     const grid = { color: 'rgba(100,116,139,.12)', drawBorder: false };
     const fnt = { family: "'Plus Jakarta Sans', system-ui, sans-serif", size: 11 };
 
@@ -655,7 +655,7 @@
         const color = popupReviewColor(pin);
         const pendingClass = color === 'orange' ? ' is-pending-review' : '';
         const pendingStyle = color === 'orange'
-            ? ' style="background:#fef3c7!important;color:#a16207!important;border:1px solid #fbbf24!important"'
+            ? ' style="background:#fef9c3!important;color:#854d0e!important;border:1px solid #fde047!important"'
             : '';
         return `<span class="ppmu-health-map-status ppmu-health-map-status-${escapeHtml(color)}${pendingClass}"${pendingStyle}>${escapeHtml(pin.review_status)}</span>`;
     }

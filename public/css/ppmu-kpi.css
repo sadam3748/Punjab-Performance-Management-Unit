@@ -8213,3 +8213,47 @@ body:has(.ppmu-main-dashboard),
     background: #fef3c7 !important;
     border-color: #fbbf24 !important;
 }
+
+/* Pending Review: one yellow palette across dashboards, maps, lists and details. */
+.ppmu-health-map-legend-dot.orange {
+    background: #eab308 !important;
+}
+
+.ppmu-health-map-legend-item.is-orange {
+    color: #854d0e !important;
+}
+
+.ppmu-health-map-pin-orange .ppmu-health-map-pin-core {
+    background: linear-gradient(180deg, #fde047 0%, #eab308 100%) !important;
+    box-shadow: 0 4px 12px rgba(234, 179, 8, .42) !important;
+}
+
+.ppmu-health-map-pin-orange .ppmu-health-map-pin-ring {
+    border-color: rgba(234, 179, 8, .42) !important;
+    box-shadow: 0 8px 18px rgba(234, 179, 8, .2) !important;
+}
+
+.ppmu-health-map-status-orange,
+.ppmu-health-map-status-amber,
+.ppmu-health-map-status-yellow,
+.ppmu-inspection-status-pending_review,
+.ppmu-detail-page .ppmu-inspection-hero-badge.text-bg-warning,
+.ppmu-detail-page .ppmu-review-decision .text-bg-warning {
+    color: #854d0e !important;
+    background: #fef9c3 !important;
+    border-color: #fde047 !important;
+}
+
+.ppmu-detail-page #kpiDetailMetrics .tone-yellow::before {
+    background: #eab308 !important;
+}
+
+.ppmu-detail-page #kpiDetailMetrics .tone-yellow .ppmu-pi-icon {
+    color: #854d0e !important;
+    background: #fef9c3 !important;
+    border-color: #fde047 !important;
+}
+
+.ppmu-detail-page #kpiDetailMetrics .tone-yellow .ppmu-pi-value {
+    color: #854d0e !important;
+}
