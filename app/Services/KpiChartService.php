@@ -568,13 +568,16 @@ class KpiChartService
     {
         $categories = HealthObservationLabels::chartCategories();
 
-        // Observation availability counts must use ALL completed inspections
-        // (approved + pending-review) in the selected period and scope.
-        // Do not cap based on operational targets.
+        // Health observation chart uses the same completed facility visits as
+        // dashboard observation cards: approved + pending-review + inspected-only.
         $scoped = $inspections
             ->filter(fn (KpiInspection $inspection): bool => in_array(
                 $inspection->status,
-                [KpiInspection::STATUS_APPROVED, KpiInspection::STATUS_PENDING],
+                [
+                    KpiInspection::STATUS_APPROVED,
+                    KpiInspection::STATUS_PENDING,
+                    KpiInspection::STATUS_INSPECTED,
+                ],
                 true
             ))
             ->values();
@@ -614,17 +617,18 @@ class KpiChartService
             'labels' => $labels,
             'datasets' => array_values(array_filter([
                 [
-                    'label' => 'Positive Status',
+                    'label' => 'Positive',
                     'values' => array_map(fn (string $label) => $available[$label], $labels),
                     'color' => '#087443',
                 ],
                 [
-                    'label' => 'Negative Status',
+                    'label' => 'Negative',
                     'values' => array_map(fn (string $label) => $notAvailable[$label], $labels),
                     'color' => '#dc2626',
                 ],
             ])),
             'category_label_pairs' => $labelPairs,
+            'category_titles' => collect(HealthObservationLabels::definitions())->pluck('title')->values()->all(),
             'facilities_inspected' => $inspectedTotal,
         ];
     }
@@ -697,13 +701,16 @@ class KpiChartService
     {
         $categories = EducationObservationLabels::chartCategories();
 
-        // Observation availability counts must use ALL completed inspections
-        // (approved + pending-review) in the selected period and scope.
-        // Do not cap based on operational targets.
+        // Education observation chart uses the same completed school visits as
+        // dashboard observation cards: approved + pending-review + inspected-only.
         $scoped = $inspections
             ->filter(fn (KpiInspection $inspection): bool => in_array(
                 $inspection->status,
-                [KpiInspection::STATUS_APPROVED, KpiInspection::STATUS_PENDING],
+                [
+                    KpiInspection::STATUS_APPROVED,
+                    KpiInspection::STATUS_PENDING,
+                    KpiInspection::STATUS_INSPECTED,
+                ],
                 true
             ))
             ->values();

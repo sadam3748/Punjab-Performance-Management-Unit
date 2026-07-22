@@ -699,7 +699,7 @@ class KpiDashboardTest extends TestCase
         $period = app(KpiPeriodService::class);
         $request = Request::create('/', 'GET', [
             'period_type' => 'weekly',
-            'week_no' => $period->currentWeekNo(),
+            'week_no' => $period->latestCompletedWeekNo(),
             'month' => (string) now()->month,
             'year' => (string) now()->year,
         ]);
@@ -887,7 +887,7 @@ class KpiDashboardTest extends TestCase
             User::where('username', 'ac.layyah')->firstOrFail(),
             Request::create('/', 'GET', [
                 'period_type' => 'weekly',
-                'week_no' => app(KpiPeriodService::class)->currentWeekNo(),
+                'week_no' => app(KpiPeriodService::class)->latestCompletedWeekNo(),
             ])
         );
 
@@ -899,16 +899,18 @@ class KpiDashboardTest extends TestCase
         $this->assertSame('observation_availability', $deepCleaning['display_mode'] ?? null);
         $this->assertSame('Satisfactory', $deepCleaning['observation_positive_label'] ?? null);
         $this->assertSame('Unsatisfactory', $deepCleaning['observation_negative_label'] ?? null);
-        $this->assertGreaterThanOrEqual(0, (int) ($deepCleaning['observation_available'] ?? -1));
-        $this->assertGreaterThanOrEqual(0, (int) ($deepCleaning['observation_not_available'] ?? -1));
-        $this->assertGreaterThan(
-            0,
+        $this->assertSame(1, (int) ($deepCleaning['observation_available'] ?? -1));
+        $this->assertSame(1, (int) ($deepCleaning['observation_not_available'] ?? -1));
+        $this->assertSame(
+            2,
             (int) ($deepCleaning['observation_available'] ?? 0) + (int) ($deepCleaning['observation_not_available'] ?? 0)
         );
 
         $staffAvailability = collect($observations['metrics'])->firstWhere('label', 'Doctors and Paramedics Availability');
         $this->assertSame('Available', $staffAvailability['observation_positive_label'] ?? null);
         $this->assertSame('Unavailable', $staffAvailability['observation_negative_label'] ?? null);
+        $this->assertSame(2, (int) ($staffAvailability['observation_available'] ?? 0));
+        $this->assertSame(0, (int) ($staffAvailability['observation_not_available'] ?? 0));
 
         $utilities = collect($observations['metrics'])->firstWhere('label', 'Utilities Availability');
         $this->assertSame('Available/Functional', $utilities['observation_positive_label'] ?? null);
@@ -921,6 +923,16 @@ class KpiDashboardTest extends TestCase
 
         $medicineAvailability = collect($observations['metrics'])->firstWhere('label', 'Medicines Availability');
         $this->assertNotNull($medicineAvailability);
+        $this->assertSame(1, (int) ($medicineAvailability['observation_available'] ?? 0));
+        $this->assertSame(1, (int) ($medicineAvailability['observation_not_available'] ?? 0));
+
+        foreach ($observations['metrics'] as $metric) {
+            $this->assertSame(
+                2,
+                (int) ($metric['observation_available'] ?? 0) + (int) ($metric['observation_not_available'] ?? 0),
+                $metric['label'].' should total Facilities Inspected.'
+            );
+        }
     }
 
     public function test_health_total_facilities_card_has_inventory_helper_text(): void
@@ -932,7 +944,7 @@ class KpiDashboardTest extends TestCase
             User::where('username', 'ac.layyah')->firstOrFail(),
             Request::create('/', 'GET', [
                 'period_type' => 'weekly',
-                'week_no' => app(KpiPeriodService::class)->currentWeekNo(),
+                'week_no' => app(KpiPeriodService::class)->latestCompletedWeekNo(),
             ])
         );
 
@@ -952,7 +964,7 @@ class KpiDashboardTest extends TestCase
             User::where('username', 'ac.layyah')->firstOrFail(),
             Request::create('/', 'GET', [
                 'period_type' => 'weekly',
-                'week_no' => app(KpiPeriodService::class)->currentWeekNo(),
+                'week_no' => app(KpiPeriodService::class)->latestCompletedWeekNo(),
             ])
         );
 
@@ -965,10 +977,12 @@ class KpiDashboardTest extends TestCase
         $this->assertSame('Negative Status', $chart['data']['datasets'][1]['label'] ?? null);
         $this->assertCount(9, $chart['data']['labels'] ?? []);
         $facilitiesInspected = (int) ($chart['data']['facilities_inspected'] ?? 0);
-        $this->assertGreaterThan(0, $facilitiesInspected);
+        $this->assertSame(2, $facilitiesInspected);
 
         $deepCleaningAvailable = (int) ($chart['data']['datasets'][0]['values'][0] ?? 0);
         $deepCleaningNotAvailable = (int) ($chart['data']['datasets'][1]['values'][0] ?? 0);
+        $this->assertSame(1, $deepCleaningAvailable);
+        $this->assertSame(1, $deepCleaningNotAvailable);
         $this->assertSame($facilitiesInspected, $deepCleaningAvailable + $deepCleaningNotAvailable);
     }
 
@@ -981,7 +995,7 @@ class KpiDashboardTest extends TestCase
             User::where('username', 'ac.layyah')->firstOrFail(),
             Request::create('/', 'GET', [
                 'period_type' => 'weekly',
-                'week_no' => app(KpiPeriodService::class)->currentWeekNo(),
+                'week_no' => app(KpiPeriodService::class)->latestCompletedWeekNo(),
             ])
         );
 
@@ -1059,8 +1073,10 @@ class KpiDashboardTest extends TestCase
             ->get(route('kpi.dashboard', $card));
 
         $response->assertOk()
-            ->assertSee('Health Facility Inspection Map')
-            ->assertSee('Showing health inspection locations for the selected period')
+            ->assertSee('Health Facility Inspection Coverage Map')
+            ->assertSee('Showing all health facilities in the selected area with their current inspection status.')
+            ->assertSee('Total Health Facilities in', false)
+            ->assertDontSee('inspections mapped')
             ->assertSee('id="ppmuHealthDashboardMap"', false)
             ->assertSee('KPI Performance Cards')
             ->assertSee('KPI Charts')
@@ -1088,7 +1104,7 @@ class KpiDashboardTest extends TestCase
         $period = app(KpiPeriodService::class);
         $request = Request::create('/', 'GET', [
             'period_type' => 'weekly',
-            'week_no' => $period->currentWeekNo(),
+            'week_no' => $period->latestCompletedWeekNo(),
         ]);
 
         $dashboard = app(KpiDashboardService::class);
@@ -1109,6 +1125,19 @@ class KpiDashboardTest extends TestCase
         $this->assertSame(0, $pending);
         $this->assertSame(0, $rejected);
 
+        $this->assertSame('Health Facility Inspection Coverage Map', $map['title']);
+        $this->assertSame(
+            'Showing all health facilities in the selected area with their current inspection status.',
+            $map['subtitle']
+        );
+        $this->assertSame(
+            'Total Health Facilities in '.$user->tehsil->name.' Tehsil: 20',
+            $map['count_label']
+        );
+        $this->assertSame(20, (int) $map['facility_count']);
+        $this->assertSame(20, (int) $map['mapped_count']);
+        $this->assertSame(0, (int) $map['unmapped_count']);
+
         $this->assertSame((int) $values['Total Health Facilities'], $map['pin_count']);
         $this->assertCount((int) $values['Total Health Facilities'], $map['pins']);
 
@@ -1120,6 +1149,7 @@ class KpiDashboardTest extends TestCase
             $facilitiesInspected - $approved - $pending - $rejected,
             $statusCounts->get('blue', 0)
         );
+        $this->assertSame(18, $statusCounts->get('grey', 0));
 
         foreach ($map['pins'] as $pin) {
             $this->assertNotEmpty($pin['lat']);
@@ -1149,9 +1179,11 @@ class KpiDashboardTest extends TestCase
             ->get(route('kpi.dashboard', $card));
 
         $response->assertOk()
-            ->assertSee('Educational Institution Inspection Map')
-            ->assertSee('Showing education inspection locations for the selected period')
+            ->assertSee('Educational Institution Inspection Coverage Map')
+            ->assertSee('Showing all educational institutions in the selected area with their current inspection status.')
+            ->assertSee('Total Educational Institutions in', false)
             ->assertSee('id="ppmuHealthDashboardMap"', false)
+            ->assertDontSee('Health Facility Inspection Coverage Map')
             ->assertDontSee('Health Facility Inspection Map')
             ->assertSee('Not Inspected', false);
 
@@ -1172,7 +1204,7 @@ class KpiDashboardTest extends TestCase
         $period = app(KpiPeriodService::class);
         $request = Request::create('/', 'GET', [
             'period_type' => 'weekly',
-            'week_no' => $period->currentWeekNo(),
+            'week_no' => $period->latestCompletedWeekNo(),
         ]);
 
         $detail = app(KpiDashboardService::class)->detail($card, $user, $request);
@@ -1191,6 +1223,64 @@ class KpiDashboardTest extends TestCase
         $statusCounts = collect($map['pins'])->countBy('color');
         $this->assertSame(1, $statusCounts->get('green', 0));
         $this->assertSame(1, $statusCounts->get('blue', 0));
+        $this->assertSame(18, $statusCounts->get('grey', 0));
+    }
+
+    public function test_ac_layyah_education_weekly_seed_matches_observation_and_map_demo(): void
+    {
+        $this->seed(PpmuSeeder::class);
+        $card = KpiCard::where('slug', 'inspection-of-educational-institutions')->firstOrFail();
+        $user = User::where('username', 'ac.layyah')->firstOrFail();
+        $period = app(KpiPeriodService::class);
+        $request = Request::create('/', 'GET', [
+            'period_type' => 'weekly',
+            'week_no' => $period->latestCompletedWeekNo(),
+        ]);
+
+        $detail = app(KpiDashboardService::class)->detail($card, $user, $request);
+        $coverage = collect($detail['metricSections'])->firstWhere('title', 'Inspection Coverage');
+        $values = collect($coverage['metrics'])->mapWithKeys(fn ($m) => [$m['label'] => $m['value']]);
+        $observations = collect($detail['metricSections'])->firstWhere('title', 'School Observation Findings');
+        $map = $detail['educationMap'];
+        $chart = collect($detail['charts']['definitions'])->firstWhere('key', 'education_observation_availability');
+
+        $this->assertSame(20, (int) $values['Total Educational Institutions']);
+        $this->assertSame(2, (int) $values['Institutions Inspected']);
+        $this->assertSame(1, (int) $values['Review Target']);
+        $this->assertSame(1, (int) $values['Approved']);
+        $this->assertSame(0, (int) $values['Pending Review']);
+        $this->assertSame(0, (int) $values['Rejected']);
+
+        $premises = collect($observations['metrics'])->firstWhere('label', 'School Premises Condition');
+        $this->assertSame(1, (int) ($premises['observation_available'] ?? 0));
+        $this->assertSame(1, (int) ($premises['observation_not_available'] ?? 0));
+
+        $staff = collect($observations['metrics'])->firstWhere('label', 'Teachers and Staff Presence');
+        $this->assertSame(2, (int) ($staff['observation_available'] ?? 0));
+        $this->assertSame(0, (int) ($staff['observation_not_available'] ?? 0));
+
+        $water = collect($observations['metrics'])->firstWhere('label', 'Clean Drinking Water');
+        $this->assertSame(1, (int) ($water['observation_available'] ?? 0));
+        $this->assertSame(1, (int) ($water['observation_not_available'] ?? 0));
+
+        foreach ($observations['metrics'] as $metric) {
+            $this->assertSame(
+                2,
+                (int) ($metric['observation_available'] ?? 0) + (int) ($metric['observation_not_available'] ?? 0),
+                $metric['label'].' should total Institutions Inspected.'
+            );
+        }
+
+        $statusCounts = collect($map['pins'])->countBy('color');
+        $this->assertSame(18, $statusCounts->get('grey', 0));
+        $this->assertSame(1, $statusCounts->get('blue', 0));
+        $this->assertSame(1, $statusCounts->get('green', 0));
+        $this->assertSame(0, $statusCounts->get('orange', 0));
+        $this->assertSame(0, $statusCounts->get('red', 0));
+
+        $this->assertSame(2, (int) ($chart['data']['facilities_inspected'] ?? 0));
+        $this->assertSame(1, (int) ($chart['data']['datasets'][0]['values'][0] ?? 0));
+        $this->assertSame(1, (int) ($chart['data']['datasets'][1]['values'][0] ?? 0));
     }
 
     public function test_education_observation_findings_section_has_ten_cards(): void
@@ -1202,7 +1292,7 @@ class KpiDashboardTest extends TestCase
             User::where('username', 'ac.karor')->firstOrFail(),
             Request::create('/', 'GET', [
                 'period_type' => 'weekly',
-                'week_no' => app(KpiPeriodService::class)->currentWeekNo(),
+                'week_no' => app(KpiPeriodService::class)->latestCompletedWeekNo(),
             ])
         );
 
@@ -1230,7 +1320,7 @@ class KpiDashboardTest extends TestCase
         $this->assertTrue($keys->contains('education_observation_availability'));
         $this->assertFalse($keys->contains('education_student_attendance_summary'));
 
-        $chart = collect($detail['chartDefinitions'])->firstWhere('key', 'education_observation_availability');
+        $chart = collect($detail['charts']['definitions'])->firstWhere('key', 'education_observation_availability');
         $this->assertSame('School Observation Summary', $chart['title']);
         $this->assertSame('Positive and negative findings from inspected schools.', $chart['subtitle']);
         $this->assertSame(['Positive', 'Negative'], collect($chart['data']['datasets'])->pluck('label')->all());
@@ -1269,8 +1359,8 @@ class KpiDashboardTest extends TestCase
         $this->actingAs($user)
             ->get(route('kpi.dashboard', $card))
             ->assertOk()
-            ->assertSee('School Zebra Crossing Inspection Map')
-            ->assertSee('5 inspections mapped')
+            ->assertSee('School Zebra Crossing Inspection Coverage Map')
+            ->assertSee('Total School Zebra Crossings in', false)
             ->assertSee('locationMap:', false)
             ->assertSee('"pin_count":5', false)
             ->assertDontSee('Complaint Location Map');

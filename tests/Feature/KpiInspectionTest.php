@@ -227,7 +227,7 @@ class KpiInspectionTest extends TestCase
             ->assertSee('View Evidence')
             ->assertSee('id="ppmuObservationEvidenceModal"', false)
             ->assertSee('Evidence Images')
-            ->assertSee('Field evidence photo', false)
+            ->assertSee('Before inspection evidence', false)
             ->assertDontSee('Deep Cleaning evidence', false)
             ->assertDontSee('Social Sector')
             ->assertDontSee('ppmu-inspection-summary-grid', false);
@@ -239,14 +239,14 @@ class KpiInspectionTest extends TestCase
         $card = KpiCard::where('slug', 'inspection-of-health-facilities')->firstOrFail();
         $admin = User::where('username', 'super_admin')->firstOrFail();
         $inspection = KpiInspection::where('kpi_card_id', $card->id)
-            ->whereHas('attachments', fn ($q) => $q->where('observation_key', 'deep_cleaning'))
+            ->whereHas('attachments', fn ($q) => $q->where('observation_key', 'deep_cleaning_available'))
             ->firstOrFail();
 
         $this->actingAs($admin)
             ->get(route('kpi.inspections.show', [$card, $inspection]))
             ->assertOk()
             ->assertSee('id="ppmuObservationEvidenceModal"', false)
-            ->assertSee('data-observation-key="deep_cleaning"', false)
+            ->assertSee('data-observation-key="deep_cleaning_available"', false)
             ->assertSee('data-evidence-url', false);
     }
 
@@ -342,14 +342,15 @@ class KpiInspectionTest extends TestCase
         $this->actingAs($ac)
             ->from(route('kpi.inspections.show', [$card, $notSelected]))
             ->post(route('kpi.inspections.reject', [$card, $notSelected]), [
-                'remarks' => 'Should not be accepted.',
+                'remarks' => 'Deficiency confirmed during review.',
             ])
-            ->assertRedirect(route('kpi.inspections.show', [$card, $notSelected]))
-            ->assertSessionHasErrors('review');
+            ->assertRedirect(route('kpi.inspections.show', [$card, $notSelected]));
 
         $notSelected->refresh();
-        $this->assertSame(KpiInspection::STATUS_INSPECTED, $notSelected->status);
-        $this->assertFalse($notSelected->selected_for_review);
+        $this->assertSame(KpiInspection::STATUS_REJECTED, $notSelected->status);
+        $this->assertTrue($notSelected->selected_for_review);
+        $this->assertSame($ac->id, $notSelected->reviewed_by);
+        $this->assertSame('Deficiency confirmed during review.', $notSelected->rejection_reason);
     }
 
     public function test_ac_scope_limits_inspections_to_tehsil(): void
@@ -378,8 +379,8 @@ class KpiInspectionTest extends TestCase
 
         KpiCard::where('is_active', true)->each(function (KpiCard $card) {
             $expected = match ($card->slug) {
-                'inspection-of-health-facilities' => 75,
-                'inspection-of-educational-institutions' => 62,
+                'inspection-of-health-facilities' => 66,
+                'inspection-of-educational-institutions' => 50,
                 'price-of-roti' => 15,
                 'price-of-plain-bakery-bread' => 9,
                 'price-control-of-essential-commodities' => 47,
@@ -412,7 +413,7 @@ class KpiInspectionTest extends TestCase
             );
         });
 
-        $this->assertSame(400, KpiInspection::count());
+        $this->assertSame(379, KpiInspection::count());
 
         $total = KpiInspection::count();
         $this->assertGreaterThan(0, KpiInspection::where('status', KpiInspection::STATUS_INSPECTED)->count());

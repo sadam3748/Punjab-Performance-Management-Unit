@@ -278,7 +278,7 @@
     <h3><i class="bi bi-check2-square"></i> Review Decision</h3>
     <p class="ppmu-review-helper">Approve verified evidence or reject with a clear reason.</p>
 
-    @if($inspection->isPending() && $canReview)
+    @if($inspection->isReviewable() && $canReview)
         <div class="ppmu-review-actions-unified">
             <label class="form-label" for="review-remarks">Remarks</label>
             <textarea
@@ -338,7 +338,7 @@
             @if($inspection->rejection_reason)
                 <p><strong>Rejection Reason:</strong> {{ $inspection->rejection_reason }}</p>
             @endif
-            @if($inspection->isPending() && ! $canReview)
+            @if($inspection->isReviewable() && ! $canReview)
                 <p class="text-muted mb-0">You have read-only access to this inspection review.</p>
             @endif
         </div>

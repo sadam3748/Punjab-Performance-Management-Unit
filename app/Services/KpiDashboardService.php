@@ -964,7 +964,7 @@ class KpiDashboardService
             ? min(100.0, round(($reviewed / $reviewTarget) * 100, 1))
             : 0.0;
 
-        $displayInspections = $this->healthObservationInspections($inspections, $institutionsInspected);
+        $displayInspections = $this->educationObservationInspections($inspections);
         $observations = $this->educationObservationCountsFromInspections($displayInspections);
 
         $acWeeklyTarget = 2;
@@ -1234,12 +1234,35 @@ class KpiDashboardService
 
     private function healthObservationInspections(Collection $inspections, float $facilitiesInspected): Collection
     {
-        // Observation cards must aggregate real inspection responses from ALL completed inspections
-        // in the selected period and authorized geography.
+        // Health observation cards include every completed facility visit in scope:
+        // approved, pending-review, and inspected-only (non-draft).
         return $inspections
             ->filter(fn (KpiInspection $inspection): bool => in_array(
                 $inspection->status,
-                [KpiInspection::STATUS_APPROVED, KpiInspection::STATUS_PENDING],
+                [
+                    KpiInspection::STATUS_APPROVED,
+                    KpiInspection::STATUS_PENDING,
+                    KpiInspection::STATUS_INSPECTED,
+                ],
+                true
+            ))
+            ->values();
+    }
+
+    /**
+     * Education observation cards include every completed school visit in scope:
+     * approved, pending-review, and inspected-only (non-draft).
+     */
+    private function educationObservationInspections(Collection $inspections): Collection
+    {
+        return $inspections
+            ->filter(fn (KpiInspection $inspection): bool => in_array(
+                $inspection->status,
+                [
+                    KpiInspection::STATUS_APPROVED,
+                    KpiInspection::STATUS_PENDING,
+                    KpiInspection::STATUS_INSPECTED,
+                ],
                 true
             ))
             ->values();
@@ -1359,7 +1382,7 @@ class KpiDashboardService
     {
         $demo = match ($user->username) {
             'ac.lahore' => $slug === 'inspection-of-health-facilities' ? 48 : 156,
-            'ac.layyah' => $slug === 'inspection-of-health-facilities' ? 20 : 112,
+            'ac.layyah' => $slug === 'inspection-of-health-facilities' ? 20 : 20,
             'ac.karor' => $slug === 'inspection-of-health-facilities' ? 28 : 20,
             'dc.layyah' => $slug === 'inspection-of-health-facilities' ? 48 : 58,
             'com.dgkhan', 'com.lahore' => $slug === 'inspection-of-health-facilities' ? 120 : 380,

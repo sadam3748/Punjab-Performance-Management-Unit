@@ -6354,26 +6354,26 @@ body:has(.ppmu-main-dashboard),
     }
 }
 
-.ppmu-detail-page .ppmu-chart-grid:has(> .ppmu-chart-card[data-chart-key="education_observation_availability"]) > .ppmu-chart-card .card-ppmf-body {
+.ppmu-detail-page .ppmu-chart-grid:has(> .ppmu-chart-card[data-chart-key="education_observation_availability"], > .ppmu-chart-card[data-chart-key="health_observation_availability"]) > .ppmu-chart-card .card-ppmf-body {
     min-height: 440px;
     padding: 12px 10px 16px;
 }
 
-.ppmu-detail-page .ppmu-chart-grid:has(> .ppmu-chart-card[data-chart-key="education_observation_availability"]) > .ppmu-chart-card canvas {
+.ppmu-detail-page .ppmu-chart-grid:has(> .ppmu-chart-card[data-chart-key="education_observation_availability"], > .ppmu-chart-card[data-chart-key="health_observation_availability"]) > .ppmu-chart-card canvas {
     height: 410px !important;
 }
 
-.ppmu-detail-page .ppmu-chart-card[data-chart-key="education_observation_availability"] .card-ppmf-header {
+.ppmu-detail-page .ppmu-chart-card:is([data-chart-key="education_observation_availability"], [data-chart-key="health_observation_availability"]) .card-ppmf-header {
     padding-bottom: 12px;
 }
 
-.ppmu-detail-page .ppmu-chart-card[data-chart-key="education_observation_availability"] .card-ppmf-title {
+.ppmu-detail-page .ppmu-chart-card:is([data-chart-key="education_observation_availability"], [data-chart-key="health_observation_availability"]) .card-ppmf-title {
     color: #173f2e;
     font-size: 17px;
     font-weight: 800;
 }
 
-.ppmu-detail-page .ppmu-chart-card[data-chart-key="education_observation_availability"] .card-ppmf-header small {
+.ppmu-detail-page .ppmu-chart-card:is([data-chart-key="education_observation_availability"], [data-chart-key="health_observation_availability"]) .card-ppmf-header small {
     display: block;
     margin-top: 4px;
     font-size: 12px;
@@ -6381,12 +6381,12 @@ body:has(.ppmu-main-dashboard),
 }
 
 @media (max-width: 768px) {
-    .ppmu-detail-page .ppmu-chart-grid:has(> .ppmu-chart-card[data-chart-key="education_observation_availability"]) > .ppmu-chart-card .card-ppmf-body {
+    .ppmu-detail-page .ppmu-chart-grid:has(> .ppmu-chart-card[data-chart-key="education_observation_availability"], > .ppmu-chart-card[data-chart-key="health_observation_availability"]) > .ppmu-chart-card .card-ppmf-body {
         min-height: 500px;
         padding: 10px 8px 14px;
     }
 
-    .ppmu-detail-page .ppmu-chart-grid:has(> .ppmu-chart-card[data-chart-key="education_observation_availability"]) > .ppmu-chart-card canvas {
+    .ppmu-detail-page .ppmu-chart-grid:has(> .ppmu-chart-card[data-chart-key="education_observation_availability"], > .ppmu-chart-card[data-chart-key="health_observation_availability"]) > .ppmu-chart-card canvas {
         height: 475px !important;
     }
 }
@@ -7643,7 +7643,9 @@ body:has(.ppmu-main-dashboard),
     border: 1px solid #93c5fd;
 }
 
-.ppmu-health-map-status-orange {
+.ppmu-health-map-status-orange,
+.ppmu-health-map-status-amber,
+.ppmu-health-map-status-yellow {
     background: #ffedd5;
     color: #c2410c;
     border: 1px solid #fdba74;
@@ -8202,4 +8204,12 @@ body:has(.ppmu-main-dashboard),
 
 @media (max-width: 419.98px) {
     .ppmu-main-dashboard .ppmu-kpi-grid { grid-template-columns: minmax(0, 255px); justify-content: center; }
+}
+
+/* Map popup semantic safeguard: Pending Review must never inherit marker red. */
+.leaflet-popup .ppmu-health-map-status.is-pending-review,
+.leaflet-popup .ppmu-health-map-status-orange {
+    color: #a16207 !important;
+    background: #fef3c7 !important;
+    border-color: #fbbf24 !important;
 }

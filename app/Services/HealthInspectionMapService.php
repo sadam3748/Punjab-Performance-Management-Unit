@@ -40,24 +40,41 @@ class HealthInspectionMapService
             ->groupBy(fn (KpiInspection $inspection) => $this->facilityCodeFromIdentifier((string) $inspection->identifier))
             ->map(fn (Collection $records) => $records->sortByDesc(fn (KpiInspection $record) => $this->statusPriority($record))->first());
         $baselines = $this->assignedFacilities($user);
-        $pins = $baselines->map(function (HealthFacilityBaseline $facility) use ($card, $request, $inspectionByCode, $reviewedPinIds) {
+        $facilityCount = $baselines->count();
+        $mappedBaselines = $baselines
+            ->filter(fn (HealthFacilityBaseline $facility): bool => $this->facilityHasCoordinates($facility))
+            ->values();
+        $unmappedCount = max(0, $facilityCount - $mappedBaselines->count());
+
+        $pins = $mappedBaselines->map(function (HealthFacilityBaseline $facility) use ($card, $request, $inspectionByCode, $reviewedPinIds) {
             $inspection = $inspectionByCode->get($facility->facility_code);
-            if (! $inspection || $inspection->status === KpiInspection::STATUS_DRAFT) return $this->uninspectedPin($card, $facility, $request);
-            $status = in_array($inspection->id, $reviewedPinIds, true) ? $this->statusForInspection($inspection) : $this->inspectedStatus();
-            return $this->inspectionPin($card, $inspection, $status);
+            if (! $inspection || $inspection->status === KpiInspection::STATUS_DRAFT) {
+                return $this->uninspectedPin($card, $facility, $request);
+            }
+            $status = in_array($inspection->id, $reviewedPinIds, true)
+                ? $this->statusForInspection($inspection)
+                : $this->inspectedStatus();
+
+            return $this->inspectionPin($card, $inspection, $status, $request);
         })->all();
         $statusCounts = collect($pins)->countBy('status')->all();
+        $mappedCount = count($pins);
 
         return [
-            'title' => 'Health Facility Inspection Map',
-            'subtitle' => 'Showing health inspection locations for the selected period. Click any pin to view inspection detail.',
+            'title' => 'Health Facility Inspection Coverage Map',
+            'subtitle' => 'Showing all health facilities in the selected area with their current inspection status.',
             'scope_label' => $this->scopeLabel($user),
+            'count_label' => $this->facilityCountLabel($user, $facilityCount),
+            'entity_label' => 'Health Facilities',
             'center' => self::PUNJAB_CENTER,
             'pins' => $pins,
-            'pin_count' => count($pins),
+            'pin_count' => $mappedCount,
+            'facility_count' => $facilityCount,
+            'mapped_count' => $mappedCount,
+            'unmapped_count' => $unmappedCount,
             'status_counts' => array_merge(['not_inspected' => 0, 'inspected' => 0, 'pending_review' => 0, 'approved' => 0, 'rejected' => 0], $statusCounts),
             'inspection_ids' => $inspections->pluck('id')->all(),
-            'empty_message' => 'No health inspections found for the selected period.',
+            'empty_message' => 'No health facilities found for the selected area.',
         ];
     }
 
@@ -207,7 +224,7 @@ class HealthInspectionMapService
      * @param  array{key: string, label: string, color: string}  $status
      * @return array<string, mixed>
      */
-    private function inspectionPin(KpiCard $card, KpiInspection $inspection, array $status): array
+    private function inspectionPin(KpiCard $card, KpiInspection $inspection, array $status, Request $request): array
     {
         return [
             'id' => $inspection->id,
@@ -225,12 +242,17 @@ class HealthInspectionMapService
             'tehsil' => $inspection->tehsil?->name ?? '—',
             'address' => $this->shortAddress($inspection),
             'district' => $inspection->district?->name ?? '—',
-            'review_status' => $status['label'],
+            'review_status' => $status['key'] === 'inspected' ? 'Pending Review' : $status['label'],
+            'review_color' => $status['key'] === 'inspected' ? 'amber' : $status['color'],
             'operational_status' => 'Completed',
             'action_label' => 'View Details',
             'observation_issues' => $this->inspectionService->countHealthDeficiencies($inspection),
             'important_finding' => $this->inspectionService->healthDeficiencySummary($inspection),
-            'detail_url' => route('kpi.inspections.show', [$card, $inspection]),
+            'detail_url' => route('kpi.inspections.show', [
+                $card,
+                $inspection,
+                'return_url' => route('kpi.dashboard', [$card] + $request->only(['period_type', 'week_no', 'month', 'year', 'date'])),
+            ]),
         ];
     }
 
@@ -254,19 +276,45 @@ class HealthInspectionMapService
 
     private function scopeLabel(User $user): string
     {
-        if ($user->tehsil?->name) {
-            return $user->tehsil->name.' Tehsil';
-        }
+        return match ($user->role?->slug) {
+            'ac', 'field_user' => ($user->tehsil?->name ?? '—').' Tehsil',
+            'dc' => ($user->district?->name ?? '—').' District',
+            'commissioner' => ($user->division?->name ?? '—').' Division',
+            default => 'Punjab',
+        };
+    }
 
-        if ($user->district?->name) {
-            return $user->district->name.' District';
-        }
+    private function facilityCountLabel(User $user, int $facilityCount): string
+    {
+        return match ($user->role?->slug) {
+            'ac', 'field_user' => sprintf(
+                'Total Health Facilities in %s Tehsil: %d',
+                $user->tehsil?->name ?? '—',
+                $facilityCount
+            ),
+            'dc' => sprintf(
+                'Total Health Facilities in %s District: %d',
+                $user->district?->name ?? '—',
+                $facilityCount
+            ),
+            'commissioner' => sprintf(
+                'Total Health Facilities in %s Division: %d',
+                $user->division?->name ?? '—',
+                $facilityCount
+            ),
+            default => sprintf('Total Health Facilities in Punjab: %d', $facilityCount),
+        };
+    }
 
-        if ($user->division?->name) {
-            return $user->division->name.' Division';
-        }
+    private function facilityHasCoordinates(HealthFacilityBaseline $facility): bool
+    {
+        $lat = $facility->latitude;
+        $lng = $facility->longitude;
 
-        return 'Punjab';
+        return $lat !== null
+            && $lng !== null
+            && (float) $lat !== 0.0
+            && (float) $lng !== 0.0;
     }
 
     /** @return array{key: string, label: string, color: string} */

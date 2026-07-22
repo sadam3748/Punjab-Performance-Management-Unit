@@ -573,6 +573,7 @@ class KpiInspectionService
             $query->where('status', $request->string('insp_status')->toString());
         }
         $this->geoFilterService->apply($query, $request, $user);
+        $this->applyCompletedDayDateRange($query);
 
         $perPage = min(50, max(10, (int) $request->input('insp_per_page', 10)));
 
@@ -625,11 +626,11 @@ class KpiInspectionService
 
     public function canReviewInspection(KpiInspection $inspection, User $user): bool
     {
-        if (! $inspection->isSelectedFor($user)) {
+        if ($inspection->status !== KpiInspection::STATUS_INSPECTED && ! $inspection->isSelectedFor($user)) {
             return false;
         }
 
-        if (! $inspection->isPending()) {
+        if (! $inspection->isReviewable()) {
             return false;
         }
 
@@ -648,7 +649,7 @@ class KpiInspectionService
 
     public function approveInspection(KpiInspection $inspection, User $user, ?string $remarks = null): KpiInspection
     {
-        if (! $inspection->isSelectedFor($user)) {
+        if ($inspection->status !== KpiInspection::STATUS_INSPECTED && ! $inspection->isSelectedFor($user)) {
             throw ValidationException::withMessages([
                 'review' => 'Review sample target for the selected period has already been reached.',
             ]);
@@ -657,6 +658,7 @@ class KpiInspectionService
 
         $inspection->update([
             'status' => KpiInspection::STATUS_APPROVED,
+            ...$this->reviewSelectionAttributes($inspection, $user),
             'reviewed_by' => $user->id,
             'reviewed_at' => now(),
             'review_remarks' => $remarks,
@@ -668,7 +670,7 @@ class KpiInspectionService
 
     public function rejectInspection(KpiInspection $inspection, User $user, ?string $reason = null): KpiInspection
     {
-        if (! $inspection->isSelectedFor($user)) {
+        if ($inspection->status !== KpiInspection::STATUS_INSPECTED && ! $inspection->isSelectedFor($user)) {
             throw ValidationException::withMessages([
                 'review' => 'Review sample target for the selected period has already been reached.',
             ]);
@@ -679,6 +681,7 @@ class KpiInspectionService
 
         $inspection->update([
             'status' => KpiInspection::STATUS_REJECTED,
+            ...$this->reviewSelectionAttributes($inspection, $user),
             'reviewed_by' => $user->id,
             'reviewed_at' => now(),
             'review_remarks' => $remarks !== '' ? $remarks : null,
@@ -686,6 +689,21 @@ class KpiInspectionService
         ]);
 
         return $inspection->fresh(['reviewedBy', 'attachments', 'district', 'tehsil', 'inspectedBy']);
+    }
+
+    /** @return array<string, mixed> */
+    private function reviewSelectionAttributes(KpiInspection $inspection, User $user): array
+    {
+        if ($inspection->status !== KpiInspection::STATUS_INSPECTED || $inspection->selected_for_review) {
+            return [];
+        }
+
+        return [
+            'selected_for_review' => true,
+            'selected_by' => $user->id,
+            'selected_at' => now(),
+            'review_level' => (string) ($user->role?->slug ?? ''),
+        ];
     }
 
     public function canReviewInspections(User $user): bool

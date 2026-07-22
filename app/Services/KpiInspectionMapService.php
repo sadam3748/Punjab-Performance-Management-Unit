@@ -39,21 +39,28 @@ class KpiInspectionMapService
                 $card,
                 $inspection,
                 $statusMap[$inspection->id] ?? $this->inspectedStatus(),
+                $request,
             ))
             ->all();
 
         $center = $this->centerForPins($pins, $user);
         $statusCounts = collect($pins)->countBy('status');
+        $entityName = KpiLocationSlugs::entityName($card->slug);
+        $totalCount = $allInspections->count();
 
         return [
             'title' => KpiLocationSlugs::mapTitle($card->slug),
-            'subtitle' => $this->mapSubtitle($request),
+            'subtitle' => sprintf('Showing all %s in the selected area with their current inspection status.', strtolower($entityName)),
             'scope_label' => $this->scopeLabel($user),
+            'count_label' => $this->entityCountLabel($user, $entityName, $totalCount),
+            'entity_label' => $entityName,
             'center' => $center,
             'pins' => $pins,
             'pin_count' => count($pins),
-            'record_count' => $allInspections->count(),
-            'unmapped_count' => max(0, $allInspections->count() - count($pins)),
+            'mapped_count' => count($pins),
+            'facility_count' => $totalCount,
+            'record_count' => $totalCount,
+            'unmapped_count' => max(0, $totalCount - count($pins)),
             'status_counts' => [
                 'inspected' => (int) $statusCounts->get('inspected', 0),
                 'pending_review' => (int) $statusCounts->get('pending_review', 0),
@@ -127,7 +134,7 @@ class KpiInspectionMapService
      * @param  array{key: string, label: string, color: string}  $status
      * @return array<string, mixed>
      */
-    private function inspectionPin(KpiCard $card, KpiInspection $inspection, array $status): array
+    private function inspectionPin(KpiCard $card, KpiInspection $inspection, array $status, Request $request): array
     {
         $detail = is_array($inspection->detail_data)
             ? $inspection->detail_data
@@ -166,7 +173,11 @@ class KpiInspectionMapService
             'observation_issues' => $this->issueSummary($detail, $inspection),
             'important_finding' => $this->observationService->importantFindingForInspection($inspection),
             'school_name' => $card->slug === 'zebra-crossings' ? ($inspection->entity_name ?: null) : null,
-            'detail_url' => route('kpi.inspections.show', [$card, $inspection]),
+            'detail_url' => route('kpi.inspections.show', [
+                $card,
+                $inspection,
+                'return_url' => route('kpi.dashboard', [$card] + $request->only(['period_type', 'week_no', 'month', 'year', 'date'])),
+            ]),
         ];
     }
 
@@ -269,6 +280,16 @@ class KpiInspectionMapService
         }
 
         return 'Punjab';
+    }
+
+    private function entityCountLabel(User $user, string $entityName, int $total): string
+    {
+        return match ($user->role?->slug) {
+            'ac', 'field_user' => sprintf('Total %s in %s Tehsil: %d', $entityName, $user->tehsil?->name ?? '—', $total),
+            'dc' => sprintf('Total %s in %s District: %d', $entityName, $user->district?->name ?? '—', $total),
+            'commissioner' => sprintf('Total %s in %s Division: %d', $entityName, $user->division?->name ?? '—', $total),
+            default => sprintf('Total %s in Punjab: %d', $entityName, $total),
+        };
     }
 
     private function mapSubtitle(Request $request): string

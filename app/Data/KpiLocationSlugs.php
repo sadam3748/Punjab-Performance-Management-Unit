@@ -57,27 +57,45 @@ class KpiLocationSlugs
     public static function mapTitle(string $slug): string
     {
         return match (self::normalize($slug)) {
-            'price-of-roti' => 'Tandoor Inspection Map',
-            'price-of-plain-bakery-bread' => 'Bakery Inspection Map',
-            'price-control-of-essential-commodities' => 'Sale Point Inspection Map',
-            'repair-of-small-roads-in-both-urban-and-rural-areas' => 'Road Maintenance Work Map',
-            'zebra-crossings' => 'School Zebra Crossing Inspection Map',
-            'dysfunctional-streetlights' => 'Streetlight Inspection and Repair Map',
-            'covering-of-manholes' => 'Manhole Coverage Map',
-            'functional-and-clean-water-filtration-plants' => 'Water Filtration Plant Map',
-            'violation-of-marriage-functions-act' => 'Marriage Hall Inspection Map',
-            'anti-encroachment-campaign' => 'Anti-Encroachment Action Map',
-            'regulation-of-shops-and-handcarts' => 'Market Inspection Map',
-            'stray-dogs' => 'Stray Dog Activity Map',
-            'removal-of-wall-chalking' => 'Wall-Chalking Removal Map',
-            'graveyards' => 'Graveyard Standards Map',
-            'illegal-decanting' => 'LPG Sale Point Map',
-            'suthra-punjab-campaign' => 'Suthra Punjab UC Inspection Map',
-            'maintenance-of-greenbelts' => 'Parks & Greenbelt Map',
-            'maintenance-of-drains-and-sewerage-lines' => 'Drain & Sewerage Map',
-            'bus-terminals' => 'Bus Terminal Inspection Map',
-            'e-biz' => 'E-Biz Help Desk Map',
-            default => 'Inspection Location Map',
+            'price-of-roti' => 'Tandoor Inspection Coverage Map',
+            'price-of-plain-bakery-bread' => 'Bakery Inspection Coverage Map',
+            'price-control-of-essential-commodities' => 'Commodity Sale Point Inspection Coverage Map',
+            'repair-of-small-roads-in-both-urban-and-rural-areas' => 'Road Inspection Coverage Map',
+            'zebra-crossings' => 'School Zebra Crossing Inspection Coverage Map',
+            'dysfunctional-streetlights' => 'Streetlight Inspection Coverage Map',
+            'covering-of-manholes' => 'Manhole Inspection Coverage Map',
+            'functional-and-clean-water-filtration-plants' => 'Water Filtration Plant Inspection Coverage Map',
+            'violation-of-marriage-functions-act' => 'Marriage Hall Inspection Coverage Map',
+            'graveyards' => 'Graveyard Inspection Coverage Map',
+            'bus-terminals' => 'Bus Terminal Inspection Coverage Map',
+            default => self::entityName($slug).' Inspection Coverage Map',
+        };
+    }
+
+    public static function entityName(string $slug): string
+    {
+        return match (self::normalize($slug)) {
+            'price-of-roti' => 'Tandoors',
+            'price-of-plain-bakery-bread' => 'Bakeries',
+            'price-control-of-essential-commodities' => 'Commodity Sale Points',
+            'repair-of-small-roads-in-both-urban-and-rural-areas' => 'Roads',
+            'zebra-crossings' => 'School Zebra Crossings',
+            'dysfunctional-streetlights' => 'Streetlights',
+            'covering-of-manholes' => 'Manholes',
+            'functional-and-clean-water-filtration-plants' => 'Water Filtration Plants',
+            'violation-of-marriage-functions-act' => 'Marriage Halls',
+            'anti-encroachment-campaign' => 'Encroachment Locations',
+            'regulation-of-shops-and-handcarts' => 'Shops and Handcarts',
+            'stray-dogs' => 'Stray Dog Locations',
+            'removal-of-wall-chalking' => 'Wall-Chalking Locations',
+            'graveyards' => 'Graveyards',
+            'illegal-decanting' => 'LPG Sale Points',
+            'suthra-punjab-campaign' => 'Union Councils',
+            'maintenance-of-greenbelts' => 'Parks and Greenbelts',
+            'maintenance-of-drains-and-sewerage-lines' => 'Drains and Sewerage Locations',
+            'bus-terminals' => 'Bus Terminals',
+            'e-biz' => 'E-Biz Help Desks',
+            default => 'Locations',
         };
     }
 

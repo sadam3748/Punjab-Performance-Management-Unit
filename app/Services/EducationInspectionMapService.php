@@ -44,21 +44,28 @@ class EducationInspectionMapService
             $inspection = $inspectionByCode->get($institution->institution_code);
             if (! $inspection || $inspection->status === KpiInspection::STATUS_DRAFT) return $this->uninspectedPin($card, $institution, $request);
             $status = in_array($inspection->id, $reviewedPinIds, true) ? $this->statusForInspection($inspection) : $this->inspectedStatus();
-            return $this->inspectionPin($card, $inspection, $status);
+            return $this->inspectionPin($card, $inspection, $status, $request);
         })->all();
         $statusCounts = collect($pins)->countBy('status')->all();
+        $institutionCount = $baselines->count();
+        $mappedCount = $baselines->filter(fn (EducationInstitutionBaseline $institution): bool => $this->institutionHasCoordinates($institution))->count();
+        $unmappedCount = max(0, $institutionCount - $mappedCount);
 
         return [
-            'title' => 'Educational Institution Inspection Map',
-            'subtitle' => 'Showing education inspection locations for the selected period. Click any pin to view inspection detail.',
+            'title' => 'Educational Institution Inspection Coverage Map',
+            'subtitle' => 'Showing all educational institutions in the selected area with their current inspection status.',
             'scope_label' => $this->scopeLabel($user),
+            'count_label' => $this->institutionCountLabel($user, $institutionCount),
             'center' => self::PUNJAB_CENTER,
             'pins' => $pins,
             'pin_count' => count($pins),
+            'mapped_count' => $mappedCount,
+            'facility_count' => $institutionCount,
+            'unmapped_count' => $unmappedCount,
             'status_counts' => array_merge(['not_inspected' => 0, 'inspected' => 0, 'pending_review' => 0, 'approved' => 0, 'rejected' => 0], $statusCounts),
             'inspection_ids' => $inspections->pluck('id')->all(),
             'empty_message' => 'No education inspections found for the selected period.',
-            'entity_label' => 'Institution',
+            'entity_label' => 'Educational Institutions',
         ];
     }
 
@@ -208,7 +215,7 @@ class EducationInspectionMapService
      * @param  array{key: string, label: string, color: string}  $status
      * @return array<string, mixed>
      */
-    private function inspectionPin(KpiCard $card, KpiInspection $inspection, array $status): array
+    private function inspectionPin(KpiCard $card, KpiInspection $inspection, array $status, Request $request): array
     {
         $detail = is_array($inspection->detail_data)
             ? $inspection->detail_data
@@ -231,14 +238,19 @@ class EducationInspectionMapService
             'tehsil' => $inspection->tehsil?->name ?? '—',
             'address' => $this->shortAddress($inspection),
             'district' => $inspection->district?->name ?? '—',
-            'review_status' => $status['label'],
+            'review_status' => $status['key'] === 'inspected' ? 'Pending Review' : $status['label'],
+            'review_color' => $status['key'] === 'inspected' ? 'amber' : $status['color'],
             'operational_status' => 'Completed',
             'action_label' => 'View Details',
             'observation_issues' => $this->inspectionService->countEducationDeficiencies($inspection),
             'important_finding' => $this->inspectionService->educationDeficiencySummary($inspection),
             'students_enrolled' => $detail['students_enrolled'] ?? '—',
             'students_present' => $detail['students_present'] ?? '—',
-            'detail_url' => route('kpi.inspections.show', [$card, $inspection]),
+            'detail_url' => route('kpi.inspections.show', [
+                $card,
+                $inspection,
+                'return_url' => route('kpi.dashboard', [$card] + $request->only(['period_type', 'week_no', 'month', 'year', 'date'])),
+            ]),
         ];
     }
 
@@ -275,6 +287,24 @@ class EducationInspectionMapService
         }
 
         return 'Punjab';
+    }
+
+    private function institutionCountLabel(User $user, int $count): string
+    {
+        return match ($user->role?->slug) {
+            'ac', 'field_user' => sprintf('Total Educational Institutions in %s Tehsil: %d', $user->tehsil?->name ?? '—', $count),
+            'dc' => sprintf('Total Educational Institutions in %s District: %d', $user->district?->name ?? '—', $count),
+            'commissioner' => sprintf('Total Educational Institutions in %s Division: %d', $user->division?->name ?? '—', $count),
+            default => sprintf('Total Educational Institutions in Punjab: %d', $count),
+        };
+    }
+
+    private function institutionHasCoordinates(EducationInstitutionBaseline $institution): bool
+    {
+        return $institution->latitude !== null
+            && $institution->longitude !== null
+            && (float) $institution->latitude !== 0.0
+            && (float) $institution->longitude !== 0.0;
     }
 
     /** @return array{key: string, label: string, color: string} */

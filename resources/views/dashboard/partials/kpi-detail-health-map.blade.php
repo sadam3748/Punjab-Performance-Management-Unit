@@ -2,6 +2,11 @@
     $map = $healthMap ?? [];
     $pins = $map['pins'] ?? [];
     $pinCount = (int) ($map['pin_count'] ?? count($pins));
+    $facilityCount = (int) ($map['facility_count'] ?? $pinCount);
+    $mappedCount = (int) ($map['mapped_count'] ?? $pinCount);
+    $unmappedCount = (int) ($map['unmapped_count'] ?? 0);
+    $countLabel = $map['count_label'] ?? null;
+    $entityLabel = $map['entity_label'] ?? 'Locations';
 @endphp
 
 <div class="ppmu-health-map-block" id="kpiDetailHealthMap">
@@ -18,8 +23,13 @@
                 <i class="bi bi-pin-map-fill" aria-hidden="true"></i>
                 <span class="ppmu-health-map-scope-label">{{ $map['scope_label'] ?? 'Inspection locations' }}</span>
             </div>
-            <span class="ppmu-health-map-pin-count" id="ppmuHealthMapPinCount">
-                {{ $pinCount }} {{ $pinCount === 1 ? 'inspection mapped' : 'inspections mapped' }}
+            <span class="ppmu-health-map-pin-count" id="ppmuHealthMapPinCount"
+                  @if($countLabel) data-count-label="1" @endif>
+                @if($countLabel)
+                    {{ $countLabel }}
+                @else
+                    Total {{ $entityLabel }}: {{ number_format($facilityCount) }}
+                @endif
             </span>
         </div>
 
@@ -39,8 +49,14 @@
             <span class="ppmu-health-map-legend-item is-green" data-map-status="approved"><i class="ppmu-health-map-legend-dot green"></i> Approved{{ $mapStatusCounts ? ' ('.number_format($mapStatusCounts['approved'] ?? 0).')' : '' }}</span>
             <span class="ppmu-health-map-legend-item is-red" data-map-status="rejected"><i class="ppmu-health-map-legend-dot red"></i> Rejected{{ $mapStatusCounts ? ' ('.number_format($mapStatusCounts['rejected'] ?? 0).')' : '' }}</span>
         </div>
-        @if(array_key_exists('unmapped_count', $map))
-            <p class="ppmu-health-map-unmapped mb-0" id="ppmuHealthMapUnmapped">Records without mapped location: <strong>{{ number_format((int) $map['unmapped_count']) }}</strong></p>
+        @if(array_key_exists('unmapped_count', $map) && $unmappedCount > 0)
+            <p class="ppmu-health-map-unmapped mb-0" id="ppmuHealthMapUnmapped">
+                Mapped Locations: <strong>{{ number_format($mappedCount) }}</strong> of <strong>{{ number_format($facilityCount) }}</strong>
+                <span class="ppmu-health-map-unmapped-sep">·</span>
+                Locations without coordinates: <strong>{{ number_format($unmappedCount) }}</strong>
+            </p>
+        @elseif(array_key_exists('unmapped_count', $map))
+            <p class="ppmu-health-map-unmapped mb-0" id="ppmuHealthMapUnmapped" hidden></p>
         @endif
     </div>
 </div>

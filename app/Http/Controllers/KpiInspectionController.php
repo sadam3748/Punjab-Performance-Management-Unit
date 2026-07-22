@@ -88,7 +88,7 @@ class KpiInspectionController extends Controller
         return view('kpi-inspections.show', [
             'kpiCard' => $kpiCard,
             'user' => $user,
-            'backUrl' => $this->inspectionListBackUrl($request),
+            'backUrl' => $this->inspectionListBackUrl($request, $kpiCard),
         ] + $data);
     }
 
@@ -164,7 +164,7 @@ class KpiInspectionController extends Controller
             ->with('success', 'Inspection rejected and recorded.');
     }
 
-    private function inspectionListBackUrl(Request $request): string
+    private function inspectionListBackUrl(Request $request, ?KpiCard $kpiCard = null): string
     {
         $fallback = route('inspections.index');
         $candidate = $request->string('return_url')->toString();
@@ -174,10 +174,13 @@ class KpiInspectionController extends Controller
         }
 
         $path = parse_url($candidate, PHP_URL_PATH);
-        $expectedPath = parse_url($fallback, PHP_URL_PATH);
+        $allowedPaths = [parse_url($fallback, PHP_URL_PATH)];
+        if ($kpiCard) {
+            $allowedPaths[] = parse_url(route('kpi.dashboard', $kpiCard), PHP_URL_PATH);
+        }
         $host = parse_url($candidate, PHP_URL_HOST);
 
-        return $path === $expectedPath && ($host === null || $host === $request->getHost())
+        return in_array($path, $allowedPaths, true) && ($host === null || $host === $request->getHost())
             ? $candidate
             : $fallback;
     }
@@ -188,7 +191,7 @@ class KpiInspectionController extends Controller
         $parameters = [$kpiCard, $inspection];
 
         if ($request->filled('return_url')) {
-            $parameters['return_url'] = $this->inspectionListBackUrl($request);
+            $parameters['return_url'] = $this->inspectionListBackUrl($request, $kpiCard);
         }
 
         return $parameters;

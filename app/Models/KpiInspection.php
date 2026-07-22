@@ -91,6 +91,11 @@ class KpiInspection extends Model
         return $this->status === self::STATUS_PENDING;
     }
 
+    public function isReviewable(): bool
+    {
+        return in_array($this->status, [self::STATUS_INSPECTED, self::STATUS_PENDING], true);
+    }
+
     public function isApproved(): bool
     {
         return $this->status === self::STATUS_APPROVED;
@@ -136,7 +141,7 @@ class KpiInspection extends Model
     public function displayStatusKeyFor(?User $user): string
     {
         if (! $this->usesSampleReviewModel()) {
-            return $this->status;
+            return $this->status === self::STATUS_INSPECTED ? self::STATUS_PENDING : $this->status;
         }
 
         if (! $this->isSelectedFor($user)) {

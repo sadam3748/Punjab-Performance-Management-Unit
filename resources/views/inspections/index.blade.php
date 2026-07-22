@@ -50,7 +50,13 @@
 
     <div class="ppmu-section-head ppmu-inspection-list-head">
         <div>
-            <p id="inspectionDateRangeLabel"><i class="bi bi-clock-history"></i> Latest completed inspection records</p>
+            @php
+                $completedDay = app(\App\Services\KpiInspectionService::class)->completedDayDateRange()['start'];
+            @endphp
+            <p id="inspectionDateRangeLabel">
+                <i class="bi bi-clock-history"></i>
+                Inspections for {{ $completedDay->format('d M Y') }} · Till 5:00 PM
+            </p>
             <p><strong id="inspectionListCount">{{ number_format($inspectionRecords->total()) }}</strong> inspection{{ $inspectionRecords->total() === 1 ? '' : 's' }} in scope</p>
         </div>
     </div>

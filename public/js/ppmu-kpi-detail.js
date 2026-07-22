@@ -91,7 +91,8 @@
                 if (chartType === 'bar' && Array.isArray(payload.datasets) && payload.datasets.length) {
                     const isStacked = def.type === 'stacked_bar';
                     const isEducationObservationChart = def.key === 'education_observation_availability';
-                    const useCompactObservationStack = isEducationObservationChart;
+                    const isHealthObservationChart = def.key === 'health_observation_availability';
+                    const useCompactObservationStack = isEducationObservationChart || isHealthObservationChart;
                     const usesStackedBars = isStacked || useCompactObservationStack;
                     const horizontal = def.type === 'grouped_bar' || def.type === 'stacked_bar' || String(def.key || '').includes('observation');
                     const facilitiesInspected = Number(payload.facilities_inspected ?? 0);
@@ -109,9 +110,9 @@
                                 : { topLeft: 0, bottomLeft: 0, topRight: 4, bottomRight: 4 })
                             : 4,
                         borderSkipped: false,
-                        maxBarThickness: isEducationObservationChart ? 20 : 18,
-                        categoryPercentage: isEducationObservationChart ? 0.72 : undefined,
-                        barPercentage: isEducationObservationChart ? 0.78 : undefined,
+                        maxBarThickness: useCompactObservationStack ? 20 : 18,
+                        categoryPercentage: useCompactObservationStack ? 0.72 : undefined,
+                        barPercentage: useCompactObservationStack ? 0.78 : undefined,
                         stack: usesStackedBars ? 'observations' : undefined,
                     }));
                     const barValueLabels = {
@@ -120,7 +121,7 @@
                             const { ctx, chartArea } = chart;
                             if (!chartArea) return;
                             ctx.save();
-                            ctx.font = `${isEducationObservationChart ? '700 11px' : '600 10px'} "Plus Jakarta Sans", system-ui, sans-serif`;
+                            ctx.font = `${useCompactObservationStack ? '700 11px' : '600 10px'} "Plus Jakarta Sans", system-ui, sans-serif`;
                             ctx.textBaseline = 'middle';
                             chart.data.datasets.forEach((dataset, datasetIndex) => {
                                 const meta = chart.getDatasetMeta(datasetIndex);
@@ -128,7 +129,7 @@
                                 meta.data.forEach((bar, index) => {
                                     const value = Number(dataset.data[index] ?? 0);
                                     if (!value) return;
-                                    if (isEducationObservationChart && Math.abs(bar.x - bar.base) < 22) return;
+                                    if (useCompactObservationStack && Math.abs(bar.x - bar.base) < 22) return;
                                     const label = String(value);
                                     const inside = horizontal
                                         ? (bar.x - chartArea.left) > 28
@@ -154,7 +155,7 @@
                             responsive: true,
                             maintainAspectRatio: false,
                             layout: {
-                                padding: isEducationObservationChart
+                                padding: useCompactObservationStack
                                     ? { top: 4, right: 22, bottom: 8, left: 8 }
                                     : (horizontal ? { left: 6, right: 10 } : { top: 8, bottom: 4 }),
                             },
@@ -164,7 +165,7 @@
                                     stacked: usesStackedBars,
                                     grid: horizontal ? { display: false } : grid,
                                     ticks: {
-                                        font: isEducationObservationChart
+                                        font: useCompactObservationStack
                                             ? { family: 'Plus Jakarta Sans', size: 11, weight: '700' }
                                             : fnt,
                                         autoSkip: false,
@@ -172,7 +173,7 @@
                                     },
                                     afterFit(axis) {
                                         if (horizontal) {
-                                            axis.width = Math.max(axis.width, isEducationObservationChart ? 124 : 152);
+                                            axis.width = Math.max(axis.width, useCompactObservationStack ? 132 : 152);
                                         }
                                     },
                                 },
@@ -181,7 +182,7 @@
                                     stacked: usesStackedBars,
                                     grid: horizontal ? grid : { display: false },
                                     ticks: {
-                                        font: isEducationObservationChart
+                                        font: useCompactObservationStack
                                             ? { family: 'Plus Jakarta Sans', size: 11, weight: '600' }
                                             : fnt,
                                         padding: horizontal ? 6 : 4,
@@ -191,14 +192,14 @@
                             },
                             plugins: {
                                 legend: {
-                                    position: def.key === 'education_observation_availability' ? 'top' : 'bottom',
+                                    position: useCompactObservationStack ? 'top' : 'bottom',
                                     labels: {
-                                        padding: isEducationObservationChart ? 18 : 12,
+                                        padding: useCompactObservationStack ? 18 : 12,
                                         boxWidth: 10,
                                         boxHeight: 10,
                                         usePointStyle: true,
                                         pointStyle: 'circle',
-                                        font: isEducationObservationChart
+                                        font: useCompactObservationStack
                                             ? { family: 'Plus Jakarta Sans', size: 12, weight: '700' }
                                             : fnt,
                                     },
@@ -208,7 +209,7 @@
                                     intersect: !usesStackedBars,
                                     callbacks: {
                                         title(items) {
-                                            if (def.key === 'education_observation_availability' && items?.length) {
+                                            if (useCompactObservationStack && items?.length) {
                                                 return categoryTitles[items[0].dataIndex] || items[0].label;
                                             }
                                             return items?.[0]?.label || '';
@@ -226,7 +227,7 @@
                                             return ` ${series}: ${value}`;
                                         },
                                         footer(items) {
-                                            if (!usesStackedBars || !items?.length || isEducationObservationChart) return '';
+                                            if (!usesStackedBars || !items?.length || useCompactObservationStack) return '';
                                             const available = Number(items[0]?.parsed?.x ?? items[0]?.parsed?.y ?? 0);
                                             const notAvailable = Number(items[1]?.parsed?.x ?? items[1]?.parsed?.y ?? 0);
                                             const total = available + notAvailable;
@@ -640,6 +641,25 @@
             .replace(/"/g, '&quot;');
     }
 
+    function popupReviewColor(pin) {
+        const status = String(pin?.review_status || '').trim().toLowerCase();
+        if (status === 'pending review') return 'orange';
+        if (status === 'approved') return 'green';
+        if (status === 'rejected') return 'red';
+        if (status === 'inspected') return 'blue';
+        if (status === 'not applicable') return 'grey';
+        return pin?.review_color || pin?.color || 'grey';
+    }
+
+    function popupReviewBadge(pin) {
+        const color = popupReviewColor(pin);
+        const pendingClass = color === 'orange' ? ' is-pending-review' : '';
+        const pendingStyle = color === 'orange'
+            ? ' style="background:#fef3c7!important;color:#a16207!important;border:1px solid #fbbf24!important"'
+            : '';
+        return `<span class="ppmu-health-map-status ppmu-health-map-status-${escapeHtml(color)}${pendingClass}"${pendingStyle}>${escapeHtml(pin.review_status)}</span>`;
+    }
+
     function compactMapPopupHtml(pin) {
         const entityLabel = pin.institution_name
             ? 'Institution'
@@ -663,8 +683,7 @@
                     <div><dt>${entityLabel}</dt><dd class="ppmu-popup-value">${escapeHtml(entityValue)}</dd></div>
                     <div><dt>Location</dt><dd class="ppmu-popup-value">${escapeHtml(pin.tehsil)} Tehsil, ${escapeHtml(pin.district)} District</dd></div>
                     <div><dt>Inspected</dt><dd class="ppmu-popup-value">${escapeHtml(pin.inspection_date)}</dd></div>
-                    <div><dt>Operational Status</dt><dd><span class="ppmu-map-operational-status">${escapeHtml(pin.operational_status)}</span></dd></div>
-                    <div><dt>Review Status</dt><dd><span class="ppmu-health-map-status ppmu-health-map-status-${escapeHtml(pin.review_color || pin.color)}">${escapeHtml(pin.review_status)}</span></dd></div>
+                    <div><dt>Review Status</dt><dd>${popupReviewBadge(pin)}</dd></div>
                 </dl>
                 <div class="ppmu-map-popup-footer">
                     ${action}
@@ -695,7 +714,7 @@
                     <div><dt>Tehsil</dt><dd>${escapeHtml(pin.tehsil)}</dd></div>
                     <div><dt>District</dt><dd>${escapeHtml(pin.district)}</dd></div>
                     <div><dt>Date &amp; Time</dt><dd>${escapeHtml(pin.inspection_date)}</dd></div>
-                    <div><dt>Status</dt><dd><span class="ppmu-health-map-status ppmu-health-map-status-${escapeHtml(pin.color)}">${escapeHtml(pin.review_status)}</span></dd></div>
+                    <div><dt>Status</dt><dd>${popupReviewBadge(pin)}</dd></div>
                     ${issueRow}${studentRows}
                 </dl>
                 <a href="${escapeHtml(pin.detail_url)}" class="ppmu-health-map-popup-btn" target="_blank" rel="noopener noreferrer">View Detail</a>
@@ -810,11 +829,30 @@
             scopeLabel.textContent = mapData.scope_label;
         }
         if (pinCountEl) {
-            pinCountEl.textContent = `${pinCount} ${pinCount === 1 ? 'inspection mapped' : 'inspections mapped'}`;
+            if (mapData?.count_label) {
+                pinCountEl.textContent = mapData.count_label;
+                pinCountEl.setAttribute('data-count-label', '1');
+            } else {
+                pinCountEl.removeAttribute('data-count-label');
+                pinCountEl.textContent = `Total ${mapData?.entity_label || 'Locations'}: ${Number(mapData?.facility_count ?? pinCount).toLocaleString()}`;
+            }
         }
         if (unmappedEl) {
             const unmappedCount = Number(mapData?.unmapped_count ?? 0);
-            unmappedEl.innerHTML = `Records without mapped location: <strong>${unmappedCount.toLocaleString()}</strong>`;
+            const mappedCount = Number(mapData?.mapped_count ?? pinCount);
+            const facilityCount = Number(mapData?.facility_count ?? mappedCount);
+            if (Object.prototype.hasOwnProperty.call(mapData || {}, 'unmapped_count') && unmappedCount > 0) {
+                unmappedEl.hidden = false;
+                unmappedEl.innerHTML = `Mapped Locations: <strong>${mappedCount.toLocaleString()}</strong> of <strong>${facilityCount.toLocaleString()}</strong>`
+                    + ` <span class="ppmu-health-map-unmapped-sep">·</span> `
+                    + `Locations without coordinates: <strong>${unmappedCount.toLocaleString()}</strong>`;
+            } else if (Object.prototype.hasOwnProperty.call(mapData || {}, 'unmapped_count')) {
+                unmappedEl.hidden = true;
+                unmappedEl.innerHTML = '';
+            } else {
+                unmappedEl.hidden = false;
+                unmappedEl.innerHTML = `Locations without coordinates: <strong>${unmappedCount.toLocaleString()}</strong>`;
+            }
         }
         if (mapData?.status_counts) {
             const labels = { not_inspected: 'Not Inspected', inspected: 'Inspected', pending_review: 'Pending Review', approved: 'Approved', rejected: 'Rejected' };
