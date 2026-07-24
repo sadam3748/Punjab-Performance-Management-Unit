@@ -783,10 +783,10 @@ class KpiInspectionSeeder extends Seeder
     private function demoEducationTehsilStatusPlan(int $tehsilId): ?array
     {
         // Review Target = ceil(inspected * 0.20) = 1 when inspected = 2.
-        // Only one inspection may be selected for review (approved);
+        // One inspection is selected and remains pending review;
         // the second remains inspected-only (blue map pin).
         return match ($tehsilId) {
-            24, 25, 26, 81, 82 => ['approved', 'inspected_only'],
+            24, 25, 26, 81, 82 => ['pending_review', 'inspected_only'],
             default => null,
         };
     }
@@ -1187,10 +1187,10 @@ class KpiInspectionSeeder extends Seeder
     private function demoTehsilStatusPlan(int $tehsilId): ?array
     {
         // Review Target = ceil(inspected * 0.20) = 1 when inspected = 2.
-        // Only one facility may be selected for review (approved);
+        // One facility is selected and remains pending review;
         // the second remains inspected-only (blue map pin).
         return match ($tehsilId) {
-            24, 25, 81 => ['approved', 'inspected_only'],
+            24, 25, 81 => ['pending_review', 'inspected_only'],
             default => null,
         };
     }

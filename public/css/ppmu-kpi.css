@@ -2454,9 +2454,9 @@ body:has(.ppmu-main-dashboard) {
 }
 
 .ppmu-obs-chip-unavailable {
-    color: #b45309;
-    background: rgba(224, 123, 0, .08);
-    border-color: rgba(224, 123, 0, .18);
+    color: #b91c1c;
+    background: #fef2f2;
+    border-color: #fecaca;
 }
 
 .ppmu-obs-attention-text {
@@ -8256,4 +8256,41 @@ body:has(.ppmu-main-dashboard),
 
 .ppmu-detail-page #kpiDetailMetrics .tone-yellow .ppmu-pi-value {
     color: #854d0e !important;
+}
+
+.ppmu-metric-card.tone-yellow::before,
+.ppmu-stat-tile.ppmu-sc-yellow::before,
+.ppmu-pi-card.tone-yellow::before,
+.ppmu-inspection-summary-grid .tone-yellow::before,
+.ppmu-inspection-summary-compact .tone-yellow::before {
+    background: #eab308 !important;
+}
+
+.ppmu-metric-card.tone-yellow .ppmu-metric-icon,
+.ppmu-stat-tile.ppmu-sc-yellow .ppmu-stat-icon,
+.ppmu-pi-card.tone-yellow .ppmu-pi-icon,
+.ppmu-inspection-summary-grid .tone-yellow .ppmu-pi-icon,
+.ppmu-inspection-summary-compact .tone-yellow .ppmu-pi-icon {
+    color: #854d0e !important;
+    background: #fef9c3 !important;
+    border-color: #fde047 !important;
+}
+
+.ppmu-pi-card.tone-yellow .ppmu-pi-value,
+.ppmu-inspection-summary-grid .tone-yellow .ppmu-pi-value,
+.ppmu-inspection-summary-compact .tone-yellow .ppmu-pi-value {
+    color: #854d0e !important;
+}
+
+/* Education and Health observations: negative findings use semantic red text. */
+.ppmu-detail-page .ppmu-obs-chip-unavailable {
+    color: #b91c1c !important;
+    background: #fef2f2 !important;
+    border-color: #fecaca !important;
+}
+
+.ppmu-detail-observation-card.is-danger .ppmu-obs-status-badge {
+    color: #b91c1c !important;
+    background: #fef2f2 !important;
+    border: 1px solid #fecaca !important;
 }

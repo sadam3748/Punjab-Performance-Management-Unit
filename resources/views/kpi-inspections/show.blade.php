@@ -207,7 +207,7 @@
 <div class="row g-2 ppmu-inspection-evidence-map-rows">
     <div class="col-lg-4 d-flex">
         <div class="card-ppmf ppmu-inspection-panel ppmu-inspection-panel-compact ppmu-evidence-panel-compact h-100 w-100" id="evidence-images">
-            <h3><i class="bi bi-images"></i> Evidence Images</h3>
+            <h3><i class="bi bi-images"></i> Inspection Pictures</h3>
             @if($inspection->attachments->isNotEmpty())
                 <div class="ppmu-evidence-gallery-scroll">
                     <div class="ppmu-evidence-gallery ppmu-evidence-gallery-compact">

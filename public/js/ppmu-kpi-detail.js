@@ -41,6 +41,12 @@
         return Array.from({ length: count }, (_, i) => palette[i % palette.length]);
     }
 
+    function semanticChartColors(labels) {
+        const fallback = chartColors(Math.max(labels.length, 1));
+
+        return labels.map((label, index) => statusPalette[String(label).trim()] || fallback[index]);
+    }
+
     function ensureChartCanvas(index) {
         const id = 'kpiChart_' + index;
         let canvas = document.getElementById(id);
@@ -83,7 +89,7 @@
                     }
                     return;
                 }
-                const colors = chartColors(Math.max(labels.length, values.length, 1));
+                const colors = semanticChartColors(labels);
                 const chartType = def.type === 'grouped_bar' || def.type === 'stacked_bar'
                     ? 'bar'
                     : (def.type === 'donut' ? 'doughnut' : (def.type === 'pie' ? 'pie' : def.type));

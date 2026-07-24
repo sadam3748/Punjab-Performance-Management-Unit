@@ -294,7 +294,7 @@
 
                 <button type="submit" class="btn-gov btn-gov-primary btn-gov-lg w-100 justify-content-center">
                     <i class="bi bi-box-arrow-in-right"></i>
-                    Sign In
+                    Login
                 </button>
             </form>
 

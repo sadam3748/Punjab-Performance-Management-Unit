@@ -12,7 +12,7 @@ const COLORS = {
   teal:    '#0e8c6a',
   gold:    '#c9952a',
   danger:  '#d9363e',
-  warning: '#e07b00',
+  warning: '#eab308',
   info:    '#1a6fa8',
   muted:   '#8896a5',
   border:  '#e2e8f0',

@@ -331,6 +331,35 @@ class KpiDashboardTest extends TestCase
         $this->assertSame('weekly', $detail['period']['period_type']);
     }
 
+    public function test_visit_kpis_default_to_latest_completed_week_with_seeded_inspections(): void
+    {
+        $this->seed(PpmuSeeder::class);
+
+        $user = User::where('username', 'ac.layyah')->firstOrFail();
+        $period = app(KpiPeriodService::class);
+        $dashboard = app(KpiDashboardService::class);
+
+        foreach ([
+            'inspection-of-educational-institutions',
+            'inspection-of-health-facilities',
+        ] as $slug) {
+            $card = KpiCard::where('slug', $slug)->firstOrFail();
+            $detail = $dashboard->detail($card, $user, Request::create('/kpi/'.$slug.'/dashboard', 'GET'));
+            $coverage = collect($detail['metricSections'])->firstWhere('title', 'Inspection Coverage');
+            $values = collect($coverage['metrics'])->mapWithKeys(fn ($metric) => [$metric['label'] => $metric['value']]);
+
+            $this->assertSame('weekly', $detail['period']['period_type'], $slug);
+            $this->assertSame($period->latestCompletedWeekNo(), $detail['period']['week_no'], $slug);
+            $this->assertSame(2.0, (float) $detail['header']['operational_target'], $slug);
+            $this->assertSame(2.0, (float) $detail['header']['completed'], $slug);
+            $this->assertSame(100.0, (float) $detail['header']['achievement_percentage'], $slug);
+            $this->assertSame(1, (int) $values['Review Target'], $slug);
+            $this->assertSame(0, (int) $values['Approved'], $slug);
+            $this->assertSame(1, (int) $values['Pending Review'], $slug);
+            $this->assertSame(0, (int) $values['Rejected'], $slug);
+        }
+    }
+
     public function test_roti_detail_defaults_to_today(): void
     {
         $this->seed(PpmuSeeder::class);
@@ -706,9 +735,9 @@ class KpiDashboardTest extends TestCase
         $dashboard = app(KpiDashboardService::class);
 
         $cases = [
-            'ac.layyah' => ['total' => 20, 'facilities' => 2, 'approved' => 1, 'pending' => 0, 'rejected' => 0, 'review_target' => 1],
-            'ac.karor' => ['total' => 28, 'facilities' => 2, 'approved' => 1, 'pending' => 0, 'rejected' => 0, 'review_target' => 1],
-            'ac.lahore' => ['total' => 48, 'facilities' => 2, 'approved' => 1, 'pending' => 0, 'rejected' => 0, 'review_target' => 1],
+            'ac.layyah' => ['total' => 20, 'facilities' => 2, 'approved' => 0, 'pending' => 1, 'rejected' => 0, 'review_target' => 1],
+            'ac.karor' => ['total' => 28, 'facilities' => 2, 'approved' => 0, 'pending' => 1, 'rejected' => 0, 'review_target' => 1],
+            'ac.lahore' => ['total' => 48, 'facilities' => 2, 'approved' => 0, 'pending' => 1, 'rejected' => 0, 'review_target' => 1],
         ];
 
         foreach ($cases as $username => $expected) {
@@ -1121,8 +1150,8 @@ class KpiDashboardTest extends TestCase
         $this->assertSame(20, (int) $values['Total Health Facilities']);
         $this->assertSame(2, $facilitiesInspected);
         $this->assertSame(1, (int) $values['Review Target']);
-        $this->assertSame(1, $approved);
-        $this->assertSame(0, $pending);
+        $this->assertSame(0, $approved);
+        $this->assertSame(1, $pending);
         $this->assertSame(0, $rejected);
 
         $this->assertSame('Health Facility Inspection Coverage Map', $map['title']);
@@ -1215,13 +1244,14 @@ class KpiDashboardTest extends TestCase
         $this->assertSame(20, (int) $values['Total Educational Institutions']);
         $this->assertSame(2, (int) $values['Institutions Inspected']);
         $this->assertSame(1, (int) $values['Review Target']);
-        $this->assertSame(1, (int) $values['Approved']);
-        $this->assertSame(0, (int) $values['Pending Review']);
+        $this->assertSame(0, (int) $values['Approved']);
+        $this->assertSame(1, (int) $values['Pending Review']);
         $this->assertSame(0, (int) $values['Rejected']);
         $this->assertSame(20, $map['pin_count']);
 
         $statusCounts = collect($map['pins'])->countBy('color');
-        $this->assertSame(1, $statusCounts->get('green', 0));
+        $this->assertSame(0, $statusCounts->get('green', 0));
+        $this->assertSame(1, $statusCounts->get('orange', 0));
         $this->assertSame(1, $statusCounts->get('blue', 0));
         $this->assertSame(18, $statusCounts->get('grey', 0));
     }
@@ -1247,8 +1277,8 @@ class KpiDashboardTest extends TestCase
         $this->assertSame(20, (int) $values['Total Educational Institutions']);
         $this->assertSame(2, (int) $values['Institutions Inspected']);
         $this->assertSame(1, (int) $values['Review Target']);
-        $this->assertSame(1, (int) $values['Approved']);
-        $this->assertSame(0, (int) $values['Pending Review']);
+        $this->assertSame(0, (int) $values['Approved']);
+        $this->assertSame(1, (int) $values['Pending Review']);
         $this->assertSame(0, (int) $values['Rejected']);
 
         $premises = collect($observations['metrics'])->firstWhere('label', 'School Premises Condition');
@@ -1274,8 +1304,8 @@ class KpiDashboardTest extends TestCase
         $statusCounts = collect($map['pins'])->countBy('color');
         $this->assertSame(18, $statusCounts->get('grey', 0));
         $this->assertSame(1, $statusCounts->get('blue', 0));
-        $this->assertSame(1, $statusCounts->get('green', 0));
-        $this->assertSame(0, $statusCounts->get('orange', 0));
+        $this->assertSame(0, $statusCounts->get('green', 0));
+        $this->assertSame(1, $statusCounts->get('orange', 0));
         $this->assertSame(0, $statusCounts->get('red', 0));
 
         $this->assertSame(2, (int) ($chart['data']['facilities_inspected'] ?? 0));

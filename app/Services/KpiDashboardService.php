@@ -450,23 +450,16 @@ class KpiDashboardService
         return $avg;
     }
 
-    private function resolveAchievementPct(Collection $submissions, float $achieved, float $target): float
+    private function resolveAchievementPct(float $achieved, float $target): float
     {
-        if ($submissions->isEmpty()) {
-            return 0.0;
-        }
-
         if ($target <= 0) {
             return 0.0;
         }
 
-        if ($target > 0) {
-            return $this->formula->achievementPercentage($achieved, $target);
-        }
-
-        $pct = round((float) $submissions->avg(fn ($s) => (float) ($s->achievement_percentage ?? $s->kpiScore?->percentage ?? 0)), 1);
-
-        return $pct > 0 ? $pct : 0.0;
+        // Visit KPIs can have inspection records without a separate KPI submission.
+        // Operational progress must therefore come from completed / target and must
+        // remain independent from the review target and review decisions.
+        return $this->formula->achievementPercentage($achieved, $target);
     }
 
     private function resolveAchievedSum(Collection $submissions): float
@@ -576,7 +569,7 @@ class KpiDashboardService
         $records = $submissions->count();
         $inspectionsCount = $this->inspectionService->countScopedInspections($card, $user, $request);
 
-        $pct = $this->resolveAchievementPct($submissions, $completed, $operationalTarget);
+        $pct = $this->resolveAchievementPct($completed, $operationalTarget);
         if (in_array($card->slug, [
             'inspection-of-health-facilities',
             'inspection-of-educational-institutions',
