@@ -25,7 +25,7 @@ class KpiDashboardTest extends TestCase
         $this->seed(PpmuSeeder::class);
         $slug = 'functional-and-clean-water-filtration-plants';
         $card = KpiCard::where('slug', $slug)->firstOrFail();
-        $admin = User::where('username', 'super_admin')->firstOrFail();
+        $admin = User::where('username', 'admin')->firstOrFail();
 
         $this->actingAs($admin)
             ->get('/dashboard')
@@ -65,7 +65,7 @@ class KpiDashboardTest extends TestCase
             $this->assertFileExists(public_path($card->resolvedImagePath()), "Missing KPI image for {$card->slug}");
         });
 
-        foreach (['super_admin', 'cs.pmru', 'com.lahore', 'dc.lahore', 'ac.lahore', 'com.dgkhan', 'dc.layyah', 'ac.layyah'] as $login) {
+        foreach (['admin', 'cs.pmru', 'com.lahore', 'dc.lahore', 'ac.lahore', 'com.dgkhan', 'dc.layyah', 'ac.layyah'] as $login) {
             auth()->logout();
             $this->post('/login', ['login' => $login, 'password' => '123456'])
                 ->assertRedirect(route('dashboard'));
@@ -93,7 +93,7 @@ class KpiDashboardTest extends TestCase
     public function test_period_filter_on_dashboard(): void
     {
         $this->seed(PpmuSeeder::class);
-        $admin = User::where('username', 'super_admin')->firstOrFail();
+        $admin = User::where('username', 'admin')->firstOrFail();
 
         $this->actingAs($admin)
             ->get('/dashboard?period_type=monthly&month=1&year='.now()->year)
@@ -104,7 +104,7 @@ class KpiDashboardTest extends TestCase
     public function test_dashboard_defaults_to_active_ppmf_week(): void
     {
         $this->seed(PpmuSeeder::class);
-        $admin = User::where('username', 'super_admin')->firstOrFail();
+        $admin = User::where('username', 'admin')->firstOrFail();
 
         $this->actingAs($admin)
             ->get('/dashboard')
@@ -293,7 +293,7 @@ class KpiDashboardTest extends TestCase
     {
         $this->seed(PpmuSeeder::class);
         $slug = 'functional-and-clean-water-filtration-plants';
-        $admin = User::where('username', 'super_admin')->firstOrFail();
+        $admin = User::where('username', 'admin')->firstOrFail();
 
         $this->actingAs($admin)
             ->getJson("/kpi/{$slug}/dashboard/data?period_type=monthly&month=1&year=".now()->year)

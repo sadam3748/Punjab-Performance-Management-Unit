@@ -16,7 +16,7 @@ class KpiInspectionTest extends TestCase
     public function test_inspections_sidebar_and_index_page(): void
     {
         $this->seed(PpmuSeeder::class);
-        $admin = User::where('username', 'super_admin')->firstOrFail();
+        $admin = User::where('username', 'admin')->firstOrFail();
         $healthCard = KpiCard::where('slug', 'inspection-of-health-facilities')->firstOrFail();
 
         $this->actingAs($admin)
@@ -59,7 +59,7 @@ class KpiInspectionTest extends TestCase
     public function test_inspections_index_defaults_redirect_and_ajax_pagination(): void
     {
         $this->seed(PpmuSeeder::class);
-        $admin = User::where('username', 'super_admin')->firstOrFail();
+        $admin = User::where('username', 'admin')->firstOrFail();
         $healthCard = KpiCard::where('slug', 'inspection-of-health-facilities')->firstOrFail();
         $this->actingAs($admin)
             ->get(route('inspections.index'))
@@ -86,7 +86,7 @@ class KpiInspectionTest extends TestCase
     {
         $this->seed(PpmuSeeder::class);
         $card = KpiCard::where('slug', 'inspection-of-health-facilities')->firstOrFail();
-        $admin = User::where('username', 'super_admin')->firstOrFail();
+        $admin = User::where('username', 'admin')->firstOrFail();
         $acLahore = User::where('username', 'ac.lahore')->firstOrFail();
         $acLayyah = User::where('username', 'ac.layyah')->firstOrFail();
 
@@ -198,7 +198,7 @@ class KpiInspectionTest extends TestCase
     {
         $this->seed(PpmuSeeder::class);
         $card = KpiCard::where('slug', 'inspection-of-health-facilities')->firstOrFail();
-        $admin = User::where('username', 'super_admin')->firstOrFail();
+        $admin = User::where('username', 'admin')->firstOrFail();
         $inspection = KpiInspection::where('kpi_card_id', $card->id)
             ->where('status', KpiInspection::STATUS_PENDING)
             ->whereHas('attachments')
@@ -237,7 +237,7 @@ class KpiInspectionTest extends TestCase
     {
         $this->seed(PpmuSeeder::class);
         $card = KpiCard::where('slug', 'inspection-of-health-facilities')->firstOrFail();
-        $admin = User::where('username', 'super_admin')->firstOrFail();
+        $admin = User::where('username', 'admin')->firstOrFail();
         $inspection = KpiInspection::where('kpi_card_id', $card->id)
             ->whereHas('attachments', fn ($q) => $q->where('observation_key', 'deep_cleaning_available'))
             ->firstOrFail();
@@ -254,7 +254,7 @@ class KpiInspectionTest extends TestCase
     {
         $this->seed(PpmuSeeder::class);
         $card = KpiCard::where('slug', 'inspection-of-health-facilities')->firstOrFail();
-        $admin = User::where('username', 'super_admin')->firstOrFail();
+        $admin = User::where('username', 'admin')->firstOrFail();
         $inspection = KpiInspection::where('kpi_card_id', $card->id)
             ->where('status', KpiInspection::STATUS_PENDING)
             ->firstOrFail();
@@ -281,7 +281,7 @@ class KpiInspectionTest extends TestCase
     {
         $this->seed(PpmuSeeder::class);
         $slug = 'inspection-of-health-facilities';
-        $admin = User::where('username', 'super_admin')->firstOrFail();
+        $admin = User::where('username', 'admin')->firstOrFail();
 
         $this->actingAs($admin)
             ->get("/kpi/{$slug}/dashboard")

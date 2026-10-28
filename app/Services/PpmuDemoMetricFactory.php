@@ -805,7 +805,7 @@ class PpmuDemoMetricFactory
       str_starts_with($username, 'dc.layyah') => 4,
       str_starts_with($username, 'com.lahore') => 20,
       str_starts_with($username, 'com.dgkhan') => 16,
-      in_array($username, ['cs.pmru', 'super_admin'], true) => 60,
+      in_array($username, ['cs.pmru', 'admin'], true) => 60,
       default => 1,
     };
 

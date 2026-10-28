@@ -40,7 +40,7 @@ class KpiDashboardConfigTest extends TestCase
         $this->seed(PpmuSeeder::class);
         $slug = 'inspection-of-health-facilities';
 
-        $this->actingAs(User::where('username', 'super_admin')->firstOrFail())
+        $this->actingAs(User::where('username', 'admin')->firstOrFail())
             ->get("/kpi/{$slug}/dashboard")
             ->assertOk()
             ->assertSee('KPI Performance Cards')
@@ -79,7 +79,7 @@ class KpiDashboardConfigTest extends TestCase
     {
         $this->seed(PpmuSeeder::class);
 
-        $this->actingAs(User::where('username', 'super_admin')->firstOrFail())
+        $this->actingAs(User::where('username', 'admin')->firstOrFail())
             ->get('/kpi/repair-of-small-roads/dashboard')
             ->assertOk()
             ->assertSee('Repair', false);

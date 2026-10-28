@@ -31,7 +31,7 @@ class KpiSubmissionSeeder extends Seeder
         'dc.layyah' => 6,
         'com.lahore' => 3,
         'com.dgkhan' => 3,
-        'super_admin' => 1,
+        'admin' => 1,
         'cs.pmru' => 1,
     ];
 
@@ -45,7 +45,7 @@ class KpiSubmissionSeeder extends Seeder
         'com.lahore' => 8,
         'com.dgkhan' => 8,
         'cs.pmru' => 14,
-        'super_admin' => 14,
+        'admin' => 14,
     ];
 
     public function run(): void

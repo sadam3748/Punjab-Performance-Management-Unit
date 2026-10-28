@@ -17,7 +17,7 @@ class AdminUserSeeder extends Seeder
                 'district_id'   => null,
                 'tehsil_id'     => null,
                 'name'          => 'PPMU Super Admin',
-                'username'      => 'super_admin',
+                'username'      => 'admin',
                 'email'         => 'admin@ppmf.local',
                 'password'      => Hash::make('123456'),
                 'phone'         => null,

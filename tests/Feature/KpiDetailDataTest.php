@@ -19,7 +19,7 @@ class KpiDetailDataTest extends TestCase
         $this->seed(PpmuSeeder::class);
         $slug = 'inspection-of-health-facilities';
         $card = KpiCard::where('slug', $slug)->firstOrFail();
-        $admin = User::where('username', 'super_admin')->firstOrFail();
+        $admin = User::where('username', 'admin')->firstOrFail();
 
         $data = app(KpiDashboardService::class)->detail($card, $admin, Request::create('/'));
 
@@ -78,7 +78,7 @@ class KpiDetailDataTest extends TestCase
     public function test_priority_kpi_chart_definitions_have_populated_data(): void
     {
         $this->seed(PpmuSeeder::class);
-        $admin = User::where('username', 'super_admin')->firstOrFail();
+        $admin = User::where('username', 'admin')->firstOrFail();
         $dashboard = app(KpiDashboardService::class);
 
         foreach ([
@@ -106,7 +106,7 @@ class KpiDetailDataTest extends TestCase
     public function test_percentage_cards_and_gauges_never_exceed_one_hundred(): void
     {
         $this->seed(PpmuSeeder::class);
-        $admin = User::where('username', 'super_admin')->firstOrFail();
+        $admin = User::where('username', 'admin')->firstOrFail();
         $dashboard = app(KpiDashboardService::class);
 
         KpiCard::where('is_active', true)->each(function (KpiCard $card) use ($admin, $dashboard) {

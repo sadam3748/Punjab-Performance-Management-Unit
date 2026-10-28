@@ -1379,7 +1379,7 @@ class KpiDashboardService
             'ac.karor' => $slug === 'inspection-of-health-facilities' ? 28 : 20,
             'dc.layyah' => $slug === 'inspection-of-health-facilities' ? 48 : 58,
             'com.dgkhan', 'com.lahore' => $slug === 'inspection-of-health-facilities' ? 120 : 380,
-            'cs.pmru', 'super_admin' => $slug === 'inspection-of-health-facilities' ? 186 : 620,
+            'cs.pmru', 'admin' => $slug === 'inspection-of-health-facilities' ? 186 : 620,
             default => 0,
         };
 

@@ -4,7 +4,7 @@ All demo accounts use password `123456` and log in at `http://ppmu.test/login`.
 
 | Role | Name | Login | Password | Scope | KPI Data Available |
 |---|---|---|---|---|---|
-| Super Admin | PPMU Super Admin | `super_admin` | `123456` | All Punjab | Yes |
+| Super Admin | PPMU Super Admin | `admin` | `123456` | All Punjab | Yes |
 | Chief Secretary | Chief Secretary | `cs.pmru` | `123456` | All Punjab | Yes |
 | Commissioner | Commissioner Lahore | `com.lahore` | `123456` | Lahore Division | Yes |
 | Deputy Commissioner | DC Lahore | `dc.lahore` | `123456` | Lahore District | Yes |
